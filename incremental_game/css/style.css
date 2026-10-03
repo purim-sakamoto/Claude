@@ -1,0 +1,142 @@
+/* 色は時代ごとに切り替える（body[data-era]） */
+:root {
+  --bg: #000; --fg: #ddd; --dim: #777; --line: #333; --btn: #111; --btnfg: #eee; --btnline: #555;
+  --accent: #c9a36a; --bad: #d46a5a; --good: #7fb07f; --warn: #d2a24c; --panel: #0a0a0a; --bar: #555; --story: #fff;
+}
+body[data-era="1"] { --bg: #17120e; --fg: #e6dccd; --dim: #8a7c6a; --line: #3a3027; --btn: #221a14; --btnfg: #f0e6d6; --btnline: #5e4d3c; --panel: #1d1712; --bar: #8a6a45; --accent: #d6a463; --story: #fff4e0; }
+body[data-era="2"], body[data-era="3"] { --bg: #ecebe7; --fg: #222; --dim: #777; --line: #cfccc5; --btn: #fff; --btnfg: #222; --btnline: #aaa59b; --panel: #f6f5f2; --bar: #7b8b9a; --accent: #8a5a2b; --bad: #b0473a; --good: #3f7f4f; --warn: #a8741a; --story: #000; }
+body[data-era="3"] { --bg: #e7ecee; --panel: #f3f6f7; --bar: #4f7f99; }
+body[data-era="4"] { --bg: #e6ece6; --fg: #1f2a22; --dim: #6c786f; --line: #c8d3ca; --btn: #fff; --btnfg: #1f2a22; --btnline: #9fb0a3; --panel: #f2f6f2; --bar: #4f8a62; --accent: #2f6f4a; --bad: #b0473a; --good: #2f7f4f; --warn: #a8741a; --story: #000; }
+body[data-era="5"] { --bg: #0c1222; --fg: #d8e0f0; --dim: #7584a3; --line: #243150; --btn: #131c33; --btnfg: #e6ecff; --btnline: #3a4a73; --panel: #10182c; --bar: #5f7fc0; --accent: #9fb8ff; --story: #fff; }
+body[data-era="6"] { --bg: #04050b; --fg: #d7d4e8; --dim: #6e6a8a; --line: #1b1a2e; --btn: #0b0b18; --btnfg: #eeeaff; --btnline: #34305a; --panel: #08081a; --bar: #8c79d6; --accent: #c9b8ff; --story: #fff; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; font-size: 14px; transition: background 2s, color 2s; }
+button { font: inherit; }
+.hidden { display: none !important; }
+.dim { color: var(--dim); }
+.bad { color: var(--bad); }
+.good { color: var(--good); }
+.warn { color: var(--warn); }
+.num { font-variant-numeric: tabular-nums; }
+
+#app { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; }
+#top { display: flex; gap: 16px; align-items: baseline; min-height: 24px; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 10px; }
+#title { font-size: 12px; color: var(--dim); letter-spacing: .1em; white-space: nowrap; }
+#title s { color: var(--dim); }
+#memo { flex: 1; font-size: 13px; }
+#memo b { color: var(--accent); font-weight: normal; margin-right: 6px; }
+#cal { font-size: 12px; color: var(--dim); white-space: nowrap; }
+
+#main { display: grid; grid-template-columns: 260px 1fr 260px; gap: 18px; align-items: start; }
+#logcol { position: sticky; top: 8px; max-height: calc(100vh - 70px); overflow: hidden; }
+#log { font-size: 13px; line-height: 1.6; }
+#log div { margin-bottom: 6px; opacity: 1; transition: opacity .8s; }
+#log div.story { color: var(--story); }
+#log div.dim { color: var(--dim); }
+#log div:nth-child(n+10) { opacity: .6; }
+#log div:nth-child(n+20) { opacity: .35; }
+#event { margin-bottom: 8px; }
+#event .ev { border: 1px dashed var(--accent); padding: 6px 8px; font-size: 13px; }
+#event button { margin-top: 4px; }
+#side { position: sticky; top: 8px; max-height: calc(100vh - 70px); overflow-y: auto; }
+
+/* 導入の画面（ログとボタンだけ） */
+body.intro #main { grid-template-columns: 1fr; max-width: 520px; margin: 40px auto 0; }
+body.intro #side, body.intro #tabs, body.intro #top #memo, body.intro #top #cal { display: none; }
+body.intro #logcol { order: 2; position: static; max-height: none; }
+body.intro #center { order: 1; }
+body.intro #top { border-bottom: none; }
+body.intro.noresources #side { display: none; }
+body.intro.hasresources #main { grid-template-columns: 1fr 210px; grid-template-areas: "act res" "log res"; max-width: 660px; }
+body.intro.hasresources #center { grid-area: act; }
+body.intro.hasresources #logcol { grid-area: log; }
+body.intro.hasresources #side { display: block; grid-area: res; position: static; }
+
+.btn { display: inline-block; background: var(--btn); color: var(--btnfg); border: 1px solid var(--btnline); padding: 6px 12px; margin: 0 6px 6px 0; cursor: pointer; position: relative; overflow: hidden; text-align: left; border-radius: 2px; }
+.btn:hover { border-color: var(--accent); }
+.btn.na { opacity: .45; cursor: default; }
+.btn .prog { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--accent); }
+.btn small { display: block; color: var(--dim); font-size: 11px; }
+.mini { background: var(--btn); color: var(--btnfg); border: 1px solid var(--btnline); padding: 1px 7px; cursor: pointer; font-size: 12px; margin-left: 2px; border-radius: 2px; }
+.mini:hover { border-color: var(--accent); }
+.fade { animation: fadein .9s ease both; }
+@keyframes fadein { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+body.noanim .fade { animation: none; }
+
+#tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+#tabs button { background: none; border: none; color: var(--dim); padding: 6px 10px; cursor: pointer; border-bottom: 2px solid transparent; }
+#tabs button.on { color: var(--fg); border-bottom-color: var(--accent); }
+#tabs button.new::after { content: "●"; color: var(--accent); font-size: 8px; vertical-align: super; margin-left: 2px; }
+#actions:empty { display: none; }
+#actions { margin-bottom: 8px; }
+
+/* 資源 */
+.res { display: grid; grid-template-columns: 1fr auto; gap: 0 6px; font-size: 13px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
+.res .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res .v { text-align: right; font-variant-numeric: tabular-nums; }
+.res .r { grid-column: 1 / 3; text-align: right; font-size: 11px; color: var(--dim); min-height: 0; }
+.res.full .v { color: var(--warn); }
+.res.neg .r { color: var(--bad); }
+.resgroup { font-size: 11px; color: var(--dim); margin: 10px 0 2px; letter-spacing: .1em; }
+
+/* 設備など */
+.group { margin-bottom: 14px; }
+.group h3 { font-size: 12px; color: var(--dim); font-weight: normal; margin: 0 0 6px; letter-spacing: .1em; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.row .btn { flex: 0 0 auto; min-width: 190px; margin: 0; }
+.row .info { flex: 1; font-size: 12px; color: var(--dim); padding-top: 2px; }
+.row .info .st { color: var(--fg); }
+.row .ctl { white-space: nowrap; font-size: 12px; padding-top: 4px; }
+.cost { font-size: 11px; }
+.cost .lack { color: var(--bad); }
+.teaser { color: var(--dim); opacity: .55; font-size: 12px; display: inline-block; border: 1px dashed var(--line); padding: 3px 8px; margin: 0 6px 6px 0; }
+.bar { height: 6px; background: var(--line); position: relative; margin-top: 3px; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--bar); }
+.bar.red i { background: var(--bad); }
+table.t { border-collapse: collapse; width: 100%; font-size: 12px; }
+table.t th, table.t td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: right; }
+table.t th:first-child, table.t td:first-child { text-align: left; }
+table.t th { color: var(--dim); font-weight: normal; }
+.flow { font-size: 12px; padding: 5px 0; border-bottom: 1px dotted var(--line); }
+.flow .io { color: var(--dim); }
+.flow .why { color: var(--bad); }
+.card { border: 1px solid var(--line); padding: 8px 10px; margin-bottom: 8px; background: var(--panel); }
+.card .steps { display: flex; gap: 2px; margin: 6px 0; }
+.card .steps span { flex: 1; height: 5px; background: var(--line); }
+.card .steps span.done { background: var(--bar); }
+.card .steps span.cur { background: var(--accent); }
+p.note { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
+
+#gear { position: fixed; right: 14px; bottom: 12px; background: none; border: none; color: var(--dim); font-size: 20px; cursor: pointer; opacity: .6; }
+#gear:hover { opacity: 1; }
+
+#modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+#modalbox { background: var(--panel); color: var(--fg); border: 1px solid var(--btnline); padding: 18px 20px; max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; }
+#modalbox h2 { font-size: 16px; font-weight: normal; margin: 0 0 12px; }
+#modalbox textarea, #modalbox input[type=text], #modalbox input[type=password] { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--btnline); padding: 6px; font-family: monospace; font-size: 12px; }
+#modalbox textarea { height: 110px; }
+#modalbox .sect { margin: 12px 0; }
+#modalbox label { display: block; margin: 6px 0; font-size: 13px; }
+
+#devpanel { position: fixed; right: 12px; bottom: 44px; width: 300px; background: #111; color: #eee; border: 1px solid #c33; padding: 10px; font-size: 12px; z-index: 40; max-height: 70vh; overflow-y: auto; }
+#devpanel h4 { margin: 0 0 6px; color: #f66; font-weight: normal; }
+#devpanel button { background: #222; color: #eee; border: 1px solid #555; padding: 3px 7px; margin: 2px; cursor: pointer; font-size: 12px; }
+#devpanel button.on { border-color: #f66; color: #f88; }
+#devpanel pre { white-space: pre-wrap; font-size: 11px; color: #ccc; margin: 6px 0 0; }
+
+#ending { position: fixed; inset: 0; background: #000; color: #ddd; z-index: 60; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 20px; }
+#ending .line { margin: 10px 0; font-size: 15px; }
+#ending .btn { background: #000; color: #eee; border-color: #666; }
+#ending .credits { max-width: 520px; line-height: 2; font-size: 13px; color: #aaa; }
+
+@media (max-width: 960px) {
+  #main { grid-template-columns: 1fr; }
+  #side { position: static; max-height: none; order: 1; }
+  #center { order: 2; }
+  #logcol { position: static; max-height: 220px; overflow-y: auto; order: 3; }
+  .row { flex-wrap: wrap; }
+  .row .btn { min-width: 0; width: 100%; }
+  #side #resources { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+}
