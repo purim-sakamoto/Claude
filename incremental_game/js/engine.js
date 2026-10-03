@@ -576,7 +576,8 @@ TM.Engine = (function () {
   /* 画面に出す毎秒の値はならす（工程どうしの取り合いで毎ティック揺れるため） */
   var SMOOTH_TAU = 6, snapT = 0;
   /* 人や設備を動かした直後は、ならしを短くしてすぐ数字に出す（計画が立てやすいように） */
-  function snap() { snapT = 2; }
+  var snapN = 0;
+  function snap() { snapT = 2; snapN++; }
   function smooth(s, d, dt) {
     var tau = snapT > 0 ? 0.35 : SMOOTH_TAU; if (!s._away) snapT = Math.max(0, snapT - dt);
     var a = 1 - Math.exp(-dt / tau), k, n;
@@ -1315,7 +1316,7 @@ TM.Engine = (function () {
   function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* 無視 */ } }
 
   return {
-    snap: snap, setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
+    snap: snap, snapCount: function () { return snapN; }, setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
     init: init, newState: newState, step: step, derive: derive, cond: cond, cost: cost, canPay: canPay,
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
     setJob: setJob, train: train, acceptOffer: acceptOffer, declineOffer: declineOffer, claimEvent: claimEvent,

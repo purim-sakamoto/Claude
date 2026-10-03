@@ -150,21 +150,22 @@ p.note { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
 
 /* 流れ（上部の細い帯）：高さは固定。中身が変わっても下のボタンが動かない */
 #flowbar:empty { display: none; }
-#flowbar { margin-bottom: 10px; font-size: 12px; height: 78px; overflow: hidden; }
+#flowbar { margin-bottom: 8px; font-size: 12px; height: 48px; overflow: hidden; }
+#flowbar.one { height: 24px; }
 #flowbar .stages { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; height: 24px; overflow: hidden; }
-#flowbar .stage { border: 1px solid var(--line); padding: 2px 8px; border-radius: 2px; color: var(--dim); cursor: default; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#flowbar .stage { border: 1px solid var(--line); padding: 1px 8px; border-radius: 2px; color: var(--dim); cursor: default; white-space: nowrap; font-variant-numeric: tabular-nums; }
 #flowbar .stage b { font-weight: normal; color: var(--fg); margin-right: 6px; }
 #flowbar .stage .v { display: inline-block; min-width: 5.5em; }
 #flowbar .stage:first-child .v { min-width: 12em; }
 #flowbar .stage.bad { border-color: var(--bad); }
 #flowbar .stage.bad b { color: var(--bad); }
 #flowbar .arrow { color: var(--dim); font-size: 11px; }
-#flowbar .advice { height: 22px; line-height: 22px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#flowbar .advice .ttl { color: var(--bad); margin-right: 8px; }
+#flowbar .advice { height: 24px; display: flex; align-items: center; gap: 4px; color: var(--dim); white-space: nowrap; overflow: hidden; }
+#flowbar .advice .ttl { color: var(--bad); margin-right: 4px; flex: none; }
 #flowbar .advice.ok .ttl { color: var(--good); }
 #flowbar .advice.broke { color: var(--fg); }
-#flowbar .fixes { height: 28px; white-space: nowrap; overflow: hidden; display: flex; align-items: center; gap: 4px; }
-#flowbar .fix { margin: 0; min-width: 10em; text-align: left; }
+#flowbar .advice .det { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 6px; }
+#flowbar .fix { margin: 0; flex: none; text-align: left; line-height: 18px; padding: 0 7px; }
 #flowbar .fix.na { opacity: .55; }
 
 /* 特別な知らせ（周年・年商） */
@@ -200,7 +201,7 @@ h3.sect:first-child { margin-top: 0; }
   #side #resources { display: block; }
   #actions { flex-wrap: wrap; }
   #actions .btn { flex: 1 1 30%; max-width: none; }
-  #flowbar .stages, #flowbar .fixes { overflow-x: auto; }
+  #flowbar .stages, #flowbar .advice { overflow-x: auto; }
   #flowbar .stage .v, #flowbar .stage:first-child .v { min-width: 0; }
 }
 

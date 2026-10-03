@@ -9,6 +9,8 @@ TM.UI = (function () {
   function S() { return TM.state; }
   function RT(d) { return d.rateS || d.rate || {}; }
   function f(n) { return U.fmt(n, S().settings.expo); }
+  /* 刻々と変わる量は桁を固定（12.30 → 12.31。末尾の0を落とすと幅が変わり、数字が左右に踊る） */
+  function ff(n) { return U.fmtFixed(n, S().settings.expo); }
   function fr(r, key) { return U.fmtRate(r, S().settings.expo, key); }
 
   function init() {
@@ -113,6 +115,7 @@ TM.UI = (function () {
   }
 
   /* ============ 資源 ============ */
+  var resAt = 0, resSnap = 0;
   function renderResources(s, d) {
     var rows = [];
     D.resources.forEach(function (r) {
@@ -152,11 +155,15 @@ TM.UI = (function () {
         box.appendChild(row);
       });
     }
+    /* 数字の書き換えは1秒に5回まで（毎フレームだと末尾の桁がちらつく）。操作の直後はすぐ書き換える */
+    var now = Date.now();
+    if (sig === lastSig.resN && now - resAt < 200 && resSnap === E.snapCount()) return;
+    lastSig.resN = sig; resAt = now; resSnap = E.snapCount();
     rows.forEach(function (id) {
       var x = refs.res[id], R = E.RES[id], cap = d.cap[id];
       setText(x.nm, E.resName(s, id));
       var unit = (id === 'hcl' && !s.flags.acid_known) || (id === 'fecl2' && !s.flags.fecl2_known) ? '' : R.unit;
-      var val = f(s.res[id]) + (cap !== undefined && cap !== Infinity && cap !== null ? ' / ' + f(cap) : '') + (unit && unit !== '円' ? ' ' + unit : unit === '円' ? '円' : '');
+      var val = ff(s.res[id]) + (cap !== undefined && cap !== Infinity && cap !== null ? ' / ' + f(cap) : '') + (unit && unit !== '円' ? ' ' + unit : unit === '円' ? '円' : '');
       setText(x.v, val);
       var rate = RT(d)[id] || 0, bal = balanced(d, id, rate);
       var sold = soldNow(s, d, id);
@@ -179,7 +186,7 @@ TM.UI = (function () {
       if (id === 'handling') { setText(x.nm, '荷役'); setText(x.v, f(d.handDem) + ' / ' + f(d.handSup)); x.row.classList.toggle('full', d.handEff < 1); setText(x.r, d.handEff < 1 ? '不足 ' + Math.round(d.handEff * 100) + '%' : ''); }
       if (id === 'vent') { setText(x.nm, '換気'); setText(x.v, Math.round((d.ventEff || 1) * 100) + '%'); x.row.classList.toggle('full', d.ventEff < 1); setText(x.r, ''); }
       if (id === 'circ') { setText(x.nm, '循環率'); setText(x.v, Math.round(d.circ * 100) + '%'); setText(x.r, ''); }
-      if (id === 'creditline') { var ov = s.res.money < -d.creditLimit; setText(x.nm, '与信枠'); setText(x.v, s.res.money < 0 ? '借入 ' + f(-s.res.money) + ' / ' + f(d.creditLimit) + '円' : f(d.creditLimit) + '円'); setText(x.r, ov ? 'あと' + Math.ceil(d.overLeft || 0) + '秒' : s.res.money < 0 ? fr(-(d.interest || 0), 'intr') : ''); x.row.classList.toggle('alert', ov); x.row.classList.toggle('full', !ov && s.res.money < -d.creditLimit * 0.8); }
+      if (id === 'creditline') { var ov = s.res.money < -d.creditLimit; setText(x.nm, '与信枠'); setText(x.v, s.res.money < 0 ? '借入 ' + ff(-s.res.money) + ' / ' + f(d.creditLimit) + '円' : f(d.creditLimit) + '円'); setText(x.r, ov ? 'あと' + Math.ceil(d.overLeft || 0) + '秒' : s.res.money < 0 ? fr(-(d.interest || 0), 'intr') : ''); x.row.classList.toggle('alert', ov); x.row.classList.toggle('full', !ov && s.res.money < -d.creditLimit * 0.8); }
     });
   }
 
@@ -243,13 +250,14 @@ TM.UI = (function () {
 
 
   /* ============ 流れ（仕入れ → つくる → 詰める → 売る）と、詰まりの手当て ============
-     帯の高さは常に3行ぶん（段・詰まり・手当て）で固定。中身が変わってもボタンの位置がずれない。
+     帯の高さは2行ぶん（段／詰まりと手当て）で固定。中身が変わってもボタンの位置がずれない。
      詰まりの表示は2.5秒続いたときだけ切り替える（行ったり来たりでチカチカしない） */
-  var flowCur = null, flowPend = null, flowPendAt = 0;
-  function flowVisible(s) {
-    if (s.era < 1) return false;
+  var flowCur = null, flowPend = null, flowPendAt = 0, flowDet = '';
+  /* 帯は時代1からずっと出しておく（警告が出たり消えたりしても、下の行が動かない）。
+     段の行は、流れを知ってから（時代4まで）だけ。 */
+  function flowStages(s) {
     if (s.era <= 4 && (s.flags.hook || s.flags.cans_known)) s.flags.flow_seen = true;
-    return !!s.flags.flow_seen || debtAlert(s, s._d || E.derive(s));
+    return !!s.flags.flow_seen && s.era <= 4;
   }
   function fixLabel(s, d, fx) {
     var kind = fx[0], id = fx[1];
@@ -273,8 +281,8 @@ TM.UI = (function () {
   }
   function renderFlow(s, d) {
     var box = $('flowbar');
-    if (!flowVisible(s)) { if (box.innerHTML) box.innerHTML = ''; lastSig.flow = null; return; }
-    var showStages = s.era <= 4;
+    if (s.era < 1) { if (box.innerHTML) box.innerHTML = ''; lastSig.flow = null; return; }
+    var showStages = flowStages(s);
     var g = showStages ? E.diagnose(s, d) : { stages: [], main: null };
     if (!g) return;
     /* 詰まりの決定（給料未払いは即時、それ以外は2.5秒続いたら） */
@@ -289,30 +297,32 @@ TM.UI = (function () {
     else if (flowPend !== ck) { flowPend = ck; flowPendAt = now; }
     else if (now - flowPendAt > 2500) { flowCur = cand; flowPend = null; }
     var M = flowCur;
-    var sig = g.stages.map(function (x) { return x.id; }).join(',') + '|' + M.stage + '|' + M.title + '|' + M.fixes.map(function (x) { return x.join(':'); }).join(',');
+    var sig = showStages + '|' + g.stages.map(function (x) { return x.id; }).join(',') + '|' + M.stage + '|' + M.title + '|' + M.fixes.map(function (x) { return x.join(':'); }).join(',');
     if (sig !== lastSig.flow) {
       lastSig.flow = sig; box.innerHTML = ''; refs.flow = {};
-      var row = el('div', { class: 'stages' });
-      g.stages.forEach(function (st, i) {
-        if (i) row.appendChild(el('span', { class: 'arrow', text: '→' }));
-        var v = el('span', { class: 'v' });
-        var chip = el('span', { class: 'stage' + (st.id === M.stage ? ' bad' : ''), 'data-tip': 'flow:' + st.id }, [el('b', { text: st.name }), v]);
-        row.appendChild(chip); refs.flow[st.id] = v;
-      });
-      box.appendChild(row);
+      box.classList.toggle('one', !showStages);
+      if (showStages) {
+        var row = el('div', { class: 'stages' });
+        g.stages.forEach(function (st, i) {
+          if (i) row.appendChild(el('span', { class: 'arrow', text: '→' }));
+          var v = el('span', { class: 'v' });
+          var chip = el('span', { class: 'stage' + (st.id === M.stage ? ' bad' : ''), 'data-tip': 'flow:' + st.id }, [el('b', { text: st.name }), v]);
+          row.appendChild(chip); refs.flow[st.id] = v;
+        });
+        box.appendChild(row);
+      }
+      /* 2行目：見出し・手当てのボタン・くわしく（入りきらない分は「…」、全文はマウスを乗せると出る） */
       var nm = { in: '仕入れ', make: 'つくる', fill: '詰める', sell: '売る', broke: '', ok: '' }[M.stage];
-      var adv = el('div', { class: 'advice' + (M.stage === 'ok' ? ' ok' : '') + (M.stage === 'broke' ? ' broke' : '') });
-      adv.appendChild(el('span', { class: 'ttl', text: M.stage === 'ok' ? '流れは順調' : (nm ? '詰まり：' + nm + '　' : '') + M.title }));
-      refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
-      box.appendChild(adv);
-      var fx = el('div', { class: 'fixes' }, [el('span', { class: 'dim', text: '手当て：' })]);
+      var adv = el('div', { class: 'advice' + (M.stage === 'ok' ? ' ok' : '') + (M.stage === 'broke' ? ' broke' : ''), 'data-tip': 'flowdet:' });
+      var okTtl = showStages ? '流れは順調' : '資金繰りは平穏';
+      adv.appendChild(el('span', { class: 'ttl', text: M.stage === 'ok' ? okTtl : (nm ? '詰まり：' + nm + '　' : '') + M.title }));
       refs.flow.fix = [];
       M.fixes.forEach(function (x) {
         var b = el('button', { class: 'mini fix', 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] === 'off' ? 'bld:' + x[1] : x[0] + ':' + x[1] });
-        fx.appendChild(b); refs.flow.fix.push([b, x]);
+        adv.appendChild(b); refs.flow.fix.push([b, x]);
       });
-      if (!M.fixes.length) fx.appendChild(el('span', { class: 'dim', text: M.stage === 'ok' ? '—' : '今は見つからない（技術や改善を進めると見つかるかも）' }));
-      box.appendChild(fx);
+      refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
+      box.appendChild(adv);
     }
     g.stages.forEach(function (st) {
       var parts = st.v.filter(function (x) { return x[1] > 1e-6 || st.v.length === 1; }).map(function (x) {
@@ -322,7 +332,8 @@ TM.UI = (function () {
       });
       setText(refs.flow[st.id], parts.join('・') || '—');
     });
-    if (refs.flow.detail) setText(refs.flow.detail, M.stage === 'ok' ? '詰まっている所はない。どこかを広げれば、全体が伸びる。' : M.detail);
+    flowDet = M.stage === 'ok' ? (showStages ? '詰まっている所はない。どこかを広げれば、全体が伸びる。' : '') : M.detail + (M.fixes.length ? '' : '（手当ては今は見つからない。技術や改善を進めると見つかるかも）');
+    if (refs.flow.detail) setText(refs.flow.detail, flowDet);
     (refs.flow.fix || []).forEach(function (p) { setText(p[0], fixLabel(s, d, p[1])); p[0].classList.toggle('na', !fixReady(s, d, p[1])); });
   }
   function doFix(s, key) {
@@ -996,6 +1007,7 @@ TM.UI = (function () {
       if (!E.canPay(s, x.cost)) { var t3 = timeTo(s, d, x.cost); h += '<div class="tw">' + (t3 === -1 ? 'ためておける量が足りない' : t3 === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(t3) + ' で手が届く') + '</div>'; }
       return h;
     }
+    if (kind === 'flowdet') return flowDet ? '<div class="tw">' + flowDet + '</div>' : '';
     if (kind === 'flow') {
       var nm = { in: '仕入れ', make: 'つくる', fill: '詰める', sell: '売る' }[id];
       h += '<div class="tt">' + nm + '</div>';
