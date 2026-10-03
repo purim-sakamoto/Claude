@@ -22,7 +22,7 @@ TM.Engine = (function () {
     var s = {
       v: D.version, seed: 12345, t: 0, started: Date.now(), saved: Date.now(), era: 0,
       res: {}, flags: {}, bld: {}, jobs: {}, pop: 0, popTimer: 0, lic: {}, training: [],
-      techs: {}, upg: {}, manual: { dissolve: 0, step: 0 }, walkin: 0, returnPipe: 0, spentPipe: 0,
+      techs: {}, upg: {}, manual: { dissolve: 0, step: 0 }, walkin: 0, custCans: 0, spentPipe: 0,
       shown: {}, playT: 0, heat: { gather: 0, dissolve: 0, sell: 0 },
       cal: { yf: 0, y0Earned: 0, salesDone: {}, last: 0 },
       log: [], storySeen: {}, evTimer: 600, evActive: null,
@@ -207,10 +207,12 @@ TM.Engine = (function () {
     if (d.gmul > 1e55) d.gmul = 1e55; /* 数が大きくなりすぎないように */
     var glob = (1 + d.globalB) * d.gmul * mul(m, 'global') * (s.era >= 4 ? 1 + d.circ * (D.circBonus || 1) : 1);
     d.glob = glob;
-    d.rate = {}; d.procs = []; d.led = {};
+    d.rate = {}; d.procs = []; d.led = {}; d.heatX = {};
     var before = {}; for (var r in s.res) before[r] = s.res[r];
-    function led(k, name, amt) {
+    /* 帳面（毎秒の内訳）。hf：手伝い（クリック）の倍率。表示は手伝いを除いた「自動の分」だけにする */
+    function led(k, name, amt, hf) {
       if (!amt || dt <= 0) return;
+      if (hf > 1) { d.heatX[k] = (d.heatX[k] || 0) + amt * (1 - 1 / hf) / dt; amt /= hf; }
       var L = d.led[k] || (d.led[k] = {});
       L[name] = (L[name] || 0) + amt / dt;
     }
@@ -271,7 +273,7 @@ TM.Engine = (function () {
     if (d.handEff < 0.9 && s.era >= 1 && handDem > 0.5) s.flags.handling_short = true;
 
     /* ---- 汎用プロセス ---- */
-    function run(key, name, inp, out, units, reasonPre, spill) {
+    function run(key, name, inp, out, units, reasonPre, spill, hf) {
       /* units: 1秒あたりの実行量 × dt を掛ける前 */
       var want = units * dt, ratio = 1, reason = reasonPre || null, k, wk = null, wt = reasonPre ? 'other' : null;
       if (want <= 0) { d.procs.push({ key: key, name: name, inp: inp, out: out, rate: 0, want: units, eff: 0, reason: reason || '停止', wt: 'other' }); return 0; }
@@ -285,8 +287,8 @@ TM.Engine = (function () {
         var space = d.cap[k] - s.res[k], prod = out[k] * want;
         if (prod > space) { var r2 = Math.max(0, space) / prod; if (r2 < ratio) { ratio = r2; reason = '置き場が満杯：' + resName(s, k); wk = k; wt = 'full'; } }
       }
-      for (k in inp) { s.res[k] -= inp[k] * want * ratio; led(k, name, -inp[k] * want * ratio); if (k === 'money') finExp(s, name, inp[k] * want * ratio); }
-      for (k in out) { s.res[k] += out[k] * want * ratio; led(k, name, out[k] * want * ratio); s.stats.produced[k] = (s.stats.produced[k] || 0) + out[k] * want * ratio; if (k === 'money') finInc(s, name, out[k] * want * ratio); }
+      for (k in inp) { s.res[k] -= inp[k] * want * ratio; led(k, name, -inp[k] * want * ratio, hf); if (k === 'money') finExp(s, name, inp[k] * want * ratio); }
+      for (k in out) { s.res[k] += out[k] * want * ratio; led(k, name, out[k] * want * ratio, hf); s.stats.produced[k] = (s.stats.produced[k] || 0) + out[k] * want * ratio; if (k === 'money') finInc(s, name, out[k] * want * ratio); }
       /* 排水処理は、処理する水がないだけなら止まっていても問題ない */
       if (wk === 'waste' && wt === 'in') { reason = '排水待ち（余裕あり）'; wk = null; wt = null; }
       var ok = ratio >= 0.999;
@@ -303,12 +305,17 @@ TM.Engine = (function () {
         var sell = Math.min(s.walkin, s.res.fecl2, C.walkinRefill * (m.shop ? 2 : 1) * hs * dt);
         if (sell > 0) {
           s.walkin -= sell; s.res.fecl2 -= sell; var inc = sell * C.walkinPrice; s.res.money += inc; finInc(s, '店売り', inc);
-          led('fecl2', '店先の客', -sell); led('money', '店売り', inc); d.walkinInc = inc / dt;
+          led('fecl2', '店先の客', -sell, hs); led('money', '店売り', inc, hs); d.walkinInc = inc / dt;
         }
       }
       if (s.walkin < 0.5 && s.res.fecl2 >= 20 && s.era >= 1) { s.flags.walkin_empty = true; if (s.upg.shopsign) s.flags.walkin_empty2 = true; }
     }
 
+    /* 洗缶の水：ためすすぎなどで減らせる */
+    function washWater(out) {
+      var f = mul(m, 'washwater'); if (f === 1) return out;
+      var o = {}, k; for (k in out) o[k] = out[k]; o.waste = out.waste * Math.max(0.1, f); return o;
+    }
     /* 製造の洗浄水（時代2から）。排水が満水だと、流せる分しか作れない */
     function rinsed(on, out) {
       if (!on || s.era < 2) return out;
@@ -326,36 +333,42 @@ TM.Engine = (function () {
       if (j.special) return;
       var w = s.jobs[j.id] || 0; if (!w) return;
       if (j.slotsFrom) w = Math.min(w, d.slots[j.slotsFrom] || 0);
-      var rate = w * mul(m, 'job.' + j.id) * jobAll * glob;
-      if (j.id === 'gather') rate *= heatMul(s, 'gather');
-      if (j.fumes) rate *= d.ventEff * heatMul(s, 'dissolve');
-      var r = run('job.' + j.id, j.name, j.in, rinsed(j.rinse, j.out), rate, (j.slotsFrom && s.jobs[j.id] > w) ? '釜が足りない' : null);
+      var rate = w * mul(m, 'job.' + j.id) * jobAll * glob, jh = 1;
+      if (j.id === 'gather') jh = heatMul(s, 'gather');
+      if (j.fumes) { rate *= d.ventEff; jh = heatMul(s, 'dissolve'); }
+      rate *= jh;
+      var r = run('job.' + j.id, j.name, j.in, j.id === 'wash' ? washWater(j.out) : rinsed(j.rinse, j.out), rate, (j.slotsFrom && s.jobs[j.id] > w) ? '釜が足りない' : null, null, jh);
       if (j.fumes) fumesNow += j.out.fecl2 * rate * r;
       if (j.id === 'wash') s.stats.washed += j.out.can * rate * r * dt;
     }
 
     /* 設備のプロセス（製造が先、洗缶が後：排水の余裕は製造に回す） */
     D.buildings.forEach(function (b) { if (!IN_PROCS['bld.' + b.id] && !TREAT[b.id] && b.group !== '容器') runBld(b); });
-    D.buildings.forEach(function (b) { if (b.group === '容器') runBld(b); });
     runJob(JOB.wash);
+    D.buildings.forEach(function (b) { if (b.group === '容器') runBld(b); });
     function runBld(b) {
       var p = b.proc; if (!p || !p.out || b.stages) return;
       var n = s.bld[b.id].n; if (!n) return;
       var on = p.toggle ? s.bld[b.id].on : n;
       var reason = null;
+      /* 新缶は補充だけ：空き缶が置き場の3割を超えている間は買わない */
+      if (b.id === 'canbuy' && s.res.can >= d.cap.can * 0.3) { on = 0; reason = '缶は足りている'; }
       if (p.operator === 'operate') { if (opActive[b.id] < on) reason = '運転の人手が足りない'; on = opActive[b.id]; }
       if (p.needs && !(s.bld[p.needs] && s.bld[p.needs].n > 0)) { on = 0; reason = '必要な設備がない'; }
       var eff = mul(m, 'bld.' + b.id) * glob;
       if (p.power) { eff *= d.powerEff; if (d.powerEff < 0.999) reason = reason || '電力不足'; }
       if (p.handling) { eff *= d.handEff; if (d.handEff < 0.999) reason = reason || '荷役が足りない'; }
       if (p.fumes) eff *= d.ventEff;
-      if (p.fumes && p.out.fecl2) eff *= heatMul(s, 'dissolve');
-      if (b.id === 'scrapbuy' || b.id === 'scrapyard') eff *= heatMul(s, 'gather');
+      var bh = 1;
+      if (p.fumes && p.out.fecl2) bh = heatMul(s, 'dissolve');
+      if (b.id === 'scrapbuy' || b.id === 'scrapyard') bh = heatMul(s, 'gather');
+      eff *= bh;
       var outM = mul(m, 'bld.' + b.id + '.out');
       var outs = p.out;
       if (outM !== 1) { outs = {}; for (var k in p.out) outs[k] = p.out[k] * outM; }
       outs = rinsed(p.rinse, outs);
-      var r = run('bld.' + b.id, b.name, p.in || {}, outs, on * eff, on === 0 && n > 0 ? (reason || '停止中') : reason, p.spill);
+      if (b.group === '容器' && outs.waste) outs = washWater(outs);
+      var r = run('bld.' + b.id, b.name, p.in || {}, outs, on * eff, on === 0 && n > 0 ? (reason || '停止中') : reason, p.spill, bh);
       if (p.fumes) fumesNow += (p.out.fecl2 || p.out.fecl3w || 0) * on * eff * r;
       if (b.id === 'chlor') s.stats.fecl3 += p.out.fecl3w * on * eff * r * dt;
       if (b.id === 'conc') s.stats.fecl3h += p.out.fecl3h * on * eff * r * dt;
@@ -396,9 +409,6 @@ TM.Engine = (function () {
     doShipping(s, d, m, dt, shipPlan, glob);
 
     /* 戻り缶・使用済み液 */
-    var retMove = s.returnPipe * Math.min(1, 0.004 * dt);
-    s.returnPipe -= retMove;
-    if (s.res.dcan !== undefined) { var rmv = Math.min(retMove, d.cap.dcan - s.res.dcan); if (rmv > 0) { s.res.dcan += rmv; led('dcan', '客先から戻る缶', rmv); } }
     if (RES.spent) {
       var spMove = s.spentPipe * Math.min(1, 0.004 * dt);
       s.spentPipe -= spMove; var smv = Math.min(spMove, d.cap.spent - s.res.spent); if (smv > 0) { s.res.spent += smv; led('spent', '客先から戻る液', smv); }
@@ -469,7 +479,7 @@ TM.Engine = (function () {
 
     /* 毎秒の増減。一度でも手にした資源は表示する */
     for (var r2 in s.res) {
-      d.rate[r2] = dt > 0 ? (s.res[r2] - before[r2]) / dt : 0;
+      d.rate[r2] = dt > 0 ? (s.res[r2] - before[r2]) / dt - (d.heatX[r2] || 0) : 0;
       if (s.res[r2] > 0.0001 && !s.flags['r_' + r2]) s.flags['r_' + r2] = true;
     }
     smooth(s, d, dt);
@@ -564,9 +574,12 @@ TM.Engine = (function () {
   }
 
   /* 画面に出す毎秒の値はならす（工程どうしの取り合いで毎ティック揺れるため） */
-  var SMOOTH_TAU = 6;
+  var SMOOTH_TAU = 6, snapT = 0;
+  /* 人や設備を動かした直後は、ならしを短くしてすぐ数字に出す（計画が立てやすいように） */
+  function snap() { snapT = 2; }
   function smooth(s, d, dt) {
-    var a = 1 - Math.exp(-dt / SMOOTH_TAU), k, n;
+    var tau = snapT > 0 ? 0.35 : SMOOTH_TAU; if (!s._away) snapT = Math.max(0, snapT - dt);
+    var a = 1 - Math.exp(-dt / tau), k, n;
     if (!d.rateS) { d.rateS = {}; d.ledS = {}; a = 1; }
     for (k in d.rate) { var o = d.rateS[k]; d.rateS[k] = o === undefined ? d.rate[k] : o + (d.rate[k] - o) * a; }
     for (k in d.led) { var L = d.ledS[k] || (d.ledS[k] = {}); for (n in d.led[k]) if (L[n] === undefined) L[n] = 0; }
@@ -735,25 +748,38 @@ TM.Engine = (function () {
   }
 
   function doShipping(s, d, m, dt, plan, glob) {
-    d.sales = [];
+    d.sales = []; d.dcanBlock = false;
     var totalInc = 0;
     plan.items.forEach(function (it) {
       var p = it.p;
       var want = it.rate * dt;
       if (p.kind === 'can' || p.kind === 'direct') want *= d.handEff;
       var amt = Math.min(want, s.res[it.stock]);
+      /* 缶は配達の帰りに、前に届けた缶（空き缶）を引き取ってくる。置き場がなければ配達に出られない */
+      var ret = 0;
+      if (p.kind === 'can' && p.container === 'can' && amt > 0) {
+        ret = Math.min(s.custCans || 0, amt);
+        var room = Math.max(0, d.cap.dcan - s.res.dcan);
+        if (ret > room) { amt = Math.max(0, amt - (ret - room)); ret = Math.min(ret, room); d.dcanBlock = true; }
+      }
       var price = priceOf(s, d, m, p, it.zone);
       var inc = amt * price;
       if (amt > 0) {
-        s.res[it.stock] -= amt; d.ledf(it.stock, '出荷', -amt);
-        s.res.money += inc; totalInc += inc; d.ledf('money', p.kind === 'bulk' ? 'ローリー出荷' : p.kind === 'direct' ? '引き取り' : '缶の出荷', inc);
+        var sh = p.kind === 'can' && it.rate < it.dem * 0.999 ? heatMul(s, 'sell') : 1;
+        s.res[it.stock] -= amt; d.ledf(it.stock, '出荷', -amt, sh);
+        s.res.money += inc; totalInc += inc; d.ledf('money', p.kind === 'bulk' ? 'ローリー出荷' : p.kind === 'direct' ? '引き取り' : '缶の出荷', inc, sh);
         finInc(s, p.name, inc);
         s.stats.sold[p.id] = (s.stats.sold[p.id] || 0) + amt;
         if (p.kind === 'bulk') s.stats.lorryUsed = 1;
         if (p.kind === 'can') {
           s.stats.cansSold += amt;
           s.res.credit += amt * 0.02 * mul(m, 'credit');
-          if (p.container === 'can') s.returnPipe += amt * Math.min(0.95, C.returnRate * mul(m, 'return'));
+          if (p.container === 'can') {
+            var rr = Math.min(0.97, C.returnRate * mul(m, 'return'));
+            s.custCans = Math.max(0, (s.custCans || 0) - ret) + amt * rr;
+            s.stats.cansLost = (s.stats.cansLost || 0) + amt * (1 - rr);
+            if (ret > 0) { s.res.dcan += ret; d.ledf('dcan', '配達の帰りに回収', ret); }
+          }
         } else s.res.credit += amt * (p.creditPer || 0.001) * mul(m, 'credit');
         if (p.spent && s.flags.spent_on) s.spentPipe += amt * (p.kind === 'can' ? 20 : 1) * p.spent;
       }
@@ -1090,7 +1116,7 @@ TM.Engine = (function () {
   function frac(s, d, k) { var c = d.cap[k]; return c && c !== Infinity && c > 0 ? s.res[k] / c : 0; }
   function sumLed(d, k, sign) { var L = (d.ledS || d.led || {})[k], t = 0; if (L) for (var n in L) if (L[n] * sign > 0) t += L[n]; return t; }
 
-  function wasteFree(s) { var a = D.consts.wasteFreeEra; return a ? a[Math.min(s.era, a.length - 1)] : (D.consts.wasteFree || 0.05); }
+  function wasteFree(s) { var a = D.consts.wasteFreeEra; return (a ? a[Math.min(s.era, a.length - 1)] : (D.consts.wasteFree || 0.05)) + sumEffect(s, 'drain'); }
 
   function diagnose(s, d) {
     if (!d || !d.procs || s.era < 1) return null;
@@ -1105,6 +1131,8 @@ TM.Engine = (function () {
       var wMake = wp.some(function (p) { return procStage(p.key) === 'make'; });
       if (wp.length) set(wMake ? 'make' : (hasFill ? 'fill' : 'make'), '排水が満水', '流せない排水がたまり、' + wp.slice(0, 3).map(function (p) { return p.name; }).join('・') + 'が止まりかけている。', 'waste');
     }
+    /* 0b. 汚れた缶があふれて、配達に出られない */
+    if (d.dcanBlock && frac(s, d, 'dcan') >= 0.95) set('sell', '汚れた缶があふれている', '戻ってきた缶の置き場がいっぱいで、配達の帰りに空き缶を引き取れない。洗わないと出荷できない。', 'dcan');
     /* 1. 売る：売り物が置き場いっぱい */
     var full = null, transport = false, handling = d.handEff < 0.9;
     (d.sales || []).forEach(function (x) {
@@ -1249,7 +1277,7 @@ TM.Engine = (function () {
     try { s.saved = Date.now(); localStorage.setItem(KEY, serialize(s)); return true; } catch (e) { return false; }
   }
   function load() {
-    try { var raw = localStorage.getItem(KEY); if (!raw) return null; return migrate(JSON.parse(raw)); } catch (e) { return null; }
+    try { var raw = localStorage.getItem(KEY); if (!raw) return null; var o = JSON.parse(raw); if ((o.v || 1) < 2) return null; /* 缶の循環を入れる前のセーブは、最初から */ return migrate(o); } catch (e) { return null; }
   }
   function migrate(o) {
     var s = newState();
@@ -1270,6 +1298,8 @@ TM.Engine = (function () {
       D.techs.forEach(function (t) { if (techAvailable(s, t)) s.shown['t:' + t.id] = -1e9; });
     }
     if (!s.heat) s.heat = { gather: 0, dissolve: 0, sell: 0 };
+    if (o.returnPipe !== undefined && o.custCans === undefined) s.custCans = o.returnPipe;
+    delete s.returnPipe;
     if (!o.fin || o.fin.book === undefined) {
       /* 帳簿の仕組みより前のセーブ：今ある設備を、建てた値段の3割で簿価に入れておく */
       var bk = 0; D.buildings.forEach(function (b) { for (var i = 0; i < (s.bld[b.id].n || 0); i++) bk += cost(s, b, i).money || 0; });
@@ -1285,7 +1315,7 @@ TM.Engine = (function () {
   function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* 無視 */ } }
 
   return {
-    setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
+    snap: snap, setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
     init: init, newState: newState, step: step, derive: derive, cond: cond, cost: cost, canPay: canPay,
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
     setJob: setJob, train: train, acceptOffer: acceptOffer, declineOffer: declineOffer, claimEvent: claimEvent,

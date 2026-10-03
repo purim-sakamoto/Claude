@@ -213,11 +213,19 @@ TM.Sim = (function () {
     if (!m['auto.line']) fix('fill', s.bld.line.n * 2 + s.bld.filler.n);
     if (!m['auto.fork']) fix('handle', Math.min(s.bld.fork.n, s.lic.fork));
     fix('sales', Math.min(6, s.contracts.active.filter(function (c) { return c.step < D.contracts.steps.length; }).length));
+    /* 洗缶：戻ってくる缶に追いつく人数（機械で洗える分は引く） */
+    if (vis.wash) {
+      var dIn = 0, L = (d.ledS || {}).dcan || {}; for (var ln in L) if (L[ln] > 0) dIn += L[ln];
+      var mach = (s.bld.canwasher.on || 0) * 0.35 + (s.bld.canline.on || 0) * 3;
+      var per = 0.03 * (1 + (d.m['job.wash'] || 0)) * (d.glob || 1);
+      var needW = Math.max(0, dIn * 1.1 - mach) / per + Math.max(0, s.res.dcan - d.cap.dcan * 0.2) / (per * 120);
+      fix('wash', Math.min(Math.ceil(needW), Math.floor(left * 0.4)));
+    }
     /* 残りを比率で */
     var buyScrap = s.bld.scrapbuy.n > 0 || s.bld.scrapyard.n > 0;
     var w = {};
-    if (s.era <= 1) w = { dissolve: 3, gather: buyScrap && s.res.scrap > d.cap.scrap * 0.3 ? 0.3 : 2.5, fill: 1.5, deliver: 1, research: 1.8, wash: s.res.dcan > 3 ? 0.7 : 0, check: s.res.fecl3w > 1 ? 1 : 0 };
-    else if (s.era === 2) w = { dissolve: 1, gather: buyScrap ? 0.2 : 1, fill: 1, deliver: 0.6, research: 2.5, wash: s.res.dcan > 5 ? 0.6 : 0, check: s.res.fecl3w > 5 ? 1.2 : 0.2, handle: d.handEff < 0.95 ? 1.2 : 0.3 };
+    if (s.era <= 1) w = { dissolve: 3, gather: buyScrap && s.res.scrap > d.cap.scrap * 0.3 ? 0.3 : 2.5, fill: 1.5, deliver: 1, research: 1.8, wash: 0, check: s.res.fecl3w > 1 ? 1 : 0 };
+    else if (s.era === 2) w = { dissolve: 1, gather: buyScrap ? 0.2 : 1, fill: 1, deliver: 0.6, research: 2.5, wash: 0, check: s.res.fecl3w > 5 ? 1.2 : 0.2, handle: d.handEff < 0.95 ? 1.2 : 0.3 };
     else w = { research: 5, check: s.res.fecl3w > d.cap.fecl3w * 0.3 ? 1.5 : 0.3, handle: d.handEff < 0.95 ? 1 : 0.1, fill: 0.3, dissolve: 0.3 };
     var ws = 0, k;
     for (k in w) { if (!vis[k]) w[k] = 0; if (k === 'dissolve') w[k] = Math.min(w[k], (d.slots.dissolve || 0) - res.dissolve > 0 ? w[k] : 0); ws += w[k]; }

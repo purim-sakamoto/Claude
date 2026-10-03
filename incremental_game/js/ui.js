@@ -24,6 +24,7 @@ TM.UI = (function () {
     var t = e.target.closest('[data-a]'); if (!t) return;
     var a = t.getAttribute('data-a'), id = t.getAttribute('data-id'), v = +t.getAttribute('data-v') || 0;
     var s = S();
+    if (a !== 'act' && a !== 'tab' && E.snap) E.snap();
     switch (a) {
       case 'act': E.doAction(s, id); break;
       case 'build': E.build(s, id); break;
@@ -158,8 +159,6 @@ TM.UI = (function () {
       var val = f(s.res[id]) + (cap !== undefined && cap !== Infinity && cap !== null ? ' / ' + f(cap) : '') + (unit && unit !== '円' ? ' ' + unit : unit === '円' ? '円' : '');
       setText(x.v, val);
       var rate = RT(d)[id] || 0, bal = balanced(d, id, rate);
-      var hk = id === 'scrap' ? 'gather' : id === 'fecl2' ? 'dissolve' : id === 'money' ? 'sell' : null;
-      var hm = hk && s.era >= 1 ? E.heatMul(s, hk) : 1;
       var sold = soldNow(s, d, id);
       x.nm.classList.toggle('sold', sold);
       var wfull = id === 'waste' && s.res.waste >= cap * 0.9;
@@ -168,7 +167,6 @@ TM.UI = (function () {
       x.row.classList.toggle('dry', empty);
       setText(x.r, wfull ? '満水' : bal ? (empty ? '不足' : fullB ? '満杯' : '釣り合い') : fr(rate, 'res.' + id));
       if (bal) rate = 0;
-      x.row.classList.toggle('hot', hm > 1.05);
       x.row.classList.toggle('full', cap !== Infinity && cap > 0 && s.res[id] >= cap * 0.999);
       x.row.classList.toggle('neg', rate < -1e-9);
       if (id === 'money') x.v.classList.toggle('bad', s.res.money < 0);
@@ -658,7 +656,7 @@ TM.UI = (function () {
         R[x.p.id] = c;
       });
       box.appendChild(tb);
-      box.appendChild(el('p', { class: 'note', style: 'margin-top:10px', text: '缶の製品は「配達」の人手と車で、ローリーの製品はタンクローリーで運ぶ。届く範囲が広いほど注文が増え、単価も少し上がる。季節によって注文は変わる（夏は水処理、冬は尿素水）。' }));
+      box.appendChild(el('p', { class: 'note', style: 'margin-top:10px', text: '缶に詰めると、1kgあたりの値段が店先（' + D.consts.walkinPrice + '円/kg）より高くなる。ただし缶代と、詰める・運ぶ人手がかかる。缶の製品は「配達」の人手と車で、ローリーの製品はタンクローリーで運ぶ。届く範囲が広いほど注文が増え、単価も少し上がる。季節によって注文は変わる（夏は水処理、冬は尿素水）。' }));
     }, function (R) {
       var zi = d.zi || { canZone: 0, bulkZone: -1, canRate: 0, bulkRate: 0 };
       setText(R.zone, '缶の届く範囲：' + D.zones[zi.canZone].name + '（' + fr(zi.canRate * (d.glob || 1)).replace('+', '') + '缶）' +
@@ -672,7 +670,7 @@ TM.UI = (function () {
         setText(c[1], f(stock) + u);
         setText(c[2], fr(x.dem, 'dem.' + x.p.id).replace('+', ''));
         setText(c[3], fr(x.rate, 'sr.' + x.p.id).replace('+', ''));
-        setText(c[4], f(x.price) + '円/' + u.replace('kg', 'kg'));
+        setText(c[4], f(x.price) + '円/' + u + (x.p.kind === 'can' ? '（' + f(x.price / (x.p.kg || D.consts.canKg)) + '円/kg）' : ''));
       });
     }, null, 'p_sales');
   };
@@ -907,9 +905,12 @@ TM.UI = (function () {
       if (balState[id]) h += line('毎秒', '釣り合い（入る量 ≒ 出る量）');
       else if (Math.abs(net) > 1e-9) h += line('毎秒', rateS(net, unit), net < 0 ? 'bad' : 'good');
       if (soldNow(s, d, id)) h += '<div class="tw">いま売っている品（<b>売</b>）。</div>';
+      if (id === 'dcan' || id === 'can') {
+        h += '<div class="tw">缶はめぐる：新缶を買う → 詰める → 配達 → 帰りに空き缶を引き取る（' + Math.round(Math.min(0.97, D.consts.returnRate * (1 + (d.m.return || 0))) * 100) + '%が戻る）→ 洗う（5%は傷んで廃棄）→ また詰める。' + (id === 'dcan' ? '<b>汚れた缶の置き場がいっぱいになると、引き取れないので配達に出られない。</b>' : '') + '</div>';
+      }
       if (id === 'waste') {
         h += line('そのまま流せる分', rateS(E.wasteFree(s), 'L'));
-        h += '<div class="tw">洗缶' + (s.era >= 2 ? 'と、溶解・塩素化などの洗浄' : '') + 'で出る水。流せない水は出せないので、<b>満水になると、排水を出す工程は流せる分しか動けなくなる</b>' + (s.era >= 2 ? '（製造が止まる）' : '（洗缶が止まる）') + '。' + (s.era >= 2 ? '中和槽・凝集沈殿槽で処理すれば流せる量が増える。' : '新しい缶を買えば、洗わずに済む。') + '</div>';
+        h += '<div class="tw">洗缶' + (s.era >= 2 ? 'と、溶解・塩素化などの洗浄' : '') + 'で出る水。流せない水は出せないので、<b>満水になると、排水を出す工程は流せる分しか動けなくなる</b>' + (s.era >= 2 ? '（製造が止まる）' : '（洗缶が止まる）') + '。' + (s.era >= 2 ? '中和槽・凝集沈殿槽で処理すれば流せる量が増える。' : '排水桝・ためすすぎで、流せる量を増やせる。') + '</div>';
       }
       if (cap !== Infinity && v >= cap * 0.995) {
         var bl = stalledBy(d, id, 'full');

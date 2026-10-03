@@ -3,7 +3,7 @@
 var TM = window.TM = window.TM || {};
 
 TM.DATA = {
-  version: 1,
+  version: 2,
 
   /* ---------------- 資源 ---------------- */
   resources: [
@@ -81,8 +81,8 @@ TM.DATA = {
       special: 'fill', rate: 0.035 },
     { id: 'deliver', name: '配達', desc: '缶を客先へ届ける。トラック・ローリーの運転手もここから。', unlock: { flag: 'cans_known' },
       special: 'deliver', rate: 0.012 },
-    { id: 'wash', name: '洗缶', desc: '汚れた缶を洗って再び使えるようにする。排水が出る。', unlock: { flag: 'dcan_known' },
-      in: { dcan: 0.03 }, out: { can: 0.03, waste: 0.3 } },
+    { id: 'wash', name: '洗缶', desc: '戻ってきた缶を洗って、また詰められるようにする。缶は20回ほどで傷むので、洗うたびに5%は廃棄になる。1缶10Lの排水が出る。', unlock: { flag: 'dcan_known' },
+      in: { dcan: 0.03 }, out: { can: 0.0285, waste: 0.3 } },
     { id: 'research', name: '研究', desc: '帳面をつけ、工夫を考える。', unlock: { flag: 'research_known' },
       in: {}, out: { research: 0.08 } },
     { id: 'operate', name: '運転', desc: '反応槽・塩素化設備などを動かす。1基につき1人。', unlock: { tech: 'reactor' },
@@ -116,14 +116,16 @@ TM.DATA = {
       cost: { money: 80 }, ratio: 1.24, space: 4, effects: { popCap: 2 } },
     { id: 'desk', name: '机と帳面', group: '研究', desc: '考えたことを書き留めておける。', unlock: { flag: 'research_known' },
       cost: { money: 100 }, ratio: 1.22, space: 1, effects: { cap: { research: 100 } } },
-    { id: 'canyard', name: '缶置き場', group: '容器', desc: '空き缶・汚れた缶・製品の缶を置ける。', unlock: { flag: 'cans_known' },
+    { id: 'canyard', name: '缶置き場', group: '容器', desc: '空き缶・汚れた缶・製品の缶を置ける。戻ってきた缶はここで洗うのを待つ。', unlock: { flag: 'cans_known' },
       cost: { money: 90 }, ratio: 1.2, space: 3, effects: { cap: { can: 20, dcan: 20, p_fecl2: 10, p_hcl: 10, p_fecl3: 10, p_fecl3h: 10, p_naclo: 10, p_uw: 10 } } },
-    { id: 'canbuy', name: '缶の仕入れ契約', group: '容器', desc: '新品のポリ缶を定期的に買う（1缶15円）。', unlock: { flag: 'cans_known', res: { money: 150 } },
+    { id: 'canbuy', name: '缶の仕入れ契約', group: '容器', desc: '新品のポリ缶を定期的に買う（1缶15円）。最初の缶と、戻らなかった缶・傷んで捨てた缶の補充に。', unlock: { flag: 'cans_known', res: { money: 150 } },
       cost: { money: 220 }, ratio: 1.3, space: 0, proc: { in: { money: 0.9 }, out: { can: 0.06 }, toggle: true, handling: 0.06 } },
+    { id: 'pit', name: '排水桝', group: '用役', desc: '洗い場の水をためて、泥と油を沈めてから流す。流せる排水が増える。', unlock: { flag: 'dcan_known' },
+      cost: { money: 120 }, ratio: 1.35, space: 1, effects: { cap: { waste: 60 }, drain: 0.12 } },
     { id: 'scrapbuy', name: 'スクラップ業者', group: '製造', desc: '鉄くずを買い付ける（1個2円）。', unlock: { tech: 'suppliers' },
       cost: { money: 350 }, ratio: 1.3, space: 0, proc: { in: { money: 0.5 }, out: { scrap: 0.25 }, toggle: true, handling: 0.025 } },
-    { id: 'acidbuy', name: '塩酸の配達', group: '製造', desc: '店の主人に、塩酸を缶で定期的に届けてもらう。空いた缶は残る。', unlock: { era: 1, flag: 'acid_known', stat: { acidBuys: 8 } },
-      cost: { money: 120 }, ratio: 1.35, space: 0, proc: { in: { money: 1.0 }, out: { hcl: 0.6, dcan: 0.03 }, toggle: true, handling: 0.03, spill: ['dcan'] } },
+    { id: 'acidbuy', name: '塩酸の配達', group: '製造', desc: '店の主人に、塩酸を缶で定期的に届けてもらう。空いた缶は店の主人が持って帰る。', unlock: { era: 1, flag: 'acid_known', stat: { acidBuys: 8 } },
+      cost: { money: 120 }, ratio: 1.35, space: 0, proc: { in: { money: 1.0 }, out: { hcl: 0.6 }, toggle: true, handling: 0.03 } },
     { id: 'vent', name: '換気扇', group: '用役', desc: '酸の霧と泡（水素）を外へ逃がす。', unlock: { flag: 'smoke' },
       cost: { money: 200 }, ratio: 1.25, space: 0, effects: { vent: 1.2 }, proc: { power: 1 } },
     { id: 'powerc', name: '電力契約の増強', group: '用役', desc: '使える電気が増える。', unlock: { flag: 'power_known' },
@@ -161,7 +163,7 @@ TM.DATA = {
     { id: 'truck4', name: '4tトラック', group: '物流', desc: 'たくさん積める。中型免許の運転手が要る。', unlock: { tech: 'trucks2' },
       cost: { money: 26000 }, ratio: 1.3, space: 7, effects: { transport: { rate: 1.3, zone: 2, license: 'mid' } } },
     { id: 'canwasher', name: '洗缶機', group: '容器', desc: '缶をまとめて洗う。排水が多く出る。', unlock: { tech: 'washing' },
-      cost: { money: 16000 }, ratio: 1.3, space: 6, effects: { circ: { can: 1 } }, proc: { in: { dcan: 0.35 }, out: { can: 0.35, waste: 3.5 }, power: 3, toggle: true } },
+      cost: { money: 16000 }, ratio: 1.3, space: 6, effects: { circ: { can: 1 } }, proc: { in: { dcan: 0.35 }, out: { can: 0.3325, waste: 3.5 }, power: 3, toggle: true } },
     { id: 'neutral', name: '中和槽', group: '用役', desc: '排水を中和して流せるようにする。', unlock: { tech: 'wastewater' },
       cost: { money: 7000 }, ratio: 1.3, space: 3, effects: { cap: { waste: 200 } }, proc: { in: { waste: 1.5, money: 0.15 }, out: {}, toggle: true } },
     { id: 'coag', name: '凝集沈殿槽', group: '用役', desc: '自社の塩化第二鉄液で排水の濁りを沈める。', unlock: { tech: 'wastewater' },
@@ -252,7 +254,7 @@ TM.DATA = {
     { id: 'bibline', name: 'BIB充填', group: '充填', desc: '尿素水をバッグインボックスに詰める。洗缶はいらない。', unlock: { tech: 'urea' },
       cost: { money: 350000 }, ratio: 1.3, space: 3, effects: { filler: 0.8, cap: { p_uw: 200 } }, proc: { power: 1 } },
     { id: 'canline', name: '自動洗缶ライン', group: '容器', desc: '反転・洗浄・すすぎ・乾燥・検査を一貫で。仕上げのすすぎに純水を使う。', unlock: { tech: 'autowash' },
-      cost: { money: 1200000 }, ratio: 1.35, space: 8, effects: { circ: { can: 3 } }, proc: { in: { dcan: 3, pw: 1 }, out: { can: 3, waste: 20 }, power: 6, toggle: true } },
+      cost: { money: 1200000 }, ratio: 1.35, space: 8, effects: { circ: { can: 3 } }, proc: { in: { dcan: 3, pw: 1 }, out: { can: 2.85, waste: 20 }, power: 6, toggle: true } },
     { id: 'office', name: '営業所', group: '人', desc: '営業の拠点。人手と受託の枠が増える。', unlock: { tech: 'oem' },
       cost: { money: 800000 }, ratio: 1.45, space: 0, effects: { popCap: 10 } },
     { id: 'rnd', name: '中央研究所', group: '研究', desc: '研究員と設備をそろえた研究所。', unlock: { era: 3 },
@@ -416,12 +418,13 @@ TM.DATA = {
     { id: 'funnel', name: 'じょうご', desc: '充填 +30%', cost: { money: 80 }, unlock: { flag: 'cans_known' }, effects: [['job.fill', 0.3]] },
     { id: 'cart', name: '台車', desc: '歩いての配達 ×2', cost: { money: 200 }, unlock: { flag: 'cans_known' }, effects: [['walk', 1.0]] },
     { id: 'brush', name: 'ブラシ', desc: '洗缶 +50%', cost: { money: 120 }, unlock: { flag: 'dcan_known' }, effects: [['job.wash', 0.5]] },
+    { id: 'rinse', name: 'ためすすぎ', desc: 'すすぎの水を2つの槽にためて使い回す。洗缶の排水 −50%', cost: { money: 220 }, unlock: { flag: 'dcan_known' }, effects: [['washwater', -0.5]] },
     { id: 'shopsign', name: '店先の札', desc: '店先の客が倍になり、店番も手際よくなる。', cost: { money: 150 }, unlock: { era: 1, flag: 'walkin_empty' }, effects: [['shop', 1]] },
     { id: 'abacus', name: 'そろばん', desc: '研究 +50%', cost: { money: 300 }, unlock: { flag: 'research_known' }, effects: [['job.research', 0.5]] },
     { id: 'handpump', name: 'ハンドポンプ', desc: '充填 +60%', cost: { money: 450 }, unlock: { flag: 'cans_known', res: { money: 200 } }, effects: [['job.fill', 0.6]] },
     { id: 'scale', name: '台はかり', desc: '充填 +40%、量が正確になり信用が上がりやすくなる', cost: { money: 350 }, unlock: { flag: 'cans_known', res: { money: 200 } }, effects: [['job.fill', 0.4], ['credit', 0.2]] },
     { id: 'bigkama', name: '大釜', desc: '溶解 +50%', cost: { money: 900 }, unlock: { bld: { kama: 3 } }, effects: [['job.dissolve', 0.5]] },
-    { id: 'returnbox', name: '回収箱', desc: '空き缶が戻ってくる割合 +15%', cost: { money: 600 }, unlock: { flag: 'dcan_known' }, effects: [['return', 0.15]] },
+    { id: 'returnbox', name: '回収箱', desc: '空き缶が戻ってくる割合 +5%（客先で捨てられる缶が減る）', cost: { money: 600 }, unlock: { flag: 'dcan_known' }, effects: [['return', 0.05]] },
     { id: 'uniform', name: '作業着', desc: 'すべての配属 +10%', cost: { money: 800 }, unlock: { pop: 6 }, effects: [['job.all', 0.1]] },
     { id: 'signboard', name: '看板', desc: '注文 +30%', cost: { money: 1200 }, unlock: { flag: 'cans_known', res: { money: 600 } }, effects: [['demand', 0.3]] },
     { id: 'stirrer', name: '撹拌機', desc: '溶解 +50%、反応槽 +25%', cost: { money: 2000 }, unlock: { flag: 'power_known' }, effects: [['job.dissolve', 0.5], ['bld.reactor', 0.25]] },
@@ -481,7 +484,7 @@ TM.DATA = {
      kind: can=缶で出荷 / bulk=ローリーで出荷 / direct=引き取りに来る
      can の price は1缶（kg）あたり、bulk・direct は1kgあたり */
   products: [
-    { id: 'p_fecl2', kind: 'can', container: 'can', liquid: 'fecl2', name: '塩化第一鉄液（缶）', price: 130, demand: 0.006 },
+    { id: 'p_fecl2', kind: 'can', container: 'can', liquid: 'fecl2', name: '塩化第一鉄液（缶）', price: 150, demand: 0.01 },
     { id: 'p_hcl', kind: 'can', container: 'can', liquid: 'hcl', name: '塩酸（小分け）', price: 110, demand: 0.005, license: 'geki' },
     { id: 'p_fecl3', kind: 'can', container: 'can', liquid: 'fecl3', name: '塩化第二鉄液（缶）', price: 380, demand: 0.006, quality: true, season: [1, 1.3, 1, 0.85], spent: 0.25 },
     { id: 'p_fecl3h', kind: 'can', container: 'can', liquid: 'fecl3h', name: '塩化第二鉄液 高濃度（缶）', price: 700, demand: 0.004, quality: true, season: [1, 1.3, 1, 0.85], spent: 0.25 },
@@ -569,13 +572,14 @@ TM.DATA = {
       handling: [['job', 'handle'], ['upg', 'handlift'], ['bld', 'fork'], ['bld', 'crane'], ['bld', 'autowh']],
       vent: [['bld', 'vent'], ['bld', 'scrubber'], ['bld', 'msscrub']],
       check: [['job', 'check'], ['upg', 'hydrometer'], ['bld', 'lab'], ['bld', 'i_refract'], ['bld', 'lab2'], ['upg', 'lotsize']],
-      cans: [['act', 'buycans'], ['bld', 'canbuy'], ['job', 'wash'], ['upg', 'brush'], ['bld', 'canwasher'], ['bld', 'canline']],
+      cans: [['job', 'wash'], ['act', 'buycans'], ['bld', 'canbuy'], ['upg', 'brush'], ['bld', 'canwasher'], ['bld', 'canline']],
+      dcan: [['job', 'wash'], ['upg', 'brush'], ['bld', 'canyard'], ['bld', 'canwasher'], ['bld', 'pallet'], ['bld', 'canline']],
       fill: [['job', 'fill'], ['upg', 'funnel'], ['upg', 'handpump'], ['upg', 'scale'], ['bld', 'filler'], ['bld', 'line'], ['upg', 'm_capper'], ['upg', 'autosub']],
       transport: [['job', 'deliver'], ['act', 'give'], ['upg', 'cart'], ['bld', 'kei'], ['upg', 'routeplan'], ['bld', 'truck2'], ['bld', 'truck4']],
       bulk: [['bld', 'lorry'], ['bld', 'lorry20'], ['upg', 'lorrywash'], ['tech', 'dispatch']],
       demand: [['upg', 'signboard'], ['tech', 'delivery'], ['bld', 'kei'], ['tech', 'trucks'], ['bld', 'truck2'], ['bld', 'drum'], ['upg', 'eco'], ['tech', 'depot'], ['tech', 'export']],
       walkin: [['upg', 'shopsign'], ['act', 'give']],
-      waste: [['bld', 'neutral'], ['bld', 'coag'], ['tech', 'wastewater'], ['bld', 'wreuse'], ['bld', 'canbuy'], ['act', 'buycans']]
+      waste: [['upg', 'rinse'], ['bld', 'pit'], ['bld', 'neutral'], ['bld', 'coag'], ['tech', 'wastewater'], ['bld', 'wreuse']]
     }
   },
 
@@ -634,7 +638,8 @@ TM.DATA = {
     baseVent: 0.35,
     salary: 0.015,
     arrivalSec: 50,
-    returnRate: 0.25,
+    /* 缶：配達した缶のうち戻ってくる割合（残りは客先で捨てられる） */
+    returnRate: 0.9,
     wasteFree: 0.05,
     /* 与信枠：借りている額にかかる利息(1秒あたり)と、枠を超えてから設備を手放すまでの猶予(秒) */
     creditRate: 0.0001,
@@ -659,7 +664,7 @@ TM.DATA = {
     { id: 'small', cond: { all: [{ flag: 'hired' }, { stat: { batches: 10 } }] }, text: '壺では小さすぎる。', setFlag: 'kama_reveal' },
     { id: 'named', cond: { era: 1, bld: { kama: 2 } }, text: '測ってみると、緑の液は塩化第一鉄だった。', setFlag: 'fecl2_known' },
     { id: 'nocan', cond: { any: [{ all: [{ upg: 'shopsign' }, { bld: { kama: 2 } }, { res: { fecl2: 12 } }] }, { flag: 'walkin_empty2' }, { all: [{ flag: 'walkin_empty' }, { res: { fecl2: 28 } }, { time: 900 }] }] }, text: '「入れ物に入れてくれたら、もっと買うんだが」', setFlag: 'cans_known' },
-    { id: 'dcan', cond: { res: { dcan: 1 } }, text: '空いた缶が残る。捨てるには惜しい缶だ。', setFlag: 'dcan_known' },
+    { id: 'dcan', cond: { res: { dcan: 1 } }, text: '空いた缶が戻ってくる。洗えば、また詰められる。', setFlag: 'dcan_known' },
     { id: 'smoke', cond: { flag: 'fumes_bad' }, text: 'むせる。目にしみる。風を通さないと。', setFlag: 'smoke' },
     { id: 'power', cond: { flag: 'smoke' }, text: '機械を回すには、電気が要る。', setFlag: 'power_known' },
     { id: 'red', cond: { bld: { chlor: 1 } }, text: '塩素を通すと、液が赤くなった。深い、赤褐色。' },
@@ -669,7 +674,7 @@ TM.DATA = {
     { id: 'claim', cond: { flag: 'claimed' }, text: '「中身が少ない缶があった」と電話が来た。' },
     { id: 'handling', cond: { flag: 'handling_short' }, text: '缶は積み上がるのに、運ぶ手が足りない。' },
     { id: 'powershort', cond: { all: [{ flag: 'power_short' }, { era: 2 }] }, text: '機械が止まりがちだ。電気が足りない。' },
-    { id: 'wastefull', cond: { flag: 'waste_full' }, text: '洗い場の排水があふれそうだ。このままでは流せない。' },
+    { id: 'wastefull', cond: { flag: 'waste_full' }, text: '洗い場の排水があふれそうだ。流せないと、缶が洗えない。' },
     { id: 'coag', cond: { bld: { coag: 1 } }, text: '汚れた水を、自分たちの液で澄ませた。' },
     { id: 'line', cond: { bld: { line: 1 } }, text: '缶がコンベアの上を流れていく。人は、もう缶を持ち歩かない。' },
     { id: 'era3', cond: { era: 3 }, text: '止まらない工場。「ローリーで毎週、届けてもらえないか」と浄水場から電話が来た。' },
