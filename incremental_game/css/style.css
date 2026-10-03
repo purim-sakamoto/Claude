@@ -222,5 +222,6 @@ h3.sect:first-child { margin-top: 0; }
 .subtabs { display: flex; gap: 4px; margin-bottom: 6px; }
 .subtabs .mini.on { border-color: var(--accent); color: var(--accent); }
 table.t.fs td, table.t.fs th { padding: 2px 6px; }
+table.t.fs td:not(:first-child), table.t.fs th:not(:first-child) { text-align: right; min-width: 7.5em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.t.fs tr.sum td { border-top: 1px solid var(--btnline); }
 table.t.fs tr.total td { border-top: 2px double var(--btnline); font-weight: bold; }

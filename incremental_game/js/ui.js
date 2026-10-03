@@ -777,7 +777,12 @@ TM.UI = (function () {
   /* 財務三表：損益計算書・貸借対照表・キャッシュフロー計算書 */
   var fsView = 'pl';
   try { fsView = localStorage.getItem('taiki-minigame-fs') || 'pl'; } catch (e) { /* 無視 */ }
-  function yen(v) { return (v < -1e-9 ? '△' : '') + f(Math.abs(v)); }
+  /* 帳簿の数字は円単位の整数・3桁区切り（桁が固定されるので、値が動いても横にずれない） */
+  function yen(v) {
+    var a = Math.abs(v), t = a < 1e12 ? Math.round(a).toLocaleString('ja-JP') : ff(a);
+    return (v < -0.5 ? '△' : '') + t;
+  }
+  var fsAt = 0, fsSnap = 0;
   var FS_ROWS = {
     pl: [['売上高', 'pl.sales'], ['売上原価（仕入れ・材料・燃料）', 'pl.cogs', 1], ['売上総利益', 'pl.gross', 0, 'sum'],
       ['人件費（給料・講習）', 'pl.sga', 1], ['研究開発費', 'pl.rnd', 1], ['減価償却費', 'pl.dep', 1], ['営業利益', 'pl.op', 0, 'sum'],
@@ -811,7 +816,12 @@ TM.UI = (function () {
       });
       box.appendChild(tb);
       box.appendChild(el('p', { class: 'note', style: 'margin-top:6px', text: FS_NOTE[fsView] }));
+      fsAt = 0;
     }, function (R) {
+      /* 書き換えは1秒に2回まで（今月の欄は刻々と変わるので） */
+      var now = Date.now();
+      if (now - fsAt < 500 && fsSnap === E.snapCount()) return;
+      fsAt = now; fsSnap = E.snapCount();
       var cols = [E.statements(s, d, s.fin.cur, true)];
       s.fin.hist.slice(0, nCol - 1).forEach(function (p) { cols.push(E.statements(s, d, p, false)); });
       var heads = fsView === 'bs' ? ['いま', '先月末', '先々月末'] : ['今月（' + Math.round(s.fin.monthT / D.consts.monthSec * 100) + '%）', '先月', '先々月'];
@@ -821,7 +831,7 @@ TM.UI = (function () {
         var path = r[1].split('.');
         cols.forEach(function (st, ci) {
           var v = st[path[0]][path[1]] || 0; if (r[2]) v = -v;
-          var td = R.cells[ri][ci]; setText(td, yen(v)); td.classList.toggle('bad', v < -1e-9);
+          var td = R.cells[ri][ci]; setText(td, yen(v)); td.classList.toggle('bad', v < -0.5);
         });
       });
     }, null, 'p_fs');

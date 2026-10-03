@@ -979,7 +979,7 @@ TM.Engine = (function () {
       vis: function (s) { return s.flags.cans_known && s.era < 2; },
       label: 'ポリ缶を買う（5個）',
       cost: function () { return { money: C.canBuy.cost }; },
-      ok: function (s) { var d = derive(s); return s.res.money >= C.canBuy.cost && s.res.can + C.canBuy.n <= d.cap.can; },
+      ok: function (s) { var d = derive(s); return canPay(s, { money: C.canBuy.cost }) && s.res.can + C.canBuy.n <= d.cap.can; },
       run: function (s) {
         if (!actions.buycans.ok(s)) return;
         s.res.money -= C.canBuy.cost; finExp(s, '容器', C.canBuy.cost); s.res.can += C.canBuy.n;
