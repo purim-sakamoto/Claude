@@ -15,6 +15,7 @@ TM.UI = (function () {
     /* クリックはまとめて受ける（描き直しでボタンが入れ替わっても取りこぼさない） */
     document.body.addEventListener('click', onClick);
     $('gear').addEventListener('click', openSettings);
+    initTip();
     try { tab = localStorage.getItem('taiki-minigame-tab') || 'site'; } catch (e) { /* 無視 */ }
   }
 
@@ -35,6 +36,8 @@ TM.UI = (function () {
       case 'accept': E.acceptOffer(s, +id); break;
       case 'decline': E.declineOffer(s, +id); break;
       case 'event': E.claimEvent(s); break;
+      case 'fix': doFix(s, id); break;
+      case 'goto': goto(t.getAttribute('data-tab'), id); break;
       case 'close': closeModal(); break;
       default: if (TM.UIActions && TM.UIActions[a]) TM.UIActions[a](t, id, v);
     }
@@ -54,8 +57,12 @@ TM.UI = (function () {
     renderLog(s);
     renderResources(s, d);
     renderActions(s, d);
+    renderAlerts(s, d);
+    renderFlow(s, d);
     renderTabs(s);
     renderPanel(s, d, force);
+    flashPending();
+    updateTip();
     if (s.ending && TM.UIEnding) TM.UIEnding(s);
   }
 
@@ -120,14 +127,14 @@ TM.UI = (function () {
       lastSig.res = sig; box.innerHTML = ''; refs.res = {};
       rows.forEach(function (id) {
         var nm = el('span', { class: 'nm' }), v = el('span', { class: 'v' }), r = el('span', { class: 'r' });
-        var row = el('div', { class: 'res fade' }, [nm, v, r]);
+        var row = el('div', { class: 'res fade', 'data-tip': 'res:' + id }, [nm, v, r]);
         refs.res[id] = { row: row, nm: nm, v: v, r: r };
         box.appendChild(row);
       });
       if (extra.length) box.appendChild(el('div', { class: 'resgroup', text: '状況' }));
       extra.forEach(function (id) {
         var nm = el('span', { class: 'nm' }), v = el('span', { class: 'v' }), r = el('span', { class: 'r' });
-        var row = el('div', { class: 'res fade' }, [nm, v, r]);
+        var row = el('div', { class: 'res fade', 'data-tip': 'x:' + id }, [nm, v, r]);
         refs.res['x_' + id] = { row: row, nm: nm, v: v, r: r };
         box.appendChild(row);
       });
@@ -139,20 +146,23 @@ TM.UI = (function () {
       var val = f(s.res[id]) + (cap !== undefined && cap !== Infinity && cap !== null ? ' / ' + f(cap) : '') + (unit && unit !== '円' ? ' ' + unit : unit === '円' ? '円' : '');
       setText(x.v, val);
       var rate = d.rate ? d.rate[id] || 0 : 0;
-      setText(x.r, fr(rate));
+      var hk = id === 'scrap' ? 'gather' : id === 'fecl2' ? 'dissolve' : id === 'money' ? 'sell' : null;
+      var hm = hk && s.era >= 1 ? E.heatMul(s, hk) : 1;
+      setText(x.r, fr(rate) + (hm > 1.05 ? '　手伝い ×' + hm.toFixed(1) : '') + (id === 'money' && s.res.money < 0 ? '　掛け' : ''));
+      x.row.classList.toggle('hot', hm > 1.05);
       x.row.classList.toggle('full', cap !== Infinity && cap > 0 && s.res[id] >= cap * 0.999);
       x.row.classList.toggle('neg', rate < -1e-9);
       if (id === 'money') x.v.classList.toggle('bad', s.res.money < 0);
     });
     extra.forEach(function (id) {
       var x = refs.res['x_' + id];
-      if (id === 'pop') { setText(x.nm, '人手'); setText(x.v, s.pop + ' / ' + d.popCap + '人'); setText(x.r, E.idle(s) > 0 ? '手すき ' + E.idle(s) + '人' : ''); }
+      if (id === 'pop') { setText(x.nm, '人手'); setText(x.v, s.pop + ' / ' + d.popCap + '人'); setText(x.r, (s.flags.broke ? '手が鈍っている ×0.5　' : '') + (E.idle(s) > 0 ? '手すき ' + E.idle(s) + '人' : '')); x.row.classList.toggle('alert', !!s.flags.broke); }
       if (id === 'land') { setText(x.nm, '敷地'); setText(x.v, f(d.used) + ' / ' + f(d.land)); x.row.classList.toggle('full', d.used >= d.land * 0.95); setText(x.r, ''); }
       if (id === 'power') { setText(x.nm, '電力'); setText(x.v, f(d.powerDem) + ' / ' + f(d.powerSup)); x.row.classList.toggle('full', d.powerEff < 1); setText(x.r, d.powerEff < 1 ? '足りない（' + Math.round(d.powerEff * 100) + '%）' : ''); }
       if (id === 'handling') { setText(x.nm, '荷役'); setText(x.v, f(d.handDem) + ' / ' + f(d.handSup)); x.row.classList.toggle('full', d.handEff < 1); setText(x.r, d.handEff < 1 ? '足りない（' + Math.round(d.handEff * 100) + '%）' : ''); }
       if (id === 'vent') { setText(x.nm, '換気'); setText(x.v, Math.round((d.ventEff || 1) * 100) + '%'); x.row.classList.toggle('full', d.ventEff < 1); setText(x.r, ''); }
       if (id === 'circ') { setText(x.nm, '循環率'); setText(x.v, Math.round(d.circ * 100) + '%'); setText(x.r, ''); }
-      if (id === 'creditline') { setText(x.nm, '掛けの枠'); setText(x.v, f(d.creditLimit) + '円'); setText(x.r, s.res.money < 0 ? '掛けで仕入れ中' : ''); }
+      if (id === 'creditline') { setText(x.nm, '掛けの枠'); setText(x.v, s.res.money < 0 ? '残り ' + f(Math.max(0, d.creditLimit + s.res.money)) + '円' : f(d.creditLimit) + '円'); setText(x.r, s.res.money < 0 ? '掛けで仕入れ中：給料が払えず、作業が半分に' : ''); x.row.classList.toggle('alert', s.res.money < 0); }
     });
   }
 
@@ -160,14 +170,12 @@ TM.UI = (function () {
   var ACTION_ORDER = ['grope', 'pick', 'sink', 'give', 'buyacid', 'hire', 'setkama', 'buycans'];
   function renderActions(s) {
     var vis = ACTION_ORDER.filter(function (id) { var a = E.actions[id]; return !a.vis || a.vis(s); });
-    if (s.era >= 2) vis = vis.filter(function (id) { return id === 'buycans' ? false : id !== 'give'; });
-    if (s.era >= 3) vis = [];
     if (s.era >= 1 && tab !== 'site') vis = [];
     var box = $('actions'), sig = vis.join(',');
     if (sig !== lastSig.act) {
       lastSig.act = sig; box.innerHTML = ''; refs.act = {};
       vis.forEach(function (id) {
-        var b = el('button', { class: 'btn fade', 'data-a': 'act', 'data-id': id });
+        var b = el('button', { class: 'btn fade', 'data-a': 'act', 'data-id': id, 'data-tip': 'act:' + id });
         var lab = el('span'), sm = el('small'), pr = el('span', { class: 'prog' });
         b.appendChild(lab); b.appendChild(sm); b.appendChild(pr);
         refs.act[id] = { b: b, lab: lab, sm: sm, pr: pr };
@@ -176,30 +184,128 @@ TM.UI = (function () {
     }
     vis.forEach(function (id) {
       var a = E.actions[id], r = refs.act[id];
-      var label = id === 'grope' ? '手探りする' : typeof a.label === 'function' ? a.label(s) : a.label;
-      setText(r.lab, label);
+      setText(r.lab, E.actLabel(s, id));
       var c = a.cost ? a.cost(s) : null;
-      setText(r.sm, c ? costText(s, c, true) : '');
+      var hm = a.heat && s.era >= 1 ? E.heatMul(s, a.heat) : 1;
+      setText(r.sm, c ? costText(s, c, true) : hm >= 1.05 ? '手伝い中 ×' + hm.toFixed(1) : a.heat && s.era >= 1 ? '押すと速くなる' : '');
       r.b.classList.toggle('na', !!(a.ok && !a.ok(s)));
-      var p = id === 'sink' && s.manual.dissolve > 0 ? (1 - s.manual.dissolve / D.consts.manualDissolveSec) * 100 : 0;
+      r.b.classList.toggle('hot', hm >= 1.05);
+      var p = id === 'sink' && s.manual.dissolve > 0 ? (1 - s.manual.dissolve / D.consts.manualDissolveSec) * 100 : a.heat && s.era >= 1 ? (hm - 1) * 100 : 0;
       r.pr.style.width = p + '%';
     });
+  }
+
+  /* ============ 警告（給料が払えないなど） ============ */
+  function renderAlerts(s, d) {
+    var h = '';
+    if (s.era >= 1 && s.flags.broke) {
+      var drains = [];
+      D.buildings.forEach(function (b) { if (b.proc && b.proc.toggle && b.proc.in && b.proc.in.money && s.bld[b.id].on > 0) drains.push(b.name); });
+      h = '<div class="alert"><b>給料が払えていない</b>　みんなの手が半分に鈍っている（作業 ×0.5・新しい人も来ない）。' +
+        (s.res.money < 0 ? '掛けの仕入れでお金がマイナス（残りの枠 ' + f(Math.max(0, d.creditLimit + s.res.money)) + '円）。' : '') +
+        'お金がプラスに戻れば元に戻る。' + (drains.length ? '<br><span class="dim">お金を使っている設備：' + drains.slice(0, 4).join('、') + '（現場で −で止められる）</span>' : '') + '</div>';
+    }
+    setHTML($('alerts'), h);
+  }
+
+  /* ============ 流れ（仕入れ → つくる → 詰める → 売る）と、詰まりの手当て ============ */
+  function flowVisible(s) { return s.era >= 1 && s.era <= 4 && (s.flags.hook || s.flags.cans_known); }
+  function fixLabel(s, d, fx) {
+    var kind = fx[0], id = fx[1];
+    if (kind === 'job') return E.JOB[id].name + 'の人手 ＋1';
+    if (kind === 'bld') { var b = E.BLD[id]; return b.name + '　' + costText(s, E.cost(s, b), true); }
+    if (kind === 'upg') { var u = E.UPG[id]; return u.name + '　' + costText(s, u.cost, true); }
+    if (kind === 'tech') { var t2 = E.TECH[id]; return '研究：' + t2.name; }
+    if (kind === 'act') return E.actLabel(s, id);
+    return id;
+  }
+  function fixReady(s, d, fx) {
+    var kind = fx[0], id = fx[1];
+    if (kind === 'job') return s.pop > 0;
+    if (kind === 'bld') return !E.whyNot(s, E.BLD[id]);
+    if (kind === 'upg') return E.canPay(s, E.UPG[id].cost);
+    if (kind === 'tech') return E.canPay(s, E.TECH[id].cost);
+    if (kind === 'act') { var a = E.actions[id]; return !a.ok || a.ok(s); }
+    return false;
+  }
+  function renderFlow(s, d) {
+    var box = $('flowbar');
+    if (!flowVisible(s)) { if (box.innerHTML) box.innerHTML = ''; lastSig.flow = null; return; }
+    var g = E.diagnose(s, d); if (!g) return;
+    var mainSt = g.main ? g.main.stage : 'ok';
+    var fixes = g.main && g.main.fixKey ? E.fixesFor(s, d, g.main.fixKey) : [];
+    var sig = g.stages.map(function (x) { return x.id; }).join(',') + '|' + mainSt + '|' + (g.main ? g.main.title : '') + '|' + fixes.map(function (x) { return x.join(':'); }).join(',');
+    if (sig !== lastSig.flow) {
+      lastSig.flow = sig; box.innerHTML = ''; refs.flow = {};
+      var row = el('div', { class: 'stages' });
+      g.stages.forEach(function (st, i) {
+        if (i) row.appendChild(el('span', { class: 'arrow', text: '→' }));
+        var v = el('span', { class: 'v' });
+        var chip = el('span', { class: 'stage' + (st.id === mainSt ? ' bad' : ''), 'data-tip': 'flow:' + st.id }, [el('b', { text: st.name }), v]);
+        row.appendChild(chip); refs.flow[st.id] = v;
+      });
+      box.appendChild(row);
+      var adv = el('div', { class: 'advice' + (mainSt === 'ok' ? ' ok' : '') });
+      if (g.main) {
+        var nm = { in: '仕入れ', make: 'つくる', fill: '詰める', sell: '売る', ok: '' }[mainSt];
+        adv.appendChild(el('span', { class: 'ttl', text: (nm ? '詰まり：' + nm + '　' : '') + g.main.title }));
+        refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
+        if (fixes.length) {
+          var fx = el('div', { class: 'fixes' }, [el('span', { class: 'dim', text: '手当て：' })]);
+          refs.flow.fix = [];
+          fixes.forEach(function (x) {
+            var b = el('button', { class: 'mini fix', 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] + ':' + x[1] });
+            fx.appendChild(b); refs.flow.fix.push([b, x]);
+          });
+          adv.appendChild(fx);
+        } else if (mainSt !== 'ok') adv.appendChild(el('div', { class: 'fixes dim', text: '今は手当ての方法が見つからない。技術や改善を進めると見つかるかもしれない。' }));
+      }
+      box.appendChild(adv);
+    }
+    g.stages.forEach(function (st) {
+      var parts = st.v.filter(function (x) { return x[1] > 1e-6 || st.v.length === 1; }).map(function (x) {
+        var u = x[2] || '', r = fr(x[1]).replace('+', '') || '0';
+        if (u && r !== '0') r = r.replace('/', u + '/');
+        return (x[0] ? x[0] + ' ' : '') + r;
+      });
+      setText(refs.flow[st.id], parts.join('・') || '—');
+    });
+    if (refs.flow.detail && g.main) setText(refs.flow.detail, g.main.detail);
+    (refs.flow.fix || []).forEach(function (p) { setText(p[0], fixLabel(s, d, p[1])); p[0].classList.toggle('na', !fixReady(s, d, p[1])); });
+  }
+  function doFix(s, key) {
+    var i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1);
+    if (kind === 'job') { if (!E.moveJob(s, id)) goto('staff', 'job:' + id); return; }
+    if (kind === 'bld') { if (!E.build(s, id)) goto('site', 'bld:' + id); return; }
+    if (kind === 'upg') { if (!E.buyUpg(s, id)) goto('upg', 'upg:' + id); return; }
+    if (kind === 'tech') { if (!E.research(s, id)) goto('tech', 'tech:' + id); return; }
+    if (kind === 'act') E.doAction(s, id);
+  }
+  var pendingHL = null;
+  function goto(tb, hl) {
+    if (tb) { tab = tb; try { localStorage.setItem('taiki-minigame-tab', tab); } catch (e) { /* 無視 */ } lastSig.panel = null; }
+    pendingHL = hl || null;
+  }
+  function flashPending() {
+    if (!pendingHL) return;
+    var t2 = document.querySelector('[data-hl="' + pendingHL + '"]');
+    pendingHL = null;
+    if (!t2) return;
+    try { t2.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { t2.scrollIntoView(); }
+    t2.classList.remove('flash'); void t2.offsetWidth; t2.classList.add('flash');
   }
 
   /* ============ タブ ============ */
   function tabsVisible(s) {
     var t = [];
     if (s.era < 1) return t;
+    /* タブは多くても6つまで */
     t.push(['site', '現場']);
     t.push(['staff', '人手']);
+    if (Object.keys(s.upg).length || D.upgrades.some(function (u) { return E.upgShown(s, u); })) t.push(['upg', '改善']);
     if (s.flags.research_known) t.push(['tech', '技術']);
-    t.push(['upg', '改善']);
-    if (s.flags.cans_known) t.push(['market', '取引']);
-    if (s.flags.hook) t.push(['flow', '工程図']);
-    if (s.bld.line && s.bld.line.n > 0) t.push(['line', 'ライン']);
-    if (s.techs.bookkeeping) t.push(['fin', '経営']);
-    if (s.techs.oem) t.push(['oem', '受託']);
-    t.push(['stats', '記録']);
+    if (s.flags.cans_known || s.techs.bookkeeping) t.push(['market', '取引']);
+    if (s.flags.hook) t.push(['stats', '記録']);
     return t;
   }
   function renderTabs(s) {
@@ -252,12 +358,13 @@ TM.UI = (function () {
   function setHTML(e, h) { if (e && e.innerHTML !== h) e.innerHTML = h; }
 
   /* 鍵つきの再描画：構成(sig)が変わったときだけ作り直し、それ以外は値だけ更新 */
-  function keyed(box, sig, build, update, force) {
-    if (sig !== lastSig.panel || force === 'rebuild') {
-      lastSig.panel = sig; box.innerHTML = ''; refs.panel = {};
-      build(refs.panel);
+  function keyed(box, sig, build, update, force, key) {
+    key = key || 'panel';
+    if (sig !== lastSig[key] || force === 'rebuild') {
+      lastSig[key] = sig; box.innerHTML = ''; refs[key] = {};
+      build(refs[key]);
     }
-    update(refs.panel);
+    update(refs[key]);
   }
 
   /* ============ 各タブ ============ */
@@ -266,35 +373,39 @@ TM.UI = (function () {
   PANELS.site = function (s, d, box) {
     var groups = {}, order = [];
     D.buildings.forEach(function (b) {
-      if (!E.bldVisible(s, b)) return;
+      if (!E.bldShown(s, b)) return;
       if (b.stages && s.bld[b.id].n >= b.stages) return;
       if (b.max && s.bld[b.id].n >= b.max && !(b.proc && b.proc.toggle)) { (groups['済'] = groups['済'] || []).push(b); return; }
       if (!groups[b.group]) { groups[b.group] = []; order.push(b.group); }
       groups[b.group].push(b);
     });
-    var teasers = [];
+    /* 先の名前は一つだけ、うっすら */
+    var teaser = '';
     if (s.flags.hook && s.era < 3) {
-      var names = {}; D.buildings.forEach(function (b) { if (E.bldVisible(s, b)) names[b.name] = 1; });
-      teasers = D.teasers.filter(function (n) { return !names[n] && !D.buildings.some(function (b) { return b.name === n && E.bldVisible(s, b); }); });
+      var names = {}; D.buildings.forEach(function (b) { if (E.bldShown(s, b)) names[b.name] = 1; });
+      D.teasers.forEach(function (n) { if (!teaser && !names[n]) teaser = n; });
     }
-    var sig = 'site|' + order.map(function (g) { return g + ':' + groups[g].map(function (b) { return b.id; }).join(','); }).join('|') + '|' + teasers.join(',') + '|' + (groups['済'] || []).length;
+    var sig = 'site|' + order.map(function (g) { return g + ':' + groups[g].map(function (b) { return b.id; }).join(','); }).join('|') + '|' + teaser + '|' + (groups['済'] || []).length;
     keyed(box, sig, function (R) {
       order.forEach(function (g) {
         var gbox = el('div', { class: 'group' }, [el('h3', { text: g })]);
         groups[g].forEach(function (b) {
-          var btn = el('button', { class: 'btn', 'data-a': 'build', 'data-id': b.id });
+          var btn = el('button', { class: 'btn', 'data-a': 'build', 'data-id': b.id, 'data-tip': 'bld:' + b.id });
           var nm = el('span'), cs = el('small', { class: 'cost' });
           btn.appendChild(nm); btn.appendChild(cs);
           var st = el('div', { class: 'st' }), ds = el('div', { text: b.desc });
           var ctl = el('div', { class: 'ctl' });
           var info = el('div', { class: 'info' }, [st, ds]);
+          var lineBox = null;
+          if (b.id === 'line') { lineBox = el('div', { class: 'linebox' }); info.appendChild(lineBox); }
           if (b.proc && b.proc.toggle) {
-            ctl.appendChild(el('button', { class: 'mini', 'data-a': 'on', 'data-id': b.id, 'data-v': -1, text: '−' }));
-            ctl.appendChild(el('button', { class: 'mini', 'data-a': 'on', 'data-id': b.id, 'data-v': 1, text: '＋' }));
+            ctl.appendChild(el('button', { class: 'mini', 'data-a': 'on', 'data-id': b.id, 'data-v': -1, text: '−', title: '1つ止める' }));
+            ctl.appendChild(el('button', { class: 'mini', 'data-a': 'on', 'data-id': b.id, 'data-v': 1, text: '＋', title: '1つ動かす' }));
           }
           if (!b.stages) ctl.appendChild(el('button', { class: 'mini', 'data-a': 'sell', 'data-id': b.id, title: '解体', text: '×' }));
-          gbox.appendChild(el('div', { class: 'row fade' }, [btn, info, ctl]));
-          R[b.id] = { btn: btn, nm: nm, cs: cs, st: st, ctl: ctl };
+          var isNew = !s.bld[b.id].n;
+          gbox.appendChild(el('div', { class: 'row fade' + (isNew ? ' isnew' : ''), 'data-hl': 'bld:' + b.id }, [btn, info, ctl]));
+          R[b.id] = { btn: btn, nm: nm, cs: cs, st: st, ctl: ctl, line: lineBox };
         });
         box.appendChild(gbox);
       });
@@ -303,16 +414,13 @@ TM.UI = (function () {
         done.appendChild(el('div', { class: 'dim', style: 'font-size:12px', text: groups['済'].map(function (b) { return b.name; }).join('、') }));
         box.appendChild(done);
       }
-      if (teasers.length) {
-        var tg = el('div', { class: 'group' }, [el('h3', { text: '……' })]);
-        teasers.forEach(function (n) { tg.appendChild(el('span', { class: 'teaser fade', text: n })); });
-        box.appendChild(tg);
-      }
+      if (teaser) box.appendChild(el('div', { class: 'group' }, [el('span', { class: 'teaser fade', text: teaser })]));
     }, function (R) {
       order.forEach(function (g) {
         groups[g].forEach(function (b) {
           var r = R[b.id]; if (!r) return;
           var o = s.bld[b.id], c = E.cost(s, b);
+          r.ctl.style.visibility = o.n ? '' : 'hidden';
           setText(r.nm, b.name + (b.stages ? '（' + o.n + '/' + b.stages + '）' : o.n ? '（' + o.n + '）' : ''));
           setHTML(r.cs, costText(s, c) + ((b.space || 0) > 0 ? '　<span class="' + (d.used + b.space > d.land ? 'lack' : '') + '">敷地 ' + b.space + '</span>' : ''));
           var why = '';
@@ -320,10 +428,9 @@ TM.UI = (function () {
           else if (b.buildCond && !E.cond(s, b.buildCond)) why = '条件：循環率' + Math.round((b.buildCond.circ || 0) * 100) + '%以上';
           else if (!E.canPay(s, c)) { var tt = timeTo(s, d, c); why = tt === -1 ? '置き場が足りない' : tt === Infinity ? '' : 'あと ' + U.fmtTime(tt); }
           r.btn.classList.toggle('na', !!why || !E.canPay(s, c));
-          r.btn.title = why;
           var st = [];
           if (b.proc && b.proc.toggle && o.n) st.push('稼働 ' + o.on + '/' + o.n);
-          var pinfo = null; (d.procs || []).forEach(function (p) { if (p.key === 'bld.' + b.id) pinfo = p; });
+          var pinfo = procOf(d, 'bld.' + b.id);
           if (pinfo && o.n && pinfo.reason) st.push('<span class="bad">' + pinfo.reason + '</span>');
           if (o.n && d.vehStat && d.vehStat[b.id]) { var vs = d.vehStat[b.id]; st.push('走っている ' + vs.manned + '/' + vs.n + (vs.why ? '　<span class="bad">' + vs.why + '</span>' : '')); }
           if (o.n && b.id === 'fork' && d.forkStat) st.push('動いている ' + d.forkStat.manned + '/' + o.n + (d.forkStat.manned < o.n && !d.m['auto.fork'] ? '　<span class="bad">資格を持つ荷役の人手が足りない</span>' : ''));
@@ -333,10 +440,19 @@ TM.UI = (function () {
           if (why && why.indexOf('あと') === 0) st.push(why);
           else if (why) st.push('<span class="warn">' + why + '</span>');
           setHTML(r.st, st.join('　'));
+          if (r.line) setHTML(r.line, o.n ? lineHTML(s, d) : '');
         });
       });
     });
   };
+  function procOf(d, key) { var p = null; (d.procs || []).forEach(function (q) { if (q.key === key) p = q; }); return p; }
+  /* 小分けラインの工程（一番遅い工程がラインの速さ） */
+  function lineHTML(s, d) {
+    var lc = d.lineInfo || E.lineCap(s, d.m);
+    var h = '1本の速さ ' + f(lc.rate) + '缶/秒（一番遅い工程で決まる）' + (Math.round(d.m['line.weigh'] || 0) < 1 ? '　<span class="warn">重量検査が抜き取り：ときどきクレーム</span>' : '') + '<br>';
+    h += lc.det.map(function (x) { return '<span class="' + (x.id === lc.worst ? 'bad' : 'dim') + '">' + x.name + '（' + x.label + '）' + f(x.rate) + '</span>'; }).join(' → ');
+    return h;
+  }
 
   PANELS.staff = function (s, d, box) {
     var jobs = D.jobs.filter(function (j) { return E.jobVisible(s, j); });
@@ -357,8 +473,8 @@ TM.UI = (function () {
           el('button', { class: 'mini', 'data-a': 'job', 'data-id': j.id, 'data-v': 1000000, text: '全員' })
         ]);
         var label = s.era <= 1 && j.id !== 'research' ? j.name : j.name;
-        var nameBox = el('div', { class: 'btn', style: 'min-width:150px;cursor:default' }, [el('span', { text: label + '　' }), cnt]);
-        g.appendChild(el('div', { class: 'row fade' }, [nameBox, el('div', { class: 'info' }, [st, el('div', { text: j.desc })]), ctl]));
+        var nameBox = el('div', { class: 'btn', style: 'min-width:150px;cursor:default', 'data-tip': 'job:' + j.id }, [el('span', { text: label + '　' }), cnt]);
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'job:' + j.id }, [nameBox, el('div', { class: 'info' }, [st, el('div', { text: j.desc })]), ctl]));
         R[j.id] = { cnt: cnt, st: st };
       });
       box.appendChild(g);
@@ -375,7 +491,7 @@ TM.UI = (function () {
         box.appendChild(lg);
       }
     }, function (R) {
-      setText(R.head, '人手 ' + s.pop + '人　手すき ' + E.idle(s) + '人' + (s.training.length ? '　講習中 ' + s.training.length + '人' : '') + (s.flags.broke ? '　（給料が払えず、みんなの手が鈍っている）' : ''));
+      setHTML(R.head, '人手 ' + s.pop + '人　手すき ' + E.idle(s) + '人' + (s.training.length ? '　講習中 ' + s.training.length + '人' : '') + (s.flags.broke ? '　<span class="bad">給料が払えず、みんなの手が半分に鈍っている</span>' : ''));
       jobs.forEach(function (j) {
         var r = R[j.id]; setText(r.cnt, s.jobs[j.id] + '人');
         var info = '';
@@ -399,30 +515,21 @@ TM.UI = (function () {
   };
 
   PANELS.tech = function (s, d, box) {
-    var avail = D.techs.filter(function (t) { return E.techAvailable(s, t); });
+    var avail = D.techs.filter(function (t) { return E.techShown(s, t); });
     var done = D.techs.filter(function (t) { return s.techs[t.id]; });
-    var future = D.techs.filter(function (t) { return !s.techs[t.id] && !E.techAvailable(s, t); });
-    var showFar = s.flags.hook;
-    var sig = 'tech|' + avail.map(function (t) { return t.id; }).join(',') + '|' + done.length + '|' + future.length;
+    var sig = 'tech|' + avail.map(function (t) { return t.id; }).join(',') + '|' + done.length;
     keyed(box, sig, function (R) {
       var g = el('div', { class: 'group' }, [el('h3', { text: '研究できること' })]);
       if (!avail.length) g.appendChild(el('p', { class: 'note', text: '今は思いつくことがない。' }));
       avail.forEach(function (t) {
-        var b = el('button', { class: 'btn', 'data-a': 'tech', 'data-id': t.id });
+        var b = el('button', { class: 'btn', 'data-a': 'tech', 'data-id': t.id, 'data-tip': 'tech:' + t.id });
         var cs = el('small', { class: 'cost' });
         b.appendChild(el('span', { text: t.name })); b.appendChild(cs);
         var st = el('div', { class: 'st' });
-        g.appendChild(el('div', { class: 'row fade' }, [b, el('div', { class: 'info' }, [st, el('div', { text: t.desc })])]));
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'tech:' + t.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: t.desc })])]));
         R[t.id] = { b: b, cs: cs, st: st, t: t };
       });
       box.appendChild(g);
-      if (showFar && future.length) {
-        var fg = el('div', { class: 'group' }, [el('h3', { text: 'まだ遠いこと' })]);
-        var shown = future.slice(0, 6).map(function (t) { return t.name; });
-        D.teaserTechs.forEach(function (n) { if (shown.indexOf(n) < 0 && !done.some(function (t) { return t.name === n; }) && !avail.some(function (t) { return t.name === n; })) shown.push(n); });
-        shown.forEach(function (n) { fg.appendChild(el('span', { class: 'teaser', text: n })); });
-        box.appendChild(fg);
-      }
       if (done.length) box.appendChild(el('div', { class: 'group' }, [el('h3', { text: '身につけたこと' }), el('div', { class: 'dim', style: 'font-size:12px', text: done.map(function (t) { return t.name; }).join('、') })]));
     }, function (R) {
       avail.forEach(function (t) {
@@ -437,18 +544,18 @@ TM.UI = (function () {
   };
 
   PANELS.upg = function (s, d, box) {
-    var avail = D.upgrades.filter(function (u) { return E.upgVisible(s, u); });
+    var avail = D.upgrades.filter(function (u) { return E.upgShown(s, u); });
     var done = D.upgrades.filter(function (u) { return s.upg[u.id]; });
     var sig = 'upg|' + avail.map(function (u) { return u.id; }).join(',') + '|' + done.length;
     keyed(box, sig, function (R) {
       var g = el('div', { class: 'group' }, [el('h3', { text: '改善できること' })]);
       if (!avail.length) g.appendChild(el('p', { class: 'note', text: '今は思いつくことがない。' }));
       avail.forEach(function (u) {
-        var b = el('button', { class: 'btn', 'data-a': 'upg', 'data-id': u.id });
+        var b = el('button', { class: 'btn', 'data-a': 'upg', 'data-id': u.id, 'data-tip': 'upg:' + u.id });
         var cs = el('small', { class: 'cost' });
         b.appendChild(el('span', { text: u.name })); b.appendChild(cs);
         var st = el('div', { class: 'st' });
-        g.appendChild(el('div', { class: 'row fade' }, [b, el('div', { class: 'info' }, [st, el('div', { text: u.desc })])]));
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'upg:' + u.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: u.desc })])]));
         R[u.id] = { b: b, cs: cs, st: st };
       });
       box.appendChild(g);
@@ -464,7 +571,21 @@ TM.UI = (function () {
     });
   };
 
+  /* 取引タブ：販売・受託・帳簿を縦に並べる */
   PANELS.market = function (s, d, box) {
+    var hasOem = !!s.techs.oem, hasFin = !!s.techs.bookkeeping, hasSales = !!s.flags.cans_known;
+    keyed(box, 'mk|' + hasSales + hasOem + hasFin, function (R) {
+      ['p_sales', 'p_oem', 'p_fin'].forEach(function (k) { lastSig[k] = null; });
+      if (hasSales) { box.appendChild(el('h3', { class: 'sect', text: '販売' })); R.sales = el('div'); box.appendChild(R.sales); }
+      if (hasOem) { box.appendChild(el('h3', { class: 'sect', text: '受託' })); R.oem = el('div'); box.appendChild(R.oem); }
+      if (hasFin) { box.appendChild(el('h3', { class: 'sect', text: '帳簿' })); R.fin = el('div'); box.appendChild(R.fin); }
+    }, function (R) {
+      if (R.sales) PANELS.sales(s, d, R.sales);
+      if (R.oem) PANELS.oem(s, d, R.oem);
+      if (R.fin) PANELS.fin(s, d, R.fin);
+    });
+  };
+  PANELS.sales = function (s, d, box) {
     var sales = (d.sales || []).filter(function (x) {
       var src = x.p.kind === 'can' ? x.p.liquid : x.p.src;
       return s.flags['r_' + src] && (x.p.kind !== 'bulk' || x.zone >= 0);
@@ -497,60 +618,7 @@ TM.UI = (function () {
         setText(c[3], fr(x.rate).replace('+', ''));
         setText(c[4], f(x.price) + '円/' + u.replace('kg', 'kg'));
       });
-    });
-  };
-
-  PANELS.flow = function (s, d, box) {
-    var procs = (d.procs || []).filter(function (p) { return p.want > 0 || p.reason; });
-    var sig = 'flow|' + procs.map(function (p) { return p.key; }).join(',');
-    keyed(box, sig, function (R) {
-      box.appendChild(el('p', { class: 'note', text: '工程ごとの流れ。赤は止まっている理由。棒は動いている割合。' }));
-      var head = el('div', { class: 'flow' }); R.head = head; box.appendChild(head);
-      procs.forEach(function (p) {
-        var io = el('span', { class: 'io' }), why = el('span', { class: 'why' }), bar = el('div', { class: 'bar' }), bi = el('i');
-        bar.appendChild(bi);
-        box.appendChild(el('div', { class: 'flow fade' }, [el('b', { text: p.name + '　' }), io, '　', why, bar]));
-        R[p.key] = { io: io, why: why, bar: bar, bi: bi };
-      });
-    }, function (R) {
-      setText(R.head, '電力 ' + f(d.powerDem) + '/' + f(d.powerSup) + '　荷役 ' + f(d.handDem) + '/' + f(d.handSup) + '　検査 ' + f(d.checkUsed || 0) + '/' + f(d.checkCap || 0) + 'kg/秒　充填 ' + f(d.filled || 0) + '/' + f(d.fillCap || 0) + '缶/秒' + (d.fumes ? '　換気 ' + Math.round(d.ventEff * 100) + '%' : ''));
-      procs.forEach(function (p) {
-        var r = R[p.key]; if (!r) return;
-        var cur = null; (d.procs || []).forEach(function (q) { if (q.key === p.key) cur = q; });
-        if (!cur) return;
-        var ins = [], outs = [], k;
-        for (k in cur.inp) if (cur.inp[k]) ins.push(E.resName(s, k) + ' ' + f(cur.inp[k] * cur.rate));
-        for (k in cur.out) if (cur.out[k]) outs.push(E.resName(s, k) + ' ' + f(cur.out[k] * cur.rate));
-        setText(r.io, (ins.length ? ins.join('＋') : '—') + ' → ' + (outs.length ? outs.join('＋') : '（処理）') + ' /秒');
-        setText(r.why, cur.reason || '');
-        var eff = cur.want > 0 ? cur.rate / cur.want : 0;
-        r.bi.style.width = Math.round(Math.min(1, eff) * 100) + '%';
-        r.bar.classList.toggle('red', !!cur.reason);
-      });
-    });
-  };
-
-  PANELS.line = function (s, d, box) {
-    var sig = 'line|' + s.bld.line.n;
-    keyed(box, sig, function (R) {
-      box.appendChild(el('p', { class: 'note', text: '小分けラインは、缶供給 → 充填 → キャップ締め → ラベル → 重量検査 → パレット積み の直列。一番遅い工程がラインの速さになる。改善タブで工程を機械にできる。' }));
-      R.info = el('p', {}); box.appendChild(R.info);
-      D.lineModules.forEach(function (m) {
-        var nm = el('div'), bar = el('div', { class: 'bar' }), bi = el('i'); bar.appendChild(bi);
-        box.appendChild(el('div', { class: 'flow' }, [nm, bar]));
-        R[m.id] = { nm: nm, bar: bar, bi: bi };
-      });
-    }, function (R) {
-      var lc = d.lineInfo || E.lineCap(s, d.m);
-      var mx = 0; lc.det.forEach(function (x) { mx = Math.max(mx, x.rate); });
-      setText(R.info, 'ライン ' + s.bld.line.n + '本（動いている ' + (d.linesManned || 0) + '本）　1本の速さ ' + f(lc.rate) + '缶/秒' + (Math.round(d.m['line.weigh'] || 0) < 1 ? '　※重量検査が抜き取りなので、ときどき内容量不足のクレームが来る' : ''));
-      lc.det.forEach(function (x) {
-        var r = R[x.id];
-        setText(r.nm, x.name + '：' + x.label + '　' + f(x.rate) + '缶/秒' + (x.id === lc.worst ? '　← 一番遅い' : ''));
-        r.bi.style.width = Math.round(x.rate / mx * 100) + '%';
-        r.bar.classList.toggle('red', x.id === lc.worst);
-      });
-    });
+    }, null, 'p_sales');
   };
 
   PANELS.fin = function (s, d, box) {
@@ -586,7 +654,7 @@ TM.UI = (function () {
         D.circ.forEach(function (c) { var v = Math.min(1, (d.circParts[c.id] || 0) / c.need); h += '<span class="' + (v >= 1 ? 'good' : 'dim') + '">' + c.name + ' ' + Math.round(v * 100) + '%</span>　'; });
         setHTML(R.circ, h);
       }
-    });
+    }, null, 'p_fin');
   };
 
   PANELS.oem = function (s, d, box) {
@@ -620,7 +688,7 @@ TM.UI = (function () {
         if (c.step >= steps.length) setText(r.st, '継続受託中：' + f(t.income * c.scale * (d.glob || 1) * (c.eff === undefined ? 1 : c.eff)) + '円/秒' + (c.eff < 0.99 ? '（原料不足）' : ''));
         else setText(r.st, steps[c.step].name + '　' + Math.floor(c.prog / steps[c.step].sec * 100) + '%' + (c.waiting ? '　' + c.waiting : ''));
       });
-    });
+    }, null, 'p_oem');
   };
 
   PANELS.stats = function (s, d, box) {
@@ -644,6 +712,216 @@ TM.UI = (function () {
       box.appendChild(pr);
     }, function () {});
   };
+
+  /* ============ カーソルを合わせたときの説明 ============ */
+  var tipKey = null, tipX = 0, tipY = 0;
+  function initTip() {
+    document.addEventListener('mouseover', function (e) {
+      var t2 = e.target.closest ? e.target.closest('[data-tip]') : null;
+      if (!t2) { hideTip(); return; }
+      tipKey = t2.getAttribute('data-tip'); updateTip(); placeTip();
+    });
+    document.addEventListener('mousemove', function (e) { tipX = e.clientX; tipY = e.clientY; if (tipKey) placeTip(); });
+    document.addEventListener('mouseleave', hideTip);
+    /* スマホ：長押しで説明、どこかを触ると閉じる */
+    document.addEventListener('contextmenu', function (e) {
+      var t2 = e.target.closest ? e.target.closest('[data-tip]') : null; if (!t2) return;
+      e.preventDefault(); tipX = e.clientX; tipY = e.clientY; tipKey = t2.getAttribute('data-tip'); updateTip(); placeTip();
+    });
+    document.addEventListener('touchstart', function (e) { if (tipKey && !(e.target.closest && e.target.closest('#tip'))) hideTip(); }, { passive: true });
+  }
+  function hideTip() { if (!tipKey) return; tipKey = null; $('tip').classList.add('hidden'); }
+  function placeTip() {
+    var b = $('tip'); if (b.classList.contains('hidden')) return;
+    var w = b.offsetWidth, h = b.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    var x = tipX + 16, y = tipY + 16;
+    if (x + w > vw - 8) x = Math.max(8, tipX - w - 12);
+    if (y + h > vh - 8) y = Math.max(8, tipY - h - 12);
+    b.style.left = x + 'px'; b.style.top = y + 'px';
+  }
+  function updateTip() {
+    if (!tipKey) return;
+    var s = S(), d = s._d || E.derive(s), h = '';
+    try { h = tipHTML(s, d, tipKey); } catch (e) { h = ''; }
+    var b = $('tip');
+    if (!h) { b.classList.add('hidden'); return; }
+    setHTML(b, h); b.classList.remove('hidden');
+  }
+  function line(a, b2, cls) { return '<div class="tl"><span>' + a + '</span><span class="' + (cls || '') + '">' + b2 + '</span></div>'; }
+  function rateS(r, unit) { var x = fr(r) || '0'; return unit ? x.replace('/', unit + '/') : x; }
+  function ledger(s, d, k, unit) {
+    var L = d.led && d.led[k], ins = [], outs = [], n, h = '';
+    if (L) for (n in L) { if (L[n] > 1e-9) ins.push([n, L[n]]); else if (L[n] < -1e-9) outs.push([n, L[n]]); }
+    ins.sort(function (a, b) { return b[1] - a[1]; }); outs.sort(function (a, b) { return a[1] - b[1]; });
+    if (ins.length) h += '<div class="th">増える</div>' + ins.slice(0, 5).map(function (x) { return line(x[0], rateS(x[1], unit), 'good'); }).join('');
+    if (outs.length) h += '<div class="th">減る</div>' + outs.slice(0, 5).map(function (x) { return line(x[0], rateS(x[1], unit), 'bad'); }).join('');
+    return h;
+  }
+  function stalledBy(d, k, wt) {
+    var n = []; (d.procs || []).forEach(function (p) { if (p.wk === k && p.wt === wt && p.want > 0) n.push(p.name); });
+    return n;
+  }
+  function eff(s, d) { return (s.flags.broke ? 0.5 : 1); }
+
+  function tipHTML(s, d, key) {
+    var i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1), h = '', C = D.consts;
+    if (kind === 'res') {
+      var R = E.RES[id], v = s.res[id], cap = d.cap[id], net = d.rate ? d.rate[id] || 0 : 0;
+      var unit = R.unit === '円' ? '円' : R.unit === '個' || R.unit === '缶' || R.unit === '箱' ? '' : R.unit;
+      h += '<div class="tt">' + E.resName(s, id) + '</div>';
+      if (id === 'money') {
+        h += line('いま', f(v) + '円', v < 0 ? 'bad' : '');
+        h += line('毎秒', rateS(net, '円'), net < 0 ? 'bad' : 'good');
+        h += ledger(s, d, id, '円');
+        if (v < 0) h += '<div class="tw bad">掛けで仕入れ中。給料が払えないので、みんなの手が半分に鈍っている。</div>';
+        else if (s.flags.broke) h += '<div class="tw bad">給料が払えていない。手が半分に鈍っている。</div>';
+        return h;
+      }
+      h += line('いま', f(v) + (cap !== Infinity && cap !== undefined ? ' / ' + f(cap) : '') + (R.unit ? ' ' + R.unit : ''));
+      if (Math.abs(net) > 1e-9) h += line('毎秒', rateS(net, unit), net < 0 ? 'bad' : 'good');
+      if (cap !== Infinity && v >= cap * 0.995) {
+        var bl = stalledBy(d, id, 'full');
+        h += '<div class="tw warn">置き場がいっぱい。' + (bl.length ? '止まっている：' + bl.slice(0, 3).join('、') : 'これ以上は増えない') + '</div>';
+      } else if (net > 1e-9 && cap !== Infinity) h += '<div class="tw">あと ' + U.fmtTime((cap - v) / net) + ' で満杯</div>';
+      else if (net < -1e-9 && v > 0) h += '<div class="tw ' + (v / -net < 60 ? 'bad' : '') + '">あと ' + U.fmtTime(v / -net) + ' で空になる</div>';
+      var st = stalledBy(d, id, 'in');
+      if (st.length) h += '<div class="tw bad">足りない → 待っている：' + st.slice(0, 3).join('、') + '</div>';
+      h += ledger(s, d, id, unit);
+      return h;
+    }
+    if (kind === 'x') {
+      if (id === 'pop') {
+        h += '<div class="tt">人手</div>' + line('人数', s.pop + ' / ' + d.popCap + '人') + line('手すき', E.idle(s) + '人');
+        if (s.flags.broke) h += '<div class="tw bad">給料が払えず、手が半分に鈍っている。新しい人も来ない。</div>';
+        else if (s.pop >= d.popCap) h += '<div class="tw warn">住む場所がいっぱい。寮などを建てると、また人が来る。</div>';
+        else if (d.arrivalLeft !== undefined && s.flags.hired) h += '<div class="tw">次の人が来るまで あと ' + U.fmtTime(Math.max(0, d.arrivalLeft)) + '</div>';
+        h += line('給料', rateS(-(d.salary || 0), '円'), 'bad');
+        return h;
+      }
+      if (id === 'power') return '<div class="tt">電力</div>' + line('使う / 使える', f(d.powerDem) + ' / ' + f(d.powerSup)) + '<div class="tw">' + (d.powerEff < 1 ? '<span class="bad">足りない。電気を使う設備がすべて ' + Math.round(d.powerEff * 100) + '% の速さに落ちている。</span>' : 'まだ余裕がある（あと ' + f(d.powerSup - d.powerDem) + '）。') + '</div>';
+      if (id === 'handling') return '<div class="tt">荷役</div>' + line('要る / 動かせる', f(d.handDem) + ' / ' + f(d.handSup)) + '<div class="tw">' + (d.handEff < 1 ? '<span class="bad">足りない。出荷と荷を使う設備が ' + Math.round(d.handEff * 100) + '% に落ちている。荷役の人手・フォークリフトを。</span>' : '荷を動かす力には余裕がある。') + '</div>';
+      if (id === 'vent') return '<div class="tt">換気</div><div class="tw">' + (d.ventEff < 1 ? '<span class="bad">酸の霧がこもり、溶かす作業が ' + Math.round(d.ventEff * 100) + '% に落ちている。換気扇・スクラバーを。</span>' : '風は通っている。') + '</div>';
+      if (id === 'land') return '<div class="tt">敷地</div>' + line('使っている / 広さ', f(d.used) + ' / ' + f(d.land)) + '<div class="tw">' + (d.used >= d.land * 0.95 ? '<span class="warn">ほとんど空きがない。隣の空き地を。</span>' : 'あと ' + f(d.land - d.used) + ' 空いている。') + '</div>';
+      if (id === 'creditline') return '<div class="tt">掛けの枠</div>' + line('枠', f(d.creditLimit) + '円') + (s.res.money < 0 ? line('使っている', f(-s.res.money) + '円', 'bad') : '') + '<div class="tw">お金が足りなくても、この枠の中なら仕入れ（お金を使う設備）が続く。ただし<b>お金がマイナスの間は給料が払えず、みんなの手が半分に鈍る</b>。枠は信用と稼ぎで広がる。</div>';
+      if (id === 'circ') return '<div class="tt">循環率</div><div class="tw">捨てていたものを回収するほど上がる。高いほど、すべての生産と単価が上がる。</div>';
+      return '';
+    }
+    if (kind === 'act') {
+      var a = E.actions[id], hm = a.heat && s.era >= 1 ? E.heatMul(s, a.heat) : 1, e1 = s.era >= 1;
+      h += '<div class="tt">' + E.actLabel(s, id) + '</div>';
+      var desc = {
+        grope: '暗がりを手で探る。',
+        pick: e1 ? '鉄くずを1つ拾う。押すたびに回収を手伝い、しばらく回収（とスクラップの買い付け）が速くなる。' : '鉄くずを1つ拾う。',
+        sink: e1 ? '鉄くず1つと塩酸2kgを、その場で溶かす（緑の液3kg）。押すたびに溶解を手伝い、しばらく溶解・反応槽が速くなる。' : '鉄くず1つと酸2kgを壺に沈める。3秒で緑の液が3kgできる。',
+        give: e1 ? '店先の客に売る。押すたびに呼び込みになり、しばらく客の足と配達が速くなる。' : '戸口の客に緑の液を渡す（1kg ' + C.walkinPrice + '円）。',
+        buyacid: '塩酸' + C.acidBuy.kg + 'kgを' + C.acidBuy.cost + '円で買う。お金が足りなくても、掛けの枠の中なら買える。',
+        hire: '人を1人呼ぶ。鉄くずを集めてくれる。',
+        setkama: '釜を据える。',
+        buycans: '空きポリ缶を' + C.canBuy.n + '個、' + C.canBuy.cost + '円で買う。'
+      }[id] || '';
+      h += '<div class="tw">' + desc + '</div>';
+      if (a.heat && e1) h += line('いまの手伝い', '×' + hm.toFixed(2), hm > 1.02 ? 'good' : 'dim') + '<div class="tw dim">速く押すほど上がる（最大 ×2）。手を止めると数秒で戻る。</div>';
+      if (id === 'pick' && s.res.scrap >= d.cap.scrap) h += '<div class="tw warn">鉄くず置き場がいっぱい（手伝いは効く）。</div>';
+      if (id === 'sink' && e1 && !(s.res.scrap >= 1 && s.res.hcl >= 2)) h += '<div class="tw warn">鉄くずか塩酸が足りないので、その場では溶かせない（手伝いは効く）。</div>';
+      if (id === 'give' && e1) h += line('待っている客', f(s.walkin) + 'kgぶん');
+      return h;
+    }
+    if (kind === 'bld') {
+      var b = E.BLD[id], o = s.bld[id], c = E.cost(s, b);
+      h += '<div class="tt">' + b.name + (o.n ? '（' + o.n + '）' : '') + '</div><div class="tw">' + b.desc + '</div>';
+      h += bldDetail(s, d, b);
+      var why = E.whyNot(s, b);
+      if (why && why !== 'お金・資材が足りない') h += '<div class="tw warn">' + why + '</div>';
+      else if (why) { var tt = timeTo(s, d, c); h += '<div class="tw">' + (tt === -1 ? '置き場が足りない（この値段はためられない）' : tt === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(tt) + ' で買える') + '</div>'; }
+      var pi = procOf(d, 'bld.' + id);
+      if (pi && o.n && pi.reason) h += '<div class="tw bad">いま：' + pi.reason + '</div>';
+      return h;
+    }
+    if (kind === 'job') {
+      var j = E.JOB[id], n = s.jobs[id] || 0;
+      h += '<div class="tt">' + j.name + '（' + n + '人）</div><div class="tw">' + j.desc + '</div>';
+      var per = mulOf(d, 'job.' + id) * (d.m['job.all'] ? 1 + d.m['job.all'] : 1) * eff(s, d) * (d.glob || 1);
+      if (j.out && !j.special) {
+        var ps = [], k;
+        for (k in j.out) ps.push(E.resName(s, k) + ' ' + rateS(j.out[k] * per));
+        var pin = []; for (k in j.in) pin.push(E.resName(s, k) + ' ' + rateS(j.in[k] * per));
+        h += line('1人で', (pin.length ? pin.join('・') + ' → ' : '') + ps.join('・'));
+      }
+      if (id === 'fill') h += line('1人で', rateS(j.rate * per) + '缶（手で詰める）');
+      if (id === 'deliver') h += line('歩いて1人で', rateS(j.rate * mulOf(d, 'walk') * mulOf(d, 'job.deliver')) + '缶') + '<div class="tw dim">車があれば、運転手として先に車へ乗る。</div>';
+      if (id === 'check') h += line('1人で', rateS(0.6 * per) + 'kg');
+      if (id === 'handle') h += line('1人で', '荷役 ' + f(j.rate * per));
+      if (j.slotsFrom) h += line('置ける人数', (d.slots[j.slotsFrom] || 0) + '人（釜1つに2人）', n > (d.slots[j.slotsFrom] || 0) ? 'bad' : '');
+      var pj = procOf(d, 'job.' + id);
+      if (pj && pj.reason && n) h += '<div class="tw bad">いま：' + pj.reason + '</div>';
+      if (s.flags.broke) h += '<div class="tw bad">給料が払えず、手が半分に鈍っている。</div>';
+      return h;
+    }
+    if (kind === 'tech' || kind === 'upg') {
+      var x = kind === 'tech' ? E.TECH[id] : E.UPG[id];
+      h += '<div class="tt">' + x.name + '</div><div class="tw">' + x.desc + '</div>';
+      if (!E.canPay(s, x.cost)) { var t3 = timeTo(s, d, x.cost); h += '<div class="tw">' + (t3 === -1 ? 'ためておける量が足りない' : t3 === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(t3) + ' で手が届く') + '</div>'; }
+      return h;
+    }
+    if (kind === 'flow') {
+      var nm = { in: '仕入れ', make: 'つくる', fill: '詰める', sell: '売る' }[id];
+      h += '<div class="tt">' + nm + '</div>';
+      if (id === 'in') {
+        h += '<div class="tw dim">原料を集めて、置き場にためる。</div>';
+        ['scrap', 'hcl', 'urea'].forEach(function (k) { if (s.flags['r_' + k]) h += line(E.resName(s, k), f(s.res[k]) + ' / ' + f(d.cap[k]) + '　' + (fr(d.rate[k] || 0) || '±0'), s.res[k] >= d.cap[k] * 0.9 ? 'warn' : s.res[k] < d.cap[k] * 0.05 ? 'bad' : ''); });
+      } else if (id === 'make') {
+        h += '<div class="tw dim">原料を溶かし、液にする。</div>';
+        (d.procs || []).forEach(function (p) { if (E.procStage(p.key) === 'make' && (p.want > 0 || p.reason)) h += line(p.name, Math.round(p.want > 0 ? p.rate / p.want * 100 : 0) + '%' + (p.reason ? '　' + p.reason : ''), p.reason ? 'bad' : ''); });
+      } else if (id === 'fill') {
+        h += '<div class="tw dim">液を缶に詰める。</div>' + line('詰めている', rateS(d.filled || 0, '缶') + '（詰められる ' + rateS(d.fillCap || 0, '缶') + '）') + line('空きポリ缶', f(s.res.can) + ' / ' + f(d.cap.can), s.res.can < 1 ? 'bad' : '');
+      } else if (id === 'sell') {
+        h += '<div class="tw dim">注文に応じて出荷する。左から：出荷 / 注文</div>';
+        if (d.walkinInc) h += line('店先の客', rateS(d.walkinInc, '円'));
+        (d.sales || []).forEach(function (x) { if (s.flags['r_' + x.stock] && x.dem > 0 && (x.p.kind !== 'bulk' || x.zone >= 0)) h += line(x.p.name, (fr(x.rate) || '0').replace('+', '') + ' / ' + (fr(x.dem) || '0').replace('+', ''), x.rate < x.dem * 0.9 ? 'warn' : ''); });
+      }
+      return h;
+    }
+    return '';
+  }
+  function mulOf(d, k) { return 1 + ((d.m && d.m[k]) || 0); }
+  /* 設備の中身：何を入れて何が出るか、何が増えるか */
+  function bldDetail(s, d, b) {
+    var h = '', p = b.proc, e = b.effects || {}, k, parts;
+    var mm = mulOf(d, 'bld.' + b.id) * (d.glob || 1), om = mulOf(d, 'bld.' + b.id + '.out');
+    if (p && p.out && (Object.keys(p.out).length || (p.in && Object.keys(p.in).length))) {
+      var ins = [], outs = [];
+      for (k in (p.in || {})) ins.push((k === 'money' ? 'お金 ' + rateS(p.in[k] * mm, '円') : E.resName(s, k) + ' ' + rateS(p.in[k] * mm)).replace('+', ''));
+      for (k in p.out) outs.push((k === 'money' ? 'お金 ' + rateS(p.out[k] * mm * om, '円') : E.resName(s, k) + ' ' + rateS(p.out[k] * mm * om)).replace('+', ''));
+      h += line('1つで', (ins.length ? ins.join('・') : '') + ' → ' + (outs.length ? outs.join('・') : '（処理する）'));
+    }
+    var need = [];
+    if (p && p.power) need.push('電力 ' + p.power);
+    if (p && p.operator) need.push('運転の人手 1人');
+    if (p && p.handling) need.push('荷役 ' + p.handling);
+    if (p && p.needs) need.push(E.BLD[p.needs].name);
+    if (e.needs) need.push(E.BLD[e.needs].name);
+    if (b.space) need.push('敷地 ' + b.space);
+    if (need.length) h += line('要るもの', need.join('・'));
+    parts = [];
+    if (e.cap) { var cs = []; for (k in e.cap) if (E.RES[k] && (s.flags['r_' + k] || k === 'research')) cs.push(E.resName(s, k) + ' +' + f(e.cap[k])); if (cs.length) parts.push('置ける量：' + cs.slice(0, 4).join('、') + (cs.length > 4 ? ' ほか' : '')); }
+    if (e.popCap) parts.push('住める人 +' + e.popCap);
+    if (e.land) parts.push('敷地 +' + e.land);
+    if (e.power) parts.push('電力 +' + f(e.power));
+    if (e.slots) parts.push('溶解の人手を ' + e.slots.dissolve + '人まで置ける');
+    if (e.transport) parts.push('運ぶ：' + f(e.transport.rate) + (e.transport.kind === 'bulk' ? 'kg' : '缶') + '/秒・' + D.zones[e.transport.zone].name + 'まで' + (e.transport.license ? '（' + E.LIC[e.transport.license].name + '）' : ''));
+    if (e.vent) parts.push('換気 +' + e.vent);
+    if (e.checkCap) parts.push('検査 +' + e.checkCap + 'kg/秒');
+    if (e.quality) parts.push('品質 +' + Math.round(e.quality * 100) + '%');
+    if (e.forklift) parts.push('荷役 +' + e.forklift + '（1台）');
+    if (e.crane) parts.push('荷役 +' + e.crane);
+    if (e.autohandle) parts.push('荷役 +' + e.autohandle);
+    if (e.filler) parts.push('充填 +' + e.filler + '缶/秒');
+    if (e.gmul) parts.push('すべての生産 ×' + e.gmul);
+    if (e.bigpack) parts.push('注文 +25%');
+    if (e.hclRecover) parts.push('排気の酸を回収');
+    if (parts.length) h += line('効き目', parts.join('<br>'));
+    return h;
+  }
 
   /* ============ 設定 ============ */
   function openModal(html, onMount) {

@@ -23,8 +23,9 @@ TM.Engine = (function () {
       v: D.version, seed: 12345, t: 0, started: Date.now(), saved: Date.now(), era: 0,
       res: {}, flags: {}, bld: {}, jobs: {}, pop: 0, popTimer: 0, lic: {}, training: [],
       techs: {}, upg: {}, manual: { dissolve: 0, step: 0 }, walkin: 0, returnPipe: 0, spentPipe: 0,
+      shown: {}, playT: 0, heat: { gather: 0, dissolve: 0, sell: 0 },
       log: [], storySeen: {}, evTimer: 600, evActive: null,
-      stats: { batches: 0, cansSold: 0, washed: 0, fecl3: 0, fecl3h: 0, forkUsed: 0, h2: 0, produced: {}, sold: {}, at: {}, earned: 0, offline: 0, clicks: 0 },
+      stats: { batches: 0, acidBuys: 0, cansSold: 0, washed: 0, fecl3: 0, fecl3h: 0, forkUsed: 0, h2: 0, produced: {}, sold: {}, at: {}, earned: 0, offline: 0, clicks: 0 },
       fin: { cur: { inc: {}, exp: {} }, hist: [], monthT: 0 },
       contracts: { offers: [], active: [], timer: 120, done: 0, seq: 0 },
       ending: 0, settings: { expo: false, anim: true, theme: 'auto' }
@@ -59,6 +60,7 @@ TM.Engine = (function () {
     if (c.res) for (k in c.res) if ((s.res[k] || 0) < c.res[k]) return false;
     if (c.bld) for (k in c.bld) if (!s.bld[k] || s.bld[k].n < c.bld[k]) return false;
     if (c.lic) for (k in c.lic) if ((s.lic[k] || 0) < c.lic[k]) return false;
+    if (c.job) for (k in c.job) if ((s.jobs[k] || 0) < c.job[k]) return false;
     if (c.stat) for (k in c.stat) if ((s.stats[k] || 0) < c.stat[k]) return false;
     if (c.circ !== undefined && (s._d ? s._d.circ : 0) < c.circ) return false;
     return true;
@@ -105,6 +107,41 @@ TM.Engine = (function () {
   }
   function upgVisible(s, u) { return !s.upg[u.id] && cond(s, u.unlock); }
   function jobVisible(s, j) { return cond(s, j.unlock); }
+
+  /* ---- 出し惜しみ：まだ買っていない選択肢は、一度に数個ずつしか見せない ----
+     見せたものは見せたまま。買う（研究する）と枠が空き、次が現れる。
+     しばらく（遊んでいる時間で FRESH 秒）放っておいたものは枠から外れ、次が一つ現れる。 */
+  var FRESH = 300;
+  function limits(s) { return s.era <= 1 ? 2 : 3; }
+  function bldShown(s, b) {
+    if (s.bld[b.id].n > 0) return true;
+    if (!cond(s, b.unlock)) return false;
+    return !!b.stages || s.shown['b:' + b.id] !== undefined;
+  }
+  function upgShown(s, u) { return upgVisible(s, u) && s.shown['u:' + u.id] !== undefined; }
+  function techShown(s, t) { return techAvailable(s, t) && s.shown['t:' + t.id] !== undefined; }
+  function admit(s, pre, list, costOf) {
+    var lim = limits(s), fresh = 0, cands = [];
+    list.forEach(function (x) {
+      var at = s.shown[pre + ':' + x.id];
+      if (at === undefined) cands.push(x);
+      else if (s.playT - at < FRESH) fresh++;
+    });
+    if (fresh >= lim || !cands.length) return;
+    cands.sort(function (a, b) { return costOf(a) - costOf(b); });
+    for (var i = 0; i < cands.length && fresh < lim; i++, fresh++) s.shown[pre + ':' + cands[i].id] = s.playT;
+  }
+  function refreshShown(s) {
+    if (s.era < 1) return;
+    admit(s, 'b', D.buildings.filter(function (b) { return !b.stages && s.bld[b.id].n === 0 && cond(s, b.unlock); }), function (b) { return b.cost.money || 0; });
+    admit(s, 'u', D.upgrades.filter(function (u) { return upgVisible(s, u); }), function (u) { return u.cost.money || 0; });
+    if (s.flags.research_known) admit(s, 't', D.techs.filter(function (t) { return techAvailable(s, t); }), function (t) { return t.cost.research || 0; });
+  }
+
+  /* ---- 手伝い：手作業のボタンを押すと、しばらくその工程が速くなる ---- */
+  var HEAT_TAU = 4, HEAT_MAX = 10, HEAT_K = 0.1;
+  function heatMul(s, k) { return 1 + HEAT_K * Math.min(HEAT_MAX, (s.heat && s.heat[k]) || 0); }
+  function addHeat(s, k) { if (!s.heat) s.heat = {}; s.heat[k] = Math.min(HEAT_MAX, (s.heat[k] || 0) + 1); }
 
   function assigned(s) { var n = 0; for (var k in s.jobs) n += s.jobs[k]; return n; }
   function idle(s) { return s.pop - assigned(s) - s.training.length; }
@@ -159,8 +196,16 @@ TM.Engine = (function () {
     if (d.gmul > 1e55) d.gmul = 1e55; /* 数が大きくなりすぎないように */
     var glob = (1 + d.globalB) * d.gmul * mul(m, 'global') * (s.era >= 4 ? 1 + d.circ * (D.circBonus || 1) : 1);
     d.glob = glob;
-    d.rate = {}; d.procs = [];
+    d.rate = {}; d.procs = []; d.led = {};
     var before = {}; for (var r in s.res) before[r] = s.res[r];
+    function led(k, name, amt) {
+      if (!amt || dt <= 0) return;
+      var L = d.led[k] || (d.led[k] = {});
+      L[name] = (L[name] || 0) + amt / dt;
+    }
+    d.ledf = led;
+    if (!s._away) s.playT = (s.playT || 0) + dt;
+    for (var hk in s.heat) { s.heat[hk] *= Math.exp(-dt / HEAT_TAU); if (s.heat[hk] < 0.01) s.heat[hk] = 0; }
 
     /* ---- 電力 ---- */
     var pDem = 0;
@@ -217,32 +262,38 @@ TM.Engine = (function () {
     /* ---- 汎用プロセス ---- */
     function run(key, name, inp, out, units, reasonPre, spill) {
       /* units: 1秒あたりの実行量 × dt を掛ける前 */
-      var want = units * dt, ratio = 1, reason = reasonPre || null, k;
-      if (want <= 0) { d.procs.push({ key: key, name: name, inp: inp, out: out, rate: 0, want: units, eff: 0, reason: reason || '停止' }); return 0; }
+      var want = units * dt, ratio = 1, reason = reasonPre || null, k, wk = null, wt = reasonPre ? 'other' : null;
+      if (want <= 0) { d.procs.push({ key: key, name: name, inp: inp, out: out, rate: 0, want: units, eff: 0, reason: reason || '停止', wt: 'other' }); return 0; }
       for (k in inp) {
         var need = inp[k] * want;
         var avail = k === 'money' ? s.res.money + d.creditLimit : s.res[k];
-        if (need > 0 && avail < need) { var rr = Math.max(0, avail) / need; if (rr < ratio) { ratio = rr; reason = '入力不足：' + resName(s, k); } }
+        if (need > 0 && avail < need) { var rr = Math.max(0, avail) / need; if (rr < ratio) { ratio = rr; reason = '入力不足：' + resName(s, k); wk = k; wt = 'in'; } }
       }
       for (k in out) {
         if (out[k] <= 0 || (spill && spill.indexOf(k) >= 0)) continue;
         var space = d.cap[k] - s.res[k], prod = out[k] * want;
-        if (prod > space) { var r2 = Math.max(0, space) / prod; if (r2 < ratio) { ratio = r2; reason = '置き場が満杯：' + resName(s, k); } }
+        if (prod > space) { var r2 = Math.max(0, space) / prod; if (r2 < ratio) { ratio = r2; reason = '置き場が満杯：' + resName(s, k); wk = k; wt = 'full'; } }
       }
-      for (k in inp) { s.res[k] -= inp[k] * want * ratio; if (k === 'money') finExp(s, name, inp[k] * want * ratio); }
-      for (k in out) { s.res[k] += out[k] * want * ratio; s.stats.produced[k] = (s.stats.produced[k] || 0) + out[k] * want * ratio; if (k === 'money') finInc(s, name, out[k] * want * ratio); }
-      d.procs.push({ key: key, name: name, inp: inp, out: out, rate: units * ratio, want: units, eff: ratio, reason: ratio < 0.999 ? reason : (reasonPre || null) });
+      for (k in inp) { s.res[k] -= inp[k] * want * ratio; led(k, name, -inp[k] * want * ratio); if (k === 'money') finExp(s, name, inp[k] * want * ratio); }
+      for (k in out) { s.res[k] += out[k] * want * ratio; led(k, name, out[k] * want * ratio); s.stats.produced[k] = (s.stats.produced[k] || 0) + out[k] * want * ratio; if (k === 'money') finInc(s, name, out[k] * want * ratio); }
+      var ok = ratio >= 0.999;
+      d.procs.push({ key: key, name: name, inp: inp, out: out, rate: units * ratio, want: units, eff: ratio, reason: ok ? (reasonPre || null) : reason, wk: ok ? null : wk, wt: ok ? (reasonPre ? 'other' : null) : wt });
       return ratio;
     }
 
     /* 店売り（壺の時代から） */
+    d.walkinInc = 0;
     if (s.flags.sold) {
-      s.walkin = Math.min(C.walkinCap * mul(m, 'shop'), s.walkin + C.walkinRefill * mul(m, 'shop') * dt);
+      var hs = heatMul(s, 'sell');
+      s.walkin = Math.min(C.walkinCap * mul(m, 'shop'), s.walkin + C.walkinRefill * mul(m, 'shop') * hs * dt);
       if (s.era >= 1) {
-        var sell = Math.min(s.walkin, s.res.fecl2, C.walkinRefill * (m.shop ? 2 : 0.6) * dt);
-        if (sell > 0) { s.walkin -= sell; s.res.fecl2 -= sell; var inc = sell * C.walkinPrice; s.res.money += inc; finInc(s, '店売り', inc); }
+        var sell = Math.min(s.walkin, s.res.fecl2, C.walkinRefill * (m.shop ? 2 : 1) * hs * dt);
+        if (sell > 0) {
+          s.walkin -= sell; s.res.fecl2 -= sell; var inc = sell * C.walkinPrice; s.res.money += inc; finInc(s, '店売り', inc);
+          led('fecl2', '店先の客', -sell); led('money', '店売り', inc); d.walkinInc = inc / dt;
+        }
       }
-      if (s.walkin < 0.5 && s.res.fecl2 >= 20 && s.era >= 1) s.flags.walkin_empty = true;
+      if (s.walkin < 0.5 && s.res.fecl2 >= 20 && s.era >= 1) { s.flags.walkin_empty = true; if (s.upg.shopsign) s.flags.walkin_empty2 = true; }
     }
 
     /* 配属（汎用の入出力） */
@@ -251,7 +302,8 @@ TM.Engine = (function () {
       var w = s.jobs[j.id] || 0; if (!w) return;
       if (j.slotsFrom) w = Math.min(w, d.slots[j.slotsFrom] || 0);
       var rate = w * mul(m, 'job.' + j.id) * jobAll * glob;
-      if (j.fumes) rate *= d.ventEff;
+      if (j.id === 'gather') rate *= heatMul(s, 'gather');
+      if (j.fumes) rate *= d.ventEff * heatMul(s, 'dissolve');
       var r = run('job.' + j.id, j.name, j.in, j.out, rate, (j.slotsFrom && s.jobs[j.id] > w) ? '釜が足りない' : null);
       if (j.fumes) fumesNow += j.out.fecl2 * rate * r;
       if (j.id === 'wash') s.stats.washed += j.out.can * rate * r * dt;
@@ -269,6 +321,8 @@ TM.Engine = (function () {
       if (p.power) { eff *= d.powerEff; if (d.powerEff < 0.999) reason = reason || '電力不足'; }
       if (p.handling) { eff *= d.handEff; if (d.handEff < 0.999) reason = reason || '荷役が足りない'; }
       if (p.fumes) eff *= d.ventEff;
+      if (p.fumes && p.out.fecl2) eff *= heatMul(s, 'dissolve');
+      if (b.id === 'scrapbuy' || b.id === 'scrapyard') eff *= heatMul(s, 'gather');
       var outM = mul(m, 'bld.' + b.id + '.out');
       var outs = p.out;
       if (outM !== 1) { outs = {}; for (var k in p.out) outs[k] = p.out[k] * outM; }
@@ -281,7 +335,7 @@ TM.Engine = (function () {
     /* スクラバーで回収した希塩酸、水素の回収 */
     if (d.hclRecoverEff === undefined) d.hclRecoverEff = 0;
     var hclRec = sumEffect(s, 'hclRecover') * d.powerEff;
-    if (hclRec > 0 && fumesNow > 0) s.res.hcl = Math.min(d.cap.hcl, s.res.hcl + fumesNow * Math.min(0.3, hclRec) * dt * 0.66);
+    if (hclRec > 0 && fumesNow > 0) { var hr = Math.min(d.cap.hcl - s.res.hcl, fumesNow * Math.min(0.3, hclRec) * dt * 0.66); if (hr > 0) { s.res.hcl += hr; led('hcl', 'スクラバーの回収', hr); } }
     var h2cap = sumEffect(s, 'h2rec') * d.powerEff * glob;
     s.stats.h2 += fumesNow * 0.02 * dt;
     if (h2cap > 0 && RES.h2) {
@@ -302,6 +356,7 @@ TM.Engine = (function () {
       var share = checkCap * dt * (Math.max(0, s.res[l.wait]) / waitTot);
       var mv = Math.min(share, s.res[l.wait], Math.max(0, d.cap[l.ok] - s.res[l.ok]));
       s.res[l.wait] -= mv; s.res[l.ok] += mv; checked += mv;
+      led(l.wait, '検査', -mv); led(l.ok, '検査', mv);
     });
     d.checkUsed = dt > 0 ? checked / dt : 0;
 
@@ -314,14 +369,15 @@ TM.Engine = (function () {
     /* 戻り缶・使用済み液 */
     var retMove = s.returnPipe * Math.min(1, 0.004 * dt);
     s.returnPipe -= retMove;
-    if (s.res.dcan !== undefined) s.res.dcan = Math.min(d.cap.dcan, s.res.dcan + retMove);
+    if (s.res.dcan !== undefined) { var rmv = Math.min(retMove, d.cap.dcan - s.res.dcan); if (rmv > 0) { s.res.dcan += rmv; led('dcan', '客先から戻る缶', rmv); } }
     if (RES.spent) {
       var spMove = s.spentPipe * Math.min(1, 0.004 * dt);
-      s.spentPipe -= spMove; s.res.spent = Math.min(d.cap.spent, s.res.spent + spMove);
+      s.spentPipe -= spMove; var smv = Math.min(spMove, d.cap.spent - s.res.spent); if (smv > 0) { s.res.spent += smv; led('spent', '客先から戻る液', smv); }
     }
 
     /* 排水 */
     var allow = (D.consts.wasteFree || 0.05) * dt;
+    led('waste', 'そのまま流せる分', -Math.min(allow, s.res.waste));
     s.res.waste = Math.max(0, s.res.waste - allow);
     if (s.res.waste >= d.cap.waste * 0.95) s.flags.waste_full = true;
 
@@ -332,14 +388,16 @@ TM.Engine = (function () {
     /* 給料は手持ちから払う（借金にはしない）。払えないと手が鈍る */
     var sal = s.pop * C.salary * eraSal * mul(m, 'salary') * dt;
     var paid = Math.min(sal, Math.max(0, s.res.money));
-    s.res.money -= paid; finExp(s, '給与', paid);
+    s.res.money -= paid; finExp(s, '給与', paid); led('money', '給料', -paid);
+    d.salary = dt > 0 ? sal / dt : 0;
     if (paid < sal * 0.999 && sal > 0) s.flags.broke = true; else if (s.res.money > 0) s.flags.broke = false;
     if (s.res.money < -d.creditLimit) s.res.money = -d.creditLimit;
     if (s.res.money < 0) s.flags.oncredit = true;
     s.incAvg = (s.incAvg || 0) + ((d.income || 0) - (s.incAvg || 0)) * Math.min(1, dt / 600);
     if (s.era >= 1 && s.pop < d.popCap && s.flags.hired && !s.flags.broke && s.res.money > 0) {
       s.popTimer += dt * mul(m, 'arrival');
-      var need = C.arrivalSec * (1 + s.pop * 0.02);
+      var need = C.arrivalSec * (1 + s.pop * 0.02) * (s.pop < 8 ? 0.6 : 1);
+      d.arrivalLeft = (need - s.popTimer) / mul(m, 'arrival');
       if (s.popTimer >= need) { s.popTimer = 0; s.pop++; if (s.pop <= 12 || s.pop % 10 === 0) addLog(s, '人がひとり増えた。（' + s.pop + '人）', 'dim'); }
     }
 
@@ -377,6 +435,8 @@ TM.Engine = (function () {
 
     /* 敷地 */
     if (d.used >= d.land * 0.85 && s.era >= 1) s.flags.space_tight = true;
+    if (s.era >= 1 && (s.res.scrap >= d.cap.scrap * 0.99 || s.res.hcl >= d.cap.hcl * 0.99)) s.flags.raw_full = true;
+    if (!s._away) refreshShown(s);
 
     /* 暦・月次・物語・出来事 */
     s.fin.monthT += dt;
@@ -461,10 +521,10 @@ TM.Engine = (function () {
       var amt = Math.min(budget * c.w / wsum, c.max);
       if (c.p.container === 'can') amt = Math.min(amt, s.res.can);
       if (amt <= 0) return;
-      s.res[c.p.liquid] -= amt * c.kg;
-      if (c.p.container === 'can') s.res.can -= amt;
-      else if (c.p.containerCost) { var cc = amt * c.p.containerCost; s.res.money -= cc; finExp(s, '容器', cc); }
-      s.res[c.p.id] += amt; filled += amt;
+      s.res[c.p.liquid] -= amt * c.kg; d.ledf(c.p.liquid, '充填', -amt * c.kg);
+      if (c.p.container === 'can') { s.res.can -= amt; d.ledf('can', '充填', -amt); }
+      else if (c.p.containerCost) { var cc = amt * c.p.containerCost; s.res.money -= cc; finExp(s, '容器', cc); d.ledf('money', '容器', -cc); }
+      s.res[c.p.id] += amt; filled += amt; d.ledf(c.p.id, '充填', amt);
     });
     d.filled = dt > 0 ? filled / dt : 0;
     /* ラインのクレーム（重量検査が抜き取りのとき） */
@@ -513,6 +573,7 @@ TM.Engine = (function () {
     });
     var walkers = autoDrv ? 0 : Math.max(0, drivers - used);
     canRate += walkers * JOB.deliver.rate * mul(m, 'walk') * mul(m, 'job.deliver');
+    canRate *= heatMul(s, 'sell');
     canZone += (m.zone || 0); bulkZone = bulkZone >= 0 ? bulkZone + (m.zone || 0) : -1;
     var maxZ = D.zones.length - 1;
     return { canRate: canRate * mul(m, 'transport'), bulkRate: bulkRate * mul(m, 'transport') * mul(m, 'bulk'),
@@ -567,8 +628,8 @@ TM.Engine = (function () {
       var price = priceOf(s, d, m, p, it.zone);
       var inc = amt * price;
       if (amt > 0) {
-        s.res[it.stock] -= amt;
-        s.res.money += inc; totalInc += inc;
+        s.res[it.stock] -= amt; d.ledf(it.stock, '出荷', -amt);
+        s.res.money += inc; totalInc += inc; d.ledf('money', p.kind === 'bulk' ? 'ローリー出荷' : p.kind === 'direct' ? '引き取り' : '缶の出荷', inc);
         finInc(s, p.name, inc);
         s.stats.sold[p.id] = (s.stats.sold[p.id] || 0) + amt;
         if (p.kind === 'bulk') s.stats.lorryUsed = 1;
@@ -579,7 +640,7 @@ TM.Engine = (function () {
         } else s.res.credit += amt * (p.creditPer || 0.001) * mul(m, 'credit');
         if (p.spent && s.flags.spent_on) s.spentPipe += amt * (p.kind === 'can' ? 20 : 1) * p.spent;
       }
-      d.sales.push({ p: p, zone: it.zone, dem: it.dem, rate: dt > 0 ? amt / dt : 0, price: price, cap: it.rate });
+      d.sales.push({ p: p, zone: it.zone, dem: it.dem, rate: dt > 0 ? amt / dt : 0, price: price, cap: it.rate, stock: it.stock });
     });
     d.income = dt > 0 ? totalInc / dt : 0;
   }
@@ -608,9 +669,9 @@ TM.Engine = (function () {
         /* 継続受託：毎秒の収入と消費 */
         var ok = 1, k;
         for (k in tpl.use) { var need = tpl.use[k] * c.scale * dt; if (need > 0 && s.res[k] < need) ok = Math.min(ok, s.res[k] / need); }
-        for (k in tpl.use) s.res[k] -= tpl.use[k] * c.scale * dt * ok;
+        for (k in tpl.use) { s.res[k] -= tpl.use[k] * c.scale * dt * ok; d.ledf(k, '受託', -tpl.use[k] * c.scale * dt * ok); }
         var inc = tpl.income * c.scale * ok * glob * dt * mul(m, 'contract');
-        s.res.money += inc; finInc(s, '受託', inc);
+        s.res.money += inc; finInc(s, '受託', inc); d.ledf('money', '受託', inc);
         c.eff = ok;
         return;
       }
@@ -683,35 +744,52 @@ TM.Engine = (function () {
   }
 
   /* ================= プレイヤーの操作 ================= */
+  /* 手作業。時代1からは、押すたびにその工程を「手伝う」（しばらく速くなる） */
   var actions = {
     grope: { vis: function (s) { return !s.flags.groped; }, run: function (s) { s.flags.groped = true; addLog(s, '冷たい。釘が一本。'); } },
     pick: {
-      vis: function (s) { return s.flags.groped; },
-      label: '拾う',
+      vis: function (s) { return s.flags.groped && s.era < 3; },
+      label: function (s) { return s.era >= 1 ? '鉄くずを拾う' : '拾う'; },
+      heat: 'gather',
       run: function (s) {
         var d = derive(s);
+        if (s.era >= 1) addHeat(s, 'gather');
         if (s.res.scrap >= d.cap.scrap) return;
-        s.res.scrap += 1 * (s.era >= 1 ? mul(d.m, 'job.gather') : 1);
+        s.res.scrap = Math.min(d.cap.scrap, s.res.scrap + 1 * (s.era >= 1 ? mul(d.m, 'job.gather') : 1));
         if (!s.flags.picked) { s.flags.picked = true; addLog(s, '鼻を刺す匂い。壺がある。'); }
       }
     },
     sink: {
-      vis: function (s) { return s.flags.picked; },
-      label: '沈める',
+      vis: function (s) { return s.flags.picked && s.era < 3; },
+      label: function (s) { return s.era >= 1 ? (s.flags.acid_known ? '塩酸で溶かす' : '酸で溶かす') : '沈める'; },
+      heat: 'dissolve',
       busy: function (s) { return s.manual.dissolve > 0; },
-      ok: function (s) { return s.res.scrap >= 1 && s.res.hcl >= 2 && s.manual.dissolve <= 0; },
+      can: function (s) { return s.res.scrap >= 1 && s.res.hcl >= 2; },
+      ok: function (s) { return s.era >= 1 || (actions.sink.can(s) && s.manual.dissolve <= 0); },
       run: function (s) {
         if (!actions.sink.ok(s)) return;
+        if (s.era >= 1) {
+          /* 待たずにその場で溶かし、溶解の工程も手伝う */
+          addHeat(s, 'dissolve');
+          if (!actions.sink.can(s)) return;
+          var d = derive(s);
+          s.res.scrap -= C.manualBatch.scrap; s.res.hcl -= C.manualBatch.hcl;
+          s.res.fecl2 = Math.min(d.cap.fecl2 + 3, s.res.fecl2 + C.manualBatch.fecl2 * mul(d.m, 'manual.dissolve'));
+          s.stats.batches++;
+          return;
+        }
         s.res.scrap -= C.manualBatch.scrap; s.res.hcl -= C.manualBatch.hcl;
         s.manual.dissolve = C.manualDissolveSec;
         if (!s.flags.sunk) { s.flags.sunk = true; addLog(s, '泡が立つ。釘が、細くなっていく。'); }
       }
     },
     give: {
-      vis: function (s) { return s.flags.knock; },
-      label: '渡す',
-      ok: function (s) { return s.res.fecl2 >= 1 && s.walkin >= 1; },
+      vis: function (s) { return s.flags.knock && s.era < 3; },
+      label: function (s) { return s.era >= 2 ? '売り込みに回る' : s.era >= 1 ? '店先で売る' : '渡す'; },
+      heat: 'sell',
+      ok: function (s) { return s.era >= 1 || (s.res.fecl2 >= 1 && s.walkin >= 1); },
       run: function (s) {
+        if (s.era >= 1) addHeat(s, 'sell');
         var amt = Math.min(s.res.fecl2, s.walkin); if (amt <= 0) return;
         s.res.fecl2 -= amt; s.walkin -= amt;
         var inc = amt * C.walkinPrice; s.res.money += inc; finInc(s, '店売り', inc);
@@ -719,7 +797,7 @@ TM.Engine = (function () {
       }
     },
     buyacid: {
-      vis: function (s) { return s.flags.sold; },
+      vis: function (s) { return s.flags.sold && s.era < 3; },
       label: function (s) { return s.flags.acid_known ? '塩酸を買う' : '酸を買う'; },
       ok: function (s) { var d = derive(s); return (s.res.money + creditLimit(s) >= C.acidBuy.cost || stuck(s)) && s.res.hcl < d.cap.hcl; },
       cost: function () { return { money: C.acidBuy.cost }; },
@@ -728,7 +806,7 @@ TM.Engine = (function () {
         if (s.res.money + creditLimit(s) < C.acidBuy.cost && !s.flags.tab) { s.flags.tab = true; addLog(s, '店の主人が「ツケでいいよ」と塩酸を分けてくれた。'); }
         s.res.money -= C.acidBuy.cost; finExp(s, '仕入れ', C.acidBuy.cost);
         s.res.hcl = Math.min(d.cap.hcl, s.res.hcl + C.acidBuy.kg);
-        s.flags.bought_acid = true;
+        s.flags.bought_acid = true; s.stats.acidBuys = (s.stats.acidBuys || 0) + 1;
       }
     },
     hire: {
@@ -754,7 +832,7 @@ TM.Engine = (function () {
       }
     },
     buycans: {
-      vis: function (s) { return s.flags.cans_known; },
+      vis: function (s) { return s.flags.cans_known && s.era < 2; },
       label: 'ポリ缶を買う（5個）',
       cost: function () { return { money: C.canBuy.cost }; },
       ok: function (s) { var d = derive(s); return s.res.money >= C.canBuy.cost && s.res.can + C.canBuy.n <= d.cap.can; },
@@ -764,6 +842,7 @@ TM.Engine = (function () {
       }
     }
   };
+  function actLabel(s, id) { var a = actions[id]; return id === 'grope' ? '手探りする' : typeof a.label === 'function' ? a.label(s) : a.label; }
 
   function doAction(s, id) {
     var a = actions[id]; if (!a) return;
@@ -777,14 +856,20 @@ TM.Engine = (function () {
     checkStory(s);
   }
 
-  function build(s, id) {
-    var b = BLD[id]; if (!b || !bldVisible(s, b)) return false;
-    if (b.stages && s.bld[id].n >= b.stages) return false;
-    if (b.max && s.bld[id].n >= b.max) return false;
+  /* 建てられない理由（建てられるなら ''） */
+  function whyNot(s, b) {
+    if (!bldShown(s, b)) return 'まだ見えていない';
+    if (b.stages && s.bld[b.id].n >= b.stages) return '完成済み';
+    if (b.max && s.bld[b.id].n >= b.max) return 'これ以上は置けない';
     var d = derive(s);
-    if ((b.space || 0) > 0 && d.used + b.space > d.land) return false;
-    if (b.buildCond && !cond(s, b.buildCond)) return false;
-    var c = cost(s, b); if (!canPay(s, c)) return false;
+    if ((b.space || 0) > 0 && d.used + b.space > d.land) return '敷地が足りない';
+    if (b.buildCond && !cond(s, b.buildCond)) return '条件：循環率' + Math.round((b.buildCond.circ || 0) * 100) + '%以上';
+    if (!canPay(s, cost(s, b))) return 'お金・資材が足りない';
+    return '';
+  }
+  function build(s, id) {
+    var b = BLD[id]; if (!b || whyNot(s, b)) return false;
+    var c = cost(s, b);
     pay(s, c, b.stages ? '大型設備' : '設備');
     s.bld[id].n++;
     if (b.proc && b.proc.toggle) s.bld[id].on++;
@@ -809,14 +894,14 @@ TM.Engine = (function () {
     b.on = U.clamp(b.on + delta, 0, b.n);
   }
   function research(s, id) {
-    var t = TECH[id]; if (!t || !techAvailable(s, t) || !canPay(s, t.cost)) return false;
+    var t = TECH[id]; if (!t || !techShown(s, t) || !canPay(s, t.cost)) return false;
     pay(s, t.cost, '研究'); s.techs[id] = true; s.stats.at['tech_' + id] = s.t;
     if (t.setFlag) s.flags[t.setFlag] = true;
     if (t.log) addLog(s, t.log, 'story');
     return true;
   }
   function buyUpg(s, id) {
-    var u = UPG[id]; if (!u || !upgVisible(s, u) || !canPay(s, u.cost)) return false;
+    var u = UPG[id]; if (!u || !upgShown(s, u) || !canPay(s, u.cost)) return false;
     pay(s, u.cost, '改善'); s.upg[id] = true; return true;
   }
   function setJob(s, id, delta) {
@@ -824,6 +909,18 @@ TM.Engine = (function () {
     if (delta > 0) delta = Math.min(delta, idle(s));
     if (delta < 0) delta = Math.max(delta, -s.jobs[id]);
     s.jobs[id] += delta;
+  }
+  /* 配属を1人増やす。手すきがいなければ、一番人の多い配属から1人まわす */
+  function moveJob(s, id) {
+    var j = JOB[id]; if (!j || !jobVisible(s, j)) return false;
+    if (idle(s) < 1) {
+      var from = null;
+      for (var k in s.jobs) if (k !== id && s.jobs[k] > 0 && (!from || s.jobs[k] > s.jobs[from])) from = k;
+      if (!from) return false;
+      s.jobs[from]--;
+    }
+    s.jobs[id]++;
+    return true;
   }
   function train(s, id) {
     var L = LIC[id]; if (!L || !cond(s, L.unlock)) return false;
@@ -847,6 +944,140 @@ TM.Engine = (function () {
     var K = s.contracts; K.offers = K.offers.filter(function (o) { return o.id !== oid; });
   }
 
+  /* ================= 流れの診断（どこが詰まっているか） =================
+     仕入れ → つくる → 詰める → 売る。下流から見て、たまっている所のすぐ後ろが詰まりの元。 */
+  var IN_PROCS = { 'job.gather': 1, 'bld.scrapbuy': 1, 'bld.acidbuy': 1, 'bld.acidtank': 1, 'bld.scrapyard': 1, 'bld.ureabuy': 1, 'bld.ureasyn': 1 };
+  function procStage(key) {
+    if (IN_PROCS[key]) return 'in';
+    if (key === 'job.dissolve') return 'make';
+    if (key.indexOf('bld.') === 0) { var b = BLD[key.slice(4)]; if (b && b.group === '製造') return 'make'; }
+    return 'other';
+  }
+  function frac(s, d, k) { var c = d.cap[k]; return c && c !== Infinity && c > 0 ? s.res[k] / c : 0; }
+  function sumLed(d, k, sign) { var L = d.led && d.led[k], t = 0; if (L) for (var n in L) if (L[n] * sign > 0) t += L[n]; return t; }
+
+  function diagnose(s, d) {
+    if (!d || !d.procs || s.era < 1) return null;
+    var F = D.flow, hasFill = !!s.flags.cans_known, lots = {};
+    (D.lots || []).forEach(function (l) { lots[l.wait] = l.ok; });
+    var main = null;
+    function set(stage, title, detail, fixKey, extra) { if (!main) main = { stage: stage, title: title, detail: detail, fixKey: fixKey, extra: extra || null }; }
+
+    /* 1. 売る：売り物が置き場いっぱい */
+    var full = null, transport = false, handling = d.handEff < 0.9;
+    (d.sales || []).forEach(function (x) {
+      if (x.p.kind === 'bulk' && x.zone < 0) return;
+      if (!s.flags['r_' + x.stock] || frac(s, d, x.stock) < 0.9) return;
+      if (x.p.kind === 'can' && !hasFill) return;
+      /* 売上の小さい品は気にしない（注文で頭打ちなのは、よほど大きい品だけ） */
+      var tcap = x.cap < x.dem * 0.98;
+      if (x.dem * x.price < (tcap ? 0.03 : 0.15) * (d.income || 0)) return;
+      if (x.p.kind !== 'can' && lots[x.stock] === undefined && D.products.some(function (q) { return q.kind === 'can' && q.liquid === x.stock && frac(s, d, q.id) < 0.9 && s.flags['r_' + q.id]; }) && x.cap >= x.dem * 0.98) return;
+      if (!full) full = x;
+      if (x.cap < x.dem * 0.98) transport = true;
+    });
+    if (!hasFill && frac(s, d, 'fecl2') >= 0.9 && s.flags.sold) full = full || { walkin: true };
+    if (full) {
+      var nm = full.walkin ? resName(s, 'fecl2') : resName(s, full.stock);
+      if (handling && !full.walkin) set('sell', '荷役が追いつかない', nm + 'が置き場いっぱい。運び出す手（荷役）が足りない。', 'handling');
+      else if (full.walkin) set('sell', '店先の客が足りない', nm + 'が置き場いっぱい。店先に来る客だけでは売り切れない。', 'walkin');
+      else if (transport) set('sell', '運ぶのが追いつかない', nm + 'が置き場いっぱい。注文はあるのに、運ぶ手・車が足りない。', full.p.kind === 'bulk' ? 'bulk' : 'transport');
+      else set('sell', '注文が足りない', nm + 'が置き場いっぱい。届く範囲の注文は、もう出し切っている。', 'demand');
+    }
+    /* 2. 詰める：液はあるのに缶入りが増えない */
+    if (!main && hasFill) {
+      var canShort = false, fillShort = null;
+      D.products.forEach(function (p) {
+        if (p.kind !== 'can' || !s.flags['r_' + p.liquid]) return;
+        if (p.license && !(s.lic[p.license] > 0)) return;
+        if (p.unlock && !cond(s, p.unlock)) return;
+        if (frac(s, d, p.liquid) < 0.9 || frac(s, d, p.id) >= 0.9) return;
+        var sx = null; (d.sales || []).forEach(function (x) { if (x.p.id === p.id) sx = x; });
+        if (sx && sx.dem * sx.price < 0.03 * (d.income || 0)) return;
+        if (p.container === 'can' && s.res.can < 1) canShort = true; else fillShort = fillShort || p;
+      });
+      if (canShort) set('fill', '空き缶が足りない', '液はあるのに、詰める缶がない。', 'cans');
+      else if (fillShort) set('fill', '詰めるのが追いつかない', resName(s, fillShort.liquid) + 'が置き場いっぱい。缶に詰める手が足りない。', 'fill');
+    }
+    /* 3. 仕入れ・つくる：つくる工程が止まっている理由 */
+    var starved = null, other = null, waitFull = null;
+    d.procs.forEach(function (p) {
+      if (procStage(p.key) !== 'make' || !p.wt || p.want <= 0) return;
+      if (p.wt === 'in' && p.wk) { if (!starved) starved = p; }
+      else if (p.wt === 'full' && p.wk && lots[p.wk] !== undefined) { if (!waitFull) waitFull = p; }
+      else if (p.wt === 'other' && p.reason !== '停止中' && p.reason !== '停止') { if (!other) other = p; }
+    });
+    if (!main && waitFull) set('make', '検査が追いつかない', resName(s, waitFull.wk) + 'がたまっている。検査しないと売り物にならない。', 'check');
+    if (!main && starved) {
+      var k = starved.wk, raw = F.raw.indexOf(k) >= 0;
+      if (k === 'money') set('in', 'お金が足りない', starved.name + 'に払うお金が足りない（掛けの枠も使い切った）。', 'money');
+      else if (raw) set('in', resName(s, k) + 'が足りない', starved.name + 'が' + resName(s, k) + '待ちで止まりがち。', k);
+      else set('make', resName(s, k) + 'が足りない', starved.name + 'が' + resName(s, k) + '待ち。手前の工程を増やす。', F.fixes[k] ? k : 'make');
+    }
+    if (!main && other) {
+      var r = other.reason, fk = r.indexOf('釜') >= 0 ? 'slots' : r.indexOf('運転') >= 0 ? 'operator' : r.indexOf('電力') >= 0 ? 'power' : r.indexOf('荷役') >= 0 ? 'handling' : 'make';
+      set('make', r, other.name + '：' + r + '。', fk);
+    }
+    if (!main && d.ventEff < 0.85) set('make', '換気が足りない', '酸の霧がこもって、溶かす手が鈍っている。', 'vent');
+    if (!main && d.powerEff < 0.95) set('make', '電力が足りない', '電気を使う設備がすべて遅くなっている。', 'power');
+    /* 4. 原料がたまっている → つくる手が足りない */
+    if (!main && (frac(s, d, 'scrap') >= 0.9 || frac(s, d, 'hcl') >= 0.9)) {
+      var idleSlots = (d.slots.dissolve || 0) - (s.jobs.dissolve || 0);
+      set('make', 'つくる手が足りない', '原料がたまっている。溶かす量を増やせば、そのまま売り物が増える。', idleSlots > 0 ? 'make' : 'slots');
+    }
+    /* 5. どこもたまっていない：売れる分だけつくれているか */
+    if (!main) {
+      var short = false;
+      (d.sales || []).forEach(function (x) { if (x.rate < x.dem * 0.7 && s.res[x.stock] < (x.p.kind === 'can' ? 1 : 20) && s.flags['r_' + x.stock]) short = true; });
+      if (!hasFill && s.res.fecl2 < 3 && s.walkin > 3) short = true;
+      if (short) {
+        var rawLow = frac(s, d, 'scrap') < 0.1 || frac(s, d, 'hcl') < 0.1;
+        if (rawLow) set('in', '原料が足りない', '注文に対して、つくる量が足りない。原料が細っている。', frac(s, d, 'hcl') < frac(s, d, 'scrap') ? 'hcl' : 'scrap');
+        else set('make', 'つくる量が足りない', '売れる分だけつくれていない。', 'make');
+      } else set('ok', '流れは順調', '詰まっている所はない。どこかを広げれば、全体が伸びる。', null);
+    }
+    /* 各段の数字 */
+    var makeOut = 0;
+    d.procs.forEach(function (p) { if (procStage(p.key) === 'make') for (var o in p.out) if (F.liquid.indexOf(o) >= 0) makeOut += p.out[o] * p.rate; });
+    var inScrap = sumLed(d, 'scrap', 1), inHcl = sumLed(d, 'hcl', 1);
+    var stages = [
+      { id: 'in', name: '仕入れ', v: s.era >= 3 ? [['塩酸', inHcl]] : [['鉄くず', inScrap], ['塩酸', inHcl]] },
+      { id: 'make', name: 'つくる', v: [['液', makeOut, 'kg']] }
+    ];
+    if (hasFill) stages.push({ id: 'fill', name: '詰める', v: [['', d.filled || 0, '缶']] });
+    stages.push({ id: 'sell', name: '売る', v: [['', (d.income || 0) + (d.walkinInc || 0), '円']] });
+    return { stages: stages, main: main };
+  }
+
+  /* 手当ての候補（今見えていて、効きそうなもの） */
+  function fixesFor(s, d, key) {
+    var list = (D.flow.fixes[key] || []), hands = [], gear = [];
+    var reach = Math.max(1, s.res.money) * 4 + Math.max(0, d.income || 0) * 900;
+    list.forEach(function (f) {
+      var kind = f[0], id = f[1];
+      if (kind === 'job') {
+        if (!JOB[id] || !jobVisible(s, JOB[id])) return;
+        if (id === 'dissolve' && (d.slots.dissolve || 0) <= (s.jobs.dissolve || 0)) return;
+        if (id === 'fill' && s.bld.line && s.bld.line.n && m2(d, 'auto.line')) return;
+        if (id === 'operate' && m2(d, 'auto.operate')) return;
+        hands.push(f);
+      } else if (kind === 'act') { var a = actions[id]; if (a && (!a.vis || a.vis(s))) hands.push(f); }
+      else if (kind === 'bld') { var b = BLD[id]; if (b && bldShown(s, b) && !(b.max && s.bld[id].n >= b.max) && !b.stages) gear.push([f, cost(s, b).money || 0, b.cost.money || 0]); }
+      else if (kind === 'upg') { if (UPG[id] && upgShown(s, UPG[id])) gear.push([f, UPG[id].cost.money || 0, UPG[id].cost.money || 0]); }
+      else if (kind === 'tech') { if (TECH[id] && techShown(s, TECH[id])) gear.push([f, 0, 1e30]); }
+    });
+    /* 設備は「手が届く範囲で、いちばん大がかりなもの」から。届かないものは安い順に後ろへ */
+    var near = gear.filter(function (g) { return g[1] <= reach; }).sort(function (a, b) { return b[2] - a[2]; });
+    var far = gear.filter(function (g) { return g[1] > reach; }).sort(function (a, b) { return a[1] - b[1]; });
+    var out = (s.era >= 3 ? [] : hands.slice(0, 2)).concat(near.map(function (g) { return g[0]; }), far.map(function (g) { return g[0]; }), s.era >= 3 ? hands : []);
+    out = out.slice(0, 3);
+    /* 敷地が足りなくて置けないなら、先に土地を */
+    var landBlocked = out.some(function (f) { return f[0] === 'bld' && whyNot(s, BLD[f[1]]) === '敷地が足りない'; });
+    if (landBlocked && BLD.land && bldShown(s, BLD.land)) out = [['bld', 'land']].concat(out).slice(0, 3);
+    return out;
+  }
+  function m2(d, k) { return d.m && d.m[k] > 0; }
+
   /* ================= オフライン進行 ================= */
   function simulateAway(s, sec, onDone) {
     var full = Math.min(sec, C.offlineFull);
@@ -855,7 +1086,8 @@ TM.Engine = (function () {
     var before = U.deepCopy(s.res);
     var dtStep = Math.max(1, Math.min(15, total / 6000));
     var t = 0;
-    while (t < total) { var dd = Math.min(dtStep, total - t); step(s, dd); t += dd; }
+    s._away = true;
+    try { while (t < total) { var dd = Math.min(dtStep, total - t); step(s, dd); t += dd; } } finally { s._away = false; }
     s.stats.offline += total;
     return { away: sec, simulated: total, before: before };
   }
@@ -863,7 +1095,7 @@ TM.Engine = (function () {
   /* ================= セーブ ================= */
   var KEY = 'taiki-minigame-save';
   function serialize(s) {
-    var copy = {}; for (var k in s) if (k !== '_d') copy[k] = s[k];
+    var copy = {}; for (var k in s) if (k !== '_d' && k !== '_away') copy[k] = s[k];
     copy.saved = Date.now();
     return JSON.stringify(copy);
   }
@@ -885,6 +1117,13 @@ TM.Engine = (function () {
     D.buildings.forEach(function (b) { if (!s.bld[b.id]) s.bld[b.id] = { n: 0, on: 0 }; });
     D.jobs.forEach(function (j) { if (s.jobs[j.id] === undefined) s.jobs[j.id] = 0; });
     D.licenses.forEach(function (l) { if (s.lic[l.id] === undefined) s.lic[l.id] = 0; });
+    if (!o.shown) {
+      /* 出し惜しみの仕組みより前のセーブ：見えていたものはそのまま見せる */
+      D.buildings.forEach(function (b) { if (cond(s, b.unlock)) s.shown['b:' + b.id] = -1e9; });
+      D.upgrades.forEach(function (u) { if (upgVisible(s, u)) s.shown['u:' + u.id] = -1e9; });
+      D.techs.forEach(function (t) { if (techAvailable(s, t)) s.shown['t:' + t.id] = -1e9; });
+    }
+    if (!s.heat) s.heat = { gather: 0, dissolve: 0, sell: 0 };
     s.v = D.version;
     return s;
   }
@@ -897,7 +1136,9 @@ TM.Engine = (function () {
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
     setJob: setJob, train: train, acceptOffer: acceptOffer, declineOffer: declineOffer, claimEvent: claimEvent,
     resName: resName, bldVisible: bldVisible, techAvailable: techAvailable, upgVisible: upgVisible, jobVisible: jobVisible,
-    idle: idle, assigned: assigned, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
+    idle: idle, assigned: assigned, moveJob: moveJob, whyNot: whyNot, actLabel: actLabel, heatMul: heatMul,
+    bldShown: bldShown, upgShown: upgShown, techShown: techShown, diagnose: diagnose, fixesFor: fixesFor, procStage: procStage,
+    creditLimit: creditLimit, sumEffect: sumEffect, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
     simulateAway: simulateAway, save: save, load: load, exportText: exportText, importText: importText, wipe: wipe,
     addLog: addLog, KEY: KEY,
     get RES() { return RES; }, get BLD() { return BLD; }, get JOB() { return JOB; }, get TECH() { return TECH; },

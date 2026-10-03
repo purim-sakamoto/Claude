@@ -45,26 +45,34 @@ TM.Sim = (function () {
     }
 
     /* 研究：安いものから */
-    var techs = D.techs.filter(function (t) { return E.techAvailable(s, t); }).sort(function (a, b) { return a.cost.research - b.cost.research; });
+    var techs = D.techs.filter(function (t) { return E.techShown(s, t); }).sort(function (a, b) { return a.cost.research - b.cost.research; });
     techs.forEach(function (t) { E.research(s, t.id); });
 
     /* 大型設備：解放されていれば最優先で貯める */
     var mega = null;
-    D.buildings.forEach(function (b) { if (b.stages && E.bldVisible(s, b) && s.bld[b.id].n < b.stages && (!b.buildCond || E.cond(s, b.buildCond))) mega = b; });
+    D.buildings.forEach(function (b) { if (b.stages && E.bldShown(s, b) && s.bld[b.id].n < b.stages && (!b.buildCond || E.cond(s, b.buildCond))) mega = b; });
     var reserve = 0;
     /* 住む場所が足りなければ先に */
     var salNow = s.pop * TM.DATA.consts.salary * (TM.DATA.eraSalary[s.era] || 1);
     if (s.pop >= d.popCap - 1 && (s.pop < 6 || (s.incAvg || 0) > salNow * 2 + 0.3)) {
-      ['house', 'office', 'newplant'].forEach(function (id) { if (E.bldVisible(s, E.BLD[id])) E.build(s, id); });
+      ['house', 'office', 'newplant'].forEach(function (id) { if (E.bldShown(s, E.BLD[id])) E.build(s, id); });
       d = E.derive(s);
     }
-    /* 止まっている工程を見て、足りないものを補う（プレイヤーが工程図を見て直すのと同じ） */
+    /* 画面の「詰まり」の手当てを見て、買えるものは買う（人が見て直すのと同じ） */
+    var g = E.diagnose(s, E.derive(s));
+    if (g && g.main && g.main.fixKey) E.fixesFor(s, s._d, g.main.fixKey).some(function (fx) {
+      var lim = s.res.money * (s.era >= 2 ? 0.3 : 0.7);
+      if (fx[0] === 'bld') { var c0 = E.cost(s, E.BLD[fx[1]]); return (c0.money || 0) <= lim && E.build(s, fx[1]); }
+      if (fx[0] === 'upg') return (E.UPG[fx[1]].cost.money || 0) <= lim && E.buyUpg(s, fx[1]);
+      return false;
+    });
+    /* 止まっている工程を見て、足りないものを補う */
     fixBottlenecks(s, E.derive(s));
     d = E.derive(s);
     /* 要になる設備（目標数まで優先して買う） */
     for (var ki = 0; ki < KEY.length; ki++) {
       var kb = E.BLD[KEY[ki][0]];
-      if (!kb || !E.bldVisible(s, kb) || s.bld[kb.id].n >= KEY[ki][1]) continue;
+      if (!kb || !E.bldShown(s, kb) || s.bld[kb.id].n >= KEY[ki][1]) continue;
       if (kb.max && s.bld[kb.id].n >= kb.max) continue;
       if (E.build(s, kb.id)) { ki = -1; continue; }
       var kc = E.cost(s, kb);
@@ -89,11 +97,11 @@ TM.Sim = (function () {
     });
 
     /* 改善 */
-    D.upgrades.filter(function (u) { return E.upgVisible(s, u); }).sort(function (a, b) { return (a.cost.money || 0) - (b.cost.money || 0); })
+    D.upgrades.filter(function (u) { return E.upgShown(s, u); }).sort(function (a, b) { return (a.cost.money || 0) - (b.cost.money || 0); })
       .forEach(function (u) { if ((u.cost.money || 0) <= spend * 0.6 && E.canPay(s, u.cost)) { E.buyUpg(s, u.id); spend = Math.max(0, s.res.money - reserve); } });
 
     /* 設備：役に立ちそうなものを安い順に */
-    var cands = D.buildings.filter(function (b) { return !b.stages && E.bldVisible(s, b) && useful(s, d, b); });
+    var cands = D.buildings.filter(function (b) { return !b.stages && E.bldShown(s, b) && useful(s, d, b); });
     /* 高いもの（効き目が大きいもの）から、手持ちの半分以内で */
     cands.sort(function (a, b) { return (E.cost(s, a).money || 0) - (E.cost(s, b).money || 0); });
     for (var i = 0; i < 25; i++) {
@@ -130,7 +138,7 @@ TM.Sim = (function () {
     if (d.powerEff < 0.99) power = true;
     var tries = [];
     D.buildings.forEach(function (b) {
-      if (b.stages || !E.bldVisible(s, b) || (b.max && s.bld[b.id].n >= b.max)) return;
+      if (b.stages || !E.bldShown(s, b) || (b.max && s.bld[b.id].n >= b.max)) return;
       var sc = 0;
       if (b.proc && b.proc.out) for (var k in b.proc.out) if (need[k]) sc += need[k] * 2;
       if (power && b.effects && b.effects.power) sc += 3;

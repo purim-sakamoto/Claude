@@ -78,7 +78,11 @@ TM.Dev = (function () {
           }
         }
         TM.UI.resetSig(); break;
-      case 'reveal': ['hook', 'memo', 'research_known', 'cans_known', 'dcan_known', 'smoke', 'power_known', 'acid_known', 'fecl2_known', 'space_tight'].forEach(function (fl) { s.flags[fl] = true; }); TM.UI.resetSig(); break;
+      case 'reveal':
+        TM.DATA.buildings.forEach(function (b) { if (E.cond(s, b.unlock)) s.shown['b:' + b.id] = -1e9; });
+        TM.DATA.upgrades.forEach(function (u) { if (E.cond(s, u.unlock)) s.shown['u:' + u.id] = -1e9; });
+        TM.DATA.techs.forEach(function (t4) { s.shown['t:' + t4.id] = -1e9; });
+        ['hook', 'memo', 'research_known', 'cans_known', 'dcan_known', 'smoke', 'power_known', 'acid_known', 'fecl2_known', 'space_tight'].forEach(function (fl) { s.flags[fl] = true; }); TM.UI.resetSig(); break;
       case 'sim':
         out.textContent = '自動プレイ中…（数十秒〜数分かかります）';
         setTimeout(function () {

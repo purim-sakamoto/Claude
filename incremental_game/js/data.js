@@ -98,10 +98,10 @@ TM.DATA = {
     /* ---- 時代0〜1：工房 ---- */
     { id: 'kama', name: '釜', group: '製造', desc: '鉄くずを溶かす釜。溶解の人手を2人まで置ける。', unlock: { flag: 'kama_reveal' },
       cost: { money: 60 }, ratio: 1.17, space: 2, effects: { slots: { dissolve: 2 }, cap: { fecl2: 20 } } },
-    { id: 'shed', name: '物置', group: '保管', desc: '鉄くずと塩酸を置ける場所。', unlock: { era: 1 },
+    { id: 'shed', name: '物置', group: '保管', desc: '鉄くずと塩酸を置ける場所。', unlock: { all: [{ era: 1 }, { any: [{ flag: 'raw_full' }, { bld: { kama: 2 } }] }] },
       cost: { money: 50 }, ratio: 1.2, space: 3, effects: { cap: { scrap: 20, hcl: 30 } } },
-    { id: 'house', name: '寮', group: '人', desc: '住み込みの人手が増やせる。', unlock: { era: 1 },
-      cost: { money: 120 }, ratio: 1.24, space: 4, effects: { popCap: 2 } },
+    { id: 'house', name: '寮', group: '人', desc: '住み込みの人手が増やせる。', unlock: { all: [{ era: 1 }, { pop: 3 }] },
+      cost: { money: 80 }, ratio: 1.24, space: 4, effects: { popCap: 2 } },
     { id: 'desk', name: '机と帳面', group: '研究', desc: '考えたことを書き留めておける。', unlock: { flag: 'research_known' },
       cost: { money: 100 }, ratio: 1.22, space: 1, effects: { cap: { research: 100 } } },
     { id: 'canyard', name: '缶置き場', group: '容器', desc: '空き缶・汚れた缶・製品の缶を置ける。', unlock: { flag: 'cans_known' },
@@ -110,7 +110,7 @@ TM.DATA = {
       cost: { money: 220 }, ratio: 1.3, space: 0, proc: { in: { money: 0.9 }, out: { can: 0.06 }, toggle: true, handling: 0.06 } },
     { id: 'scrapbuy', name: 'スクラップ業者', group: '製造', desc: '鉄くずを買い付ける（1個2円）。', unlock: { tech: 'suppliers' },
       cost: { money: 350 }, ratio: 1.3, space: 0, proc: { in: { money: 0.5 }, out: { scrap: 0.25 }, toggle: true, handling: 0.025 } },
-    { id: 'acidbuy', name: '塩酸の配達', group: '製造', desc: '店の主人に、塩酸を缶で定期的に届けてもらう。空いた缶は残る。', unlock: { era: 1, flag: 'acid_known' },
+    { id: 'acidbuy', name: '塩酸の配達', group: '製造', desc: '店の主人に、塩酸を缶で定期的に届けてもらう。空いた缶は残る。', unlock: { era: 1, flag: 'acid_known', stat: { acidBuys: 8 } },
       cost: { money: 120 }, ratio: 1.35, space: 0, proc: { in: { money: 1.0 }, out: { hcl: 0.6, dcan: 0.03 }, toggle: true, handling: 0.03, spill: ['dcan'] } },
     { id: 'vent', name: '換気扇', group: '用役', desc: '酸の霧と泡（水素）を外へ逃がす。', unlock: { flag: 'smoke' },
       cost: { money: 200 }, ratio: 1.25, space: 0, effects: { vent: 1.2 }, proc: { power: 1 } },
@@ -399,12 +399,12 @@ TM.DATA = {
 
   /* ---------------- 改善（一度だけ買える強化） ---------------- */
   upgrades: [
-    { id: 'gloves', name: '厚手の手袋', desc: '溶解 +50%。手で沈めるのも速くなる。', cost: { money: 40 }, unlock: { era: 1 }, effects: [['job.dissolve', 0.5], ['manual.dissolve', 0.5]] },
-    { id: 'bucket', name: '鉄のバケツ', desc: '回収 +50%', cost: { money: 70 }, unlock: { era: 1 }, effects: [['job.gather', 0.5]] },
+    { id: 'gloves', name: '厚手の手袋', desc: '溶解 +50%。手で溶かす量も増える。', cost: { money: 40 }, unlock: { era: 1, job: { dissolve: 1 } }, effects: [['job.dissolve', 0.5], ['manual.dissolve', 0.5]] },
+    { id: 'bucket', name: '鉄のバケツ', desc: '回収 +50%', cost: { money: 70 }, unlock: { era: 1, any: [{ upg: 'gloves' }, { flag: 'raw_full' }] }, effects: [['job.gather', 0.5]] },
     { id: 'funnel', name: 'じょうご', desc: '充填 +30%', cost: { money: 80 }, unlock: { flag: 'cans_known' }, effects: [['job.fill', 0.3]] },
     { id: 'cart', name: '台車', desc: '歩いての配達 ×2', cost: { money: 200 }, unlock: { flag: 'cans_known' }, effects: [['walk', 1.0]] },
     { id: 'brush', name: 'ブラシ', desc: '洗缶 +50%', cost: { money: 120 }, unlock: { flag: 'dcan_known' }, effects: [['job.wash', 0.5]] },
-    { id: 'shopsign', name: '店先の札', desc: '店先の客が倍になり、店番も手際よくなる。', cost: { money: 150 }, unlock: { era: 1 }, effects: [['shop', 1]] },
+    { id: 'shopsign', name: '店先の札', desc: '店先の客が倍になり、店番も手際よくなる。', cost: { money: 150 }, unlock: { era: 1, flag: 'walkin_empty' }, effects: [['shop', 1]] },
     { id: 'abacus', name: 'そろばん', desc: '研究 +50%', cost: { money: 300 }, unlock: { flag: 'research_known' }, effects: [['job.research', 0.5]] },
     { id: 'handpump', name: 'ハンドポンプ', desc: '充填 +60%', cost: { money: 450 }, unlock: { flag: 'cans_known', res: { money: 200 } }, effects: [['job.fill', 0.6]] },
     { id: 'scale', name: '台はかり', desc: '充填 +40%、量が正確になり信用が上がりやすくなる', cost: { money: 350 }, unlock: { flag: 'cans_known', res: { money: 200 } }, effects: [['job.fill', 0.4], ['credit', 0.2]] },
@@ -534,12 +534,43 @@ TM.DATA = {
     ]
   },
 
+  /* ---------------- 流れの診断 ----------------
+     raw：仕入れる原料、liquid：つくった液。fixes：詰まりの種類ごとの手当て（上から順に、見えているものを3つまで出す） */
+  flow: {
+    raw: ['scrap', 'hcl', 'urea', 'spent', 'pw', 'upw'],
+    liquid: ['fecl2', 'fecl3w', 'fecl3', 'fecl3h', 'nacw', 'naclo', 'pac', 'psi', 'uww', 'uw', 'hp', 'cu', 'cup'],
+    fixes: {
+      scrap: [['job', 'gather'], ['act', 'pick'], ['bld', 'scrapbuy'], ['bld', 'scrapyard'], ['upg', 'bucket']],
+      hcl: [['act', 'buyacid'], ['bld', 'acidbuy'], ['bld', 'acidtank'], ['upg', 'bulkacid']],
+      urea: [['bld', 'ureabuy'], ['bld', 'ureasyn']],
+      spent: [['bld', 'decopper']],
+      pw: [['bld', 'pwplant'], ['upg', 'u_ro'], ['bld', 'pwplant2'], ['bld', 'wreuse']],
+      upw: [['bld', 'upwplant'], ['upg', 'u_uv'], ['bld', 'upwplant2']],
+      fecl2: [['job', 'dissolve'], ['bld', 'kama'], ['bld', 'reactor'], ['bld', 'bigreactor'], ['job', 'operate']],
+      fecl3: [['job', 'check'], ['bld', 'chlor'], ['bld', 'bigchlor'], ['bld', 'decopper']],
+      money: [['act', 'give'], ['job', 'deliver']],
+      make: [['job', 'dissolve'], ['act', 'sink'], ['upg', 'gloves'], ['bld', 'kama'], ['upg', 'stirrer'], ['bld', 'reactor'], ['bld', 'bigreactor'], ['bld', 'megareactor']],
+      slots: [['bld', 'kama'], ['upg', 'bigkama'], ['bld', 'reactor'], ['bld', 'bigreactor']],
+      operator: [['job', 'operate']],
+      power: [['bld', 'powerc'], ['bld', 'substation'], ['upg', 'solar'], ['bld', 'fusionpower']],
+      handling: [['job', 'handle'], ['upg', 'handlift'], ['bld', 'fork'], ['bld', 'crane'], ['bld', 'autowh']],
+      vent: [['bld', 'vent'], ['bld', 'scrubber'], ['bld', 'msscrub']],
+      check: [['job', 'check'], ['upg', 'hydrometer'], ['bld', 'lab'], ['bld', 'i_refract'], ['bld', 'lab2'], ['upg', 'lotsize']],
+      cans: [['act', 'buycans'], ['bld', 'canbuy'], ['job', 'wash'], ['upg', 'brush'], ['bld', 'canwasher'], ['bld', 'canline']],
+      fill: [['job', 'fill'], ['upg', 'funnel'], ['upg', 'handpump'], ['upg', 'scale'], ['bld', 'filler'], ['bld', 'line'], ['upg', 'm_capper'], ['upg', 'autosub']],
+      transport: [['job', 'deliver'], ['act', 'give'], ['upg', 'cart'], ['bld', 'kei'], ['upg', 'routeplan'], ['bld', 'truck2'], ['bld', 'truck4']],
+      bulk: [['bld', 'lorry'], ['bld', 'lorry20'], ['upg', 'lorrywash'], ['tech', 'dispatch']],
+      demand: [['upg', 'signboard'], ['tech', 'delivery'], ['bld', 'kei'], ['tech', 'trucks'], ['bld', 'truck2'], ['bld', 'drum'], ['upg', 'eco'], ['tech', 'depot'], ['tech', 'export']],
+      walkin: [['upg', 'shopsign'], ['act', 'give']]
+    }
+  },
+
   /* ---------------- 定数 ---------------- */
   consts: {
     tickSec: 0.2,
     canKg: 20,
     walkinPrice: 4,
-    walkinRefill: 0.35,
+    walkinRefill: 0.45,
     walkinCap: 15,
     acidBuy: { cost: 10, kg: 6 },
     canBuy: { cost: 75, n: 5 },
@@ -569,7 +600,7 @@ TM.DATA = {
     { id: 'hands', cond: { all: [{ flag: 'sold' }, { stat: { batches: 6 } }] }, text: '一人では手が足りない。', setFlag: 'hire_reveal' },
     { id: 'small', cond: { all: [{ flag: 'hired' }, { stat: { batches: 10 } }] }, text: '壺では小さすぎる。', setFlag: 'kama_reveal' },
     { id: 'named', cond: { era: 1, bld: { kama: 2 } }, text: '測ってみると、緑の液は塩化第一鉄だった。', setFlag: 'fecl2_known' },
-    { id: 'nocan', cond: { flag: 'walkin_empty' }, text: '「入れ物に入れてくれたら、もっと買うんだが」', setFlag: 'cans_known' },
+    { id: 'nocan', cond: { any: [{ all: [{ upg: 'shopsign' }, { bld: { kama: 2 } }, { res: { fecl2: 12 } }] }, { flag: 'walkin_empty2' }, { all: [{ flag: 'walkin_empty' }, { res: { fecl2: 28 } }, { time: 900 }] }] }, text: '「入れ物に入れてくれたら、もっと買うんだが」', setFlag: 'cans_known' },
     { id: 'dcan', cond: { res: { dcan: 1 } }, text: '空いた缶が残る。捨てるには惜しい缶だ。', setFlag: 'dcan_known' },
     { id: 'smoke', cond: { flag: 'fumes_bad' }, text: 'むせる。目にしみる。風を通さないと。', setFlag: 'smoke' },
     { id: 'power', cond: { flag: 'smoke' }, text: '機械を回すには、電気が要る。', setFlag: 'power_known' },

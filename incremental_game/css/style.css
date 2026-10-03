@@ -131,6 +131,49 @@ p.note { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
 #ending .btn { background: #000; color: #eee; border-color: #666; }
 #ending .credits { max-width: 520px; line-height: 2; font-size: 13px; color: #aaa; }
 
+/* 手伝い中のボタン・資源 */
+.btn.hot { border-color: var(--accent); }
+.res.hot .r { color: var(--accent); }
+.res.alert .v, .res.alert .r { color: var(--bad); }
+
+/* 警告 */
+#alerts:empty { display: none; }
+#alerts .alert { border: 1px solid var(--bad); color: var(--fg); padding: 6px 10px; margin-bottom: 8px; font-size: 13px; line-height: 1.6; }
+#alerts .alert b { color: var(--bad); font-weight: normal; margin-right: 4px; }
+
+/* 流れ（上部の細い帯） */
+#flowbar:empty { display: none; }
+#flowbar { margin-bottom: 10px; font-size: 12px; opacity: .92; }
+#flowbar .stages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+#flowbar .stage { border: 1px solid var(--line); padding: 2px 8px; border-radius: 2px; color: var(--dim); cursor: default; white-space: nowrap; }
+#flowbar .stage b { font-weight: normal; color: var(--fg); margin-right: 6px; }
+#flowbar .stage.bad { border-color: var(--bad); }
+#flowbar .stage.bad b { color: var(--bad); }
+#flowbar .arrow { color: var(--dim); font-size: 11px; }
+#flowbar .advice { margin-top: 5px; color: var(--dim); line-height: 1.6; }
+#flowbar .advice .ttl { color: var(--bad); margin-right: 8px; }
+#flowbar .advice.ok .ttl { color: var(--good); }
+#flowbar .fixes { margin-top: 3px; }
+#flowbar .fix { margin: 2px 4px 2px 0; }
+#flowbar .fix.na { opacity: .55; }
+
+/* 説明の吹き出し */
+#tip { position: fixed; z-index: 70; max-width: 330px; background: var(--panel); color: var(--fg); border: 1px solid var(--btnline); padding: 8px 10px; font-size: 12px; line-height: 1.55; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+#tip .tt { font-size: 13px; margin-bottom: 3px; color: var(--accent); }
+#tip .tw { margin: 3px 0; }
+#tip .th { color: var(--dim); font-size: 11px; margin-top: 6px; border-bottom: 1px solid var(--line); }
+#tip .tl { display: flex; justify-content: space-between; gap: 12px; }
+#tip .tl span:first-child { color: var(--dim); white-space: nowrap; }
+#tip .tl span:last-child { text-align: right; }
+
+/* 取引タブの見出し・ラインの工程・強調 */
+h3.sect { font-size: 13px; font-weight: normal; color: var(--accent); margin: 18px 0 8px; letter-spacing: .1em; }
+h3.sect:first-child { margin-top: 0; }
+.linebox { margin-top: 4px; font-size: 11px; line-height: 1.6; }
+.row.isnew .btn::after { content: "新"; position: absolute; right: 4px; top: 2px; font-size: 9px; color: var(--accent); }
+.flash { animation: flash 1.6s ease; }
+@keyframes flash { 0%, 40% { background: color-mix(in srgb, var(--accent) 25%, transparent); } 100% { background: transparent; } }
+
 @media (max-width: 960px) {
   #main { grid-template-columns: 1fr; }
   #side { position: static; max-height: none; order: 1; }
