@@ -22,12 +22,12 @@ TM.Dev = (function () {
 
   function enable() {
     on = true;
-    try { sessionStorage.setItem('taiki-minigame-dev', '1'); } catch (e) { /* 無視 */ }
+    try { localStorage.setItem('taiki-minigame-dev', '1'); } catch (e) { /* 無視 */ }
     draw();
   }
   function disable() {
     on = false; TM.speed = 1; TM.infMoney = false;
-    try { sessionStorage.removeItem('taiki-minigame-dev'); } catch (e) { /* 無視 */ }
+    try { localStorage.removeItem('taiki-minigame-dev'); } catch (e) { /* 無視 */ }
     document.getElementById('devpanel').classList.add('hidden');
   }
 
@@ -38,7 +38,8 @@ TM.Dev = (function () {
     p.innerHTML = '<h4>開発者モード</h4>' +
       '<div>速度 ' + sp + '</div>' +
       '<div><button data-dv="money" class="' + (TM.infMoney ? 'on' : '') + '">お金無限 ' + (TM.infMoney ? 'ON' : 'OFF') + '</button>' +
-      '<button data-dv="fill">資源を満タン</button><button data-dv="research">技術+大量</button></div>' +
+      '<button data-dv="add" data-v="1e4">+1万円</button><button data-dv="add" data-v="1e6">+100万円</button><button data-dv="add" data-v="1e8">+1億円</button></div>' +
+      '<div><button data-dv="fill">資源を満タン</button><button data-dv="research">技術+大量</button></div>' +
       '<div>時間を進める <button data-dv="skip" data-v="600">+10分</button><button data-dv="skip" data-v="3600">+1時間</button><button data-dv="skip" data-v="28800">+8時間</button></div>' +
       '<div><button data-dv="pop">人手+10</button><button data-dv="techs">技術を全部</button><button data-dv="era">次の時代へ</button><button data-dv="reveal">全部見せる</button></div>' +
       '<div>自動プレイで計測 <button data-dv="sim" data-v="heavy">ヘビー</button><button data-dv="sim" data-v="normal">ふつう</button><button data-dv="sim" data-v="light">ライト</button></div>' +
@@ -54,6 +55,7 @@ TM.Dev = (function () {
     switch (a) {
       case 'speed': TM.speed = +v; break;
       case 'money': TM.infMoney = !TM.infMoney; break;
+      case 'add': s.res.money += +v; break;
       case 'fill':
         for (var k in s.res) { if (d.cap[k] !== undefined && d.cap[k] !== Infinity) s.res[k] = d.cap[k]; }
         s.res.money = Math.max(s.res.money, 1e6 * Math.pow(100, s.era));
@@ -105,7 +107,7 @@ TM.Dev = (function () {
 
   function init() {
     document.getElementById('devpanel').addEventListener('click', onClick);
-    try { if (sessionStorage.getItem('taiki-minigame-dev') === '1') enable(); } catch (e) { /* 無視 */ }
+    try { if (localStorage.getItem('taiki-minigame-dev') === '1') enable(); } catch (e) { /* 無視 */ }
   }
 
   /* 毎ティック：お金無限 */
