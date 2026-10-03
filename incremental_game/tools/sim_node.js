@@ -26,7 +26,7 @@ function h(sec) { return sec === undefined ? '-' : (sec / 3600).toFixed(1) + 'h 
 console.log('style', r.style, 'elapsed', ((Date.now() - t0) / 1000).toFixed(1) + 's');
 Object.keys(r.milestones).forEach(function (k) { console.log('  ', k, h(r.milestones[k])); });
 var s = r.state;
-console.log('final era', s.era, 'money', s.res.money.toExponential(2), 'pop', s.pop);
+console.log('final era', s.era, 'money', s.res.money.toExponential(2), 'pop', s.pop, 'forced', s.stats.forced || 0);
 if (verbose) {
   var b = []; for (var k in s.bld) if (s.bld[k].n) b.push(k + ':' + s.bld[k].n);
   console.log(b.join(' '));

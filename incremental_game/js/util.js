@@ -38,12 +38,34 @@ TM.util = (function () {
     return (neg ? '-' : '') + out;
   }
 
-  /* 毎秒の値。小さい値は分あたりで見せる */
-  function fmtRate(r, expo) {
+  /* 桁の決まった数（0.10 / 1.20 / 12.0 / 120）。末尾の0を落とさないので、値が揺れても幅が変わらない */
+  function fmtFixed(n, expo) {
+    var neg = n < 0; if (neg) n = -n;
+    var out;
+    if (n < 10) out = n.toFixed(2);
+    else if (n < 100) out = n.toFixed(1);
+    else if (n < 1e4) out = String(Math.round(n));
+    else if (expo) out = n.toExponential(2).replace('e+', 'e');
+    else {
+      out = null;
+      for (var i = 0; i < UNITS.length; i++) if (n >= UNITS[i][0]) { var v = n / UNITS[i][0]; out = v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2) + UNITS[i][1]; break; }
+      if (out === null) out = n.toExponential(2);
+    }
+    return (neg ? '-' : '') + out;
+  }
+
+  /* 毎秒の値。小さい値は分あたりで見せる。key を渡すと、/秒 と /分 の切り替えに幅を持たせる（行ったり来たりしない） */
+  var rateUnit = {};
+  function fmtRate(r, expo, key) {
     if (Math.abs(r) < 1e-9) return '';
-    var sign = r > 0 ? '+' : '';
-    if (Math.abs(r) < 0.1) return sign + fmt(r * 60, expo) + '/分';
-    return sign + fmt(r, expo) + '/秒';
+    var sign = r > 0 ? '+' : '', a = Math.abs(r), perMin;
+    if (key) {
+      var prev = rateUnit[key];
+      perMin = prev === 'm' ? a < 0.15 : prev === 's' ? a < 0.07 : a < 0.1;
+      rateUnit[key] = perMin ? 'm' : 's';
+    } else perMin = a < 0.1;
+    if (perMin) return sign + fmtFixed(r * 60, expo) + '/分';
+    return sign + fmtFixed(r, expo) + '/秒';
   }
 
   function fmtTime(sec) {
@@ -82,5 +104,5 @@ TM.util = (function () {
 
   function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
 
-  return { fmt: fmt, fmtRate: fmtRate, fmtTime: fmtTime, clamp: clamp, el: el, rng: rng, deepCopy: deepCopy };
+  return { fmt: fmt, fmtFixed: fmtFixed, fmtRate: fmtRate, fmtTime: fmtTime, clamp: clamp, el: el, rng: rng, deepCopy: deepCopy };
 })();

@@ -253,7 +253,12 @@ TM.Sim = (function () {
   }
 
   /* 実行。maxDays 日まで、または完成まで */
+  /* 自動プレイは与信枠で設備を買わない（手持ちの範囲で判断する） */
   function run(styleId, maxDays, opts) {
+    if (E.setNoCredit) E.setNoCredit(true);
+    try { return run0(styleId, maxDays, opts); } finally { if (E.setNoCredit) E.setNoCredit(false); }
+  }
+  function run0(styleId, maxDays, opts) {
     opts = opts || {};
     E.init && E.init();
     var style = STYLES[styleId];

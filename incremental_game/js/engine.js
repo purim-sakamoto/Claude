@@ -83,7 +83,15 @@ TM.Engine = (function () {
     for (var k in b.cost) out[k] = b.cost[k] * (b.ratioRes && b.ratioRes[k] ? Math.pow(b.ratioRes[k], n) : f);
     return out;
   }
-  function canPay(s, c) { for (var k in c) if ((s.res[k] || 0) < c[k] - 1e-9) return false; return true; }
+  /* お金は与信枠の分まで使える（自動プレイの計測では使わない） */
+  var noCredit = false;
+  function canPay(s, c) {
+    for (var k in c) {
+      var have = (s.res[k] || 0) + (k === 'money' && !noCredit ? creditLimit(s) : 0);
+      if (have < c[k] - 1e-9) return false;
+    }
+    return true;
+  }
   function pay(s, c, cat) {
     for (var k in c) {
       s.res[k] -= c[k];
@@ -191,7 +199,7 @@ TM.Engine = (function () {
     var d = derive(s), m = d.m;
     s.t += dt;
     var eraSal = (D.eraSalary || [1])[s.era] || 1;
-    var morale = s.flags.broke ? 0.5 : 1;
+    var morale = 1;
     d.creditLimit = creditLimit(s);
     var jobAll = mul(m, 'job.all') * morale;
     if (d.gmul > 1e55) d.gmul = 1e55; /* 数が大きくなりすぎないように */
@@ -267,7 +275,7 @@ TM.Engine = (function () {
       if (want <= 0) { d.procs.push({ key: key, name: name, inp: inp, out: out, rate: 0, want: units, eff: 0, reason: reason || '停止', wt: 'other' }); return 0; }
       for (k in inp) {
         var need = inp[k] * want;
-        var avail = k === 'money' ? s.res.money + d.creditLimit : s.res[k];
+        var avail = k === 'money' ? s.res.money + d.creditLimit * 0.95 : s.res[k];
         if (need > 0 && avail < need) { var rr = Math.max(0, avail) / need; if (rr < ratio) { ratio = rr; reason = '入力不足：' + resName(s, k); wk = k; wt = 'in'; } }
       }
       for (k in out) {
@@ -277,6 +285,8 @@ TM.Engine = (function () {
       }
       for (k in inp) { s.res[k] -= inp[k] * want * ratio; led(k, name, -inp[k] * want * ratio); if (k === 'money') finExp(s, name, inp[k] * want * ratio); }
       for (k in out) { s.res[k] += out[k] * want * ratio; led(k, name, out[k] * want * ratio); s.stats.produced[k] = (s.stats.produced[k] || 0) + out[k] * want * ratio; if (k === 'money') finInc(s, name, out[k] * want * ratio); }
+      /* 排水処理は、処理する水がないだけなら止まっていても問題ない */
+      if (wk === 'waste' && wt === 'in') { reason = '排水待ち（余裕あり）'; wk = null; wt = null; }
       var ok = ratio >= 0.999;
       d.procs.push({ key: key, name: name, inp: inp, out: out, rate: units * ratio, want: units, eff: ratio, reason: ok ? (reasonPre || null) : reason, wk: ok ? null : wk, wt: ok ? (reasonPre ? 'other' : null) : wt });
       return ratio;
@@ -297,24 +307,35 @@ TM.Engine = (function () {
       if (s.walkin < 0.5 && s.res.fecl2 >= 20 && s.era >= 1) { s.flags.walkin_empty = true; if (s.upg.shopsign) s.flags.walkin_empty2 = true; }
     }
 
+    /* 製造の洗浄水（時代2から）。排水が満水だと、流せる分しか作れない */
+    function rinsed(on, out) {
+      if (!on || s.era < 2) return out;
+      var o = {}, liq = 0, k; for (k in out) { o[k] = out[k]; if (k !== 'cu') liq += out[k]; }
+      o.waste = (o.waste || 0) + liq * (C.rinse || 0);
+      return o;
+    }
+
     /* 仕入れの設備を先に動かす（後に回すと、使う側が毎ティック空振りして揺れる） */
-    D.buildings.forEach(function (b) { if (IN_PROCS['bld.' + b.id]) runBld(b); });
+    D.buildings.forEach(function (b) { if (IN_PROCS['bld.' + b.id] || TREAT[b.id]) runBld(b); });
 
     /* 配属（汎用の入出力） */
-    D.jobs.forEach(function (j) {
+    D.jobs.forEach(function (j) { if (j.id !== 'wash') runJob(j); });
+    function runJob(j) {
       if (j.special) return;
       var w = s.jobs[j.id] || 0; if (!w) return;
       if (j.slotsFrom) w = Math.min(w, d.slots[j.slotsFrom] || 0);
       var rate = w * mul(m, 'job.' + j.id) * jobAll * glob;
       if (j.id === 'gather') rate *= heatMul(s, 'gather');
       if (j.fumes) rate *= d.ventEff * heatMul(s, 'dissolve');
-      var r = run('job.' + j.id, j.name, j.in, j.out, rate, (j.slotsFrom && s.jobs[j.id] > w) ? '釜が足りない' : null);
+      var r = run('job.' + j.id, j.name, j.in, rinsed(j.rinse, j.out), rate, (j.slotsFrom && s.jobs[j.id] > w) ? '釜が足りない' : null);
       if (j.fumes) fumesNow += j.out.fecl2 * rate * r;
       if (j.id === 'wash') s.stats.washed += j.out.can * rate * r * dt;
-    });
+    }
 
-    /* 設備のプロセス */
-    D.buildings.forEach(function (b) { if (!IN_PROCS['bld.' + b.id]) runBld(b); });
+    /* 設備のプロセス（製造が先、洗缶が後：排水の余裕は製造に回す） */
+    D.buildings.forEach(function (b) { if (!IN_PROCS['bld.' + b.id] && !TREAT[b.id] && b.group !== '容器') runBld(b); });
+    D.buildings.forEach(function (b) { if (b.group === '容器') runBld(b); });
+    runJob(JOB.wash);
     function runBld(b) {
       var p = b.proc; if (!p || !p.out || b.stages) return;
       var n = s.bld[b.id].n; if (!n) return;
@@ -331,6 +352,7 @@ TM.Engine = (function () {
       var outM = mul(m, 'bld.' + b.id + '.out');
       var outs = p.out;
       if (outM !== 1) { outs = {}; for (var k in p.out) outs[k] = p.out[k] * outM; }
+      outs = rinsed(p.rinse, outs);
       var r = run('bld.' + b.id, b.name, p.in || {}, outs, on * eff, on === 0 && n > 0 ? (reason || '停止中') : reason, p.spill);
       if (p.fumes) fumesNow += (p.out.fecl2 || p.out.fecl3w || 0) * on * eff * r;
       if (b.id === 'chlor') s.stats.fecl3 += p.out.fecl3w * on * eff * r * dt;
@@ -381,7 +403,7 @@ TM.Engine = (function () {
     }
 
     /* 排水 */
-    var allow = (D.consts.wasteFree || 0.05) * dt;
+    var allow = wasteFree(s) * dt;
     led('waste', 'そのまま流せる分', -Math.min(allow, s.res.waste));
     s.res.waste = Math.max(0, s.res.waste - allow);
     if (s.res.waste >= d.cap.waste * 0.95) s.flags.waste_full = true;
@@ -390,14 +412,25 @@ TM.Engine = (function () {
     doContracts(s, d, m, dt, glob);
 
     /* 給与と人の増加 */
-    /* 給料は手持ちから払う（借金にはしない）。払えないと手が鈍る */
+    /* 給料はいつも払う（足りなければ与信枠から借りる） */
     var sal = s.pop * C.salary * eraSal * mul(m, 'salary') * dt;
-    var paid = Math.min(sal, Math.max(0, s.res.money));
-    s.res.money -= paid; finExp(s, '給与', paid); led('money', '給料', -paid);
+    s.res.money -= sal; finExp(s, '給与', sal); led('money', '給料', -sal);
     d.salary = dt > 0 ? sal / dt : 0;
-    if (paid < sal * 0.999 && sal > 0) s.flags.broke = true; else if (s.res.money > 0) s.flags.broke = false;
-    if (s.res.money < -d.creditLimit) s.res.money = -d.creditLimit;
-    if (s.res.money < 0) s.flags.oncredit = true;
+    s.flags.broke = false;
+    /* 借りている間は利息がつく */
+    d.interest = 0;
+    if (s.res.money < 0) {
+      s.flags.oncredit = true;
+      var intr = -s.res.money * (C.creditRate || 0.0001) * dt;
+      s.res.money -= intr; finExp(s, '利息', intr); led('money', '利息', -intr); d.interest = dt > 0 ? intr / dt : 0;
+    }
+    /* 与信枠を超えたら、猶予のあと設備を1つずつ手放す */
+    if (s.res.money < -d.creditLimit) {
+      s.overT = (s.overT || 0) + dt;
+      if (!s.flags.over_warned) { s.flags.over_warned = true; addLog(s, '与信枠を超えた。銀行から電話が来た。「このままだと、設備を売ってもらうことになります」', 'warn'); }
+      if (s.overT >= (C.overGrace || 60)) { s.overT = 0; forcedSale(s, d); }
+    } else { s.overT = 0; s.flags.over_warned = false; }
+    d.overLeft = s.overT ? Math.max(0, (C.overGrace || 60) - s.overT) : null;
     s.incAvg = (s.incAvg || 0) + ((d.income || 0) - (s.incAvg || 0)) * Math.min(1, dt / 600);
     if (s.era >= 1 && s.pop < d.popCap && s.flags.hired && !s.flags.broke && s.res.money > 0) {
       s.popTimer += dt * mul(m, 'arrival');
@@ -490,7 +523,7 @@ TM.Engine = (function () {
   /* 酸も液もお金もなく、手が止まっている（ツケで酸を分けてもらえる） */
   function stuck(s) { return s.res.hcl < 2 && s.res.fecl2 < 3 && s.res.money < C.acidBuy.cost; }
 
-  /* 掛けで仕入れられる上限（信用と稼ぎに応じて） */
+  /* 与信枠：借りられる上限（信用と稼ぎに応じて） */
   function creditLimit(s) {
     if (s.era < 1) return 0;
     return 60 + (s.res.credit || 0) * 5 + Math.max(0, s.incAvg || 0) * 1800;
@@ -932,6 +965,20 @@ TM.Engine = (function () {
     }
     return true;
   }
+  /* 与信枠を超えたときの強制売却：住まい・土地・大型設備以外で、いちばん高く売れるものを1つ */
+  function forcedSale(s, d) {
+    var best = null, bv = 0;
+    D.buildings.forEach(function (b) {
+      var n = s.bld[b.id].n; if (!n || b.stages) return;
+      var e = b.effects || {}; if (e.land || e.popCap) return;
+      var v = (cost(s, b, n - 1).money || 0) * 0.5;
+      if (v > bv) { bv = v; best = b; }
+    });
+    if (!best) return;
+    sell(s, best.id);
+    s.stats.forced = (s.stats.forced || 0) + 1;
+    addLog(s, '与信枠を超えたので、' + best.name + 'を1つ手放した（+' + U.fmt(bv) + '円）。', 'warn');
+  }
   function sell(s, id) {
     var b = BLD[id]; if (!b || b.stages || s.bld[id].n <= 0) return;
     s.bld[id].n--;
@@ -996,6 +1043,8 @@ TM.Engine = (function () {
 
   /* ================= 流れの診断（どこが詰まっているか） =================
      仕入れ → つくる → 詰める → 売る。下流から見て、たまっている所のすぐ後ろが詰まりの元。 */
+  /* 排水処理：先に動かして、作る側の置き場を空ける */
+  var TREAT = { neutral: 1, coag: 1, wreuse: 1 };
   var IN_PROCS = { 'job.gather': 1, 'bld.scrapbuy': 1, 'bld.acidbuy': 1, 'bld.acidtank': 1, 'bld.scrapyard': 1, 'bld.ureabuy': 1, 'bld.ureasyn': 1 };
   function procStage(key) {
     if (IN_PROCS[key]) return 'in';
@@ -1006,6 +1055,8 @@ TM.Engine = (function () {
   function frac(s, d, k) { var c = d.cap[k]; return c && c !== Infinity && c > 0 ? s.res[k] / c : 0; }
   function sumLed(d, k, sign) { var L = (d.ledS || d.led || {})[k], t = 0; if (L) for (var n in L) if (L[n] * sign > 0) t += L[n]; return t; }
 
+  function wasteFree(s) { var a = D.consts.wasteFreeEra; return a ? a[Math.min(s.era, a.length - 1)] : (D.consts.wasteFree || 0.05); }
+
   function diagnose(s, d) {
     if (!d || !d.procs || s.era < 1) return null;
     var F = D.flow, hasFill = !!s.flags.cans_known, lots = {};
@@ -1013,6 +1064,12 @@ TM.Engine = (function () {
     var main = null;
     function set(stage, title, detail, fixKey, extra) { if (!main) main = { stage: stage, title: title, detail: detail, fixKey: fixKey, extra: extra || null }; }
 
+    /* 0. 排水が満水：流せない水は出せないので、排水を出す工程が止まる */
+    if (s.flags.r_waste && frac(s, d, 'waste') >= 0.95) {
+      var wp = d.procs.filter(function (p) { return p.wk === 'waste' && p.wt === 'full' && p.want > 0; });
+      var wMake = wp.some(function (p) { return procStage(p.key) === 'make'; });
+      if (wp.length) set(wMake ? 'make' : (hasFill ? 'fill' : 'make'), '排水が満水', '流せない排水がたまり、' + wp.slice(0, 3).map(function (p) { return p.name; }).join('・') + 'が止まりかけている。', 'waste');
+    }
     /* 1. 売る：売り物が置き場いっぱい */
     var full = null, transport = false, handling = d.handEff < 0.9;
     (d.sales || []).forEach(function (x) {
@@ -1065,7 +1122,7 @@ TM.Engine = (function () {
     if (!main && waitFull) set('make', '検査が追いつかない', resName(s, waitFull.wk) + 'がたまっている。検査しないと売り物にならない。', 'check');
     if (!main && starved) {
       var k = starved.wk, raw = F.raw.indexOf(k) >= 0;
-      if (k === 'money') set('in', 'お金が足りない', starved.name + 'に払うお金が足りない（掛けの枠も使い切った）。', 'money');
+      if (k === 'money') set('in', 'お金が足りない', starved.name + 'に払うお金が足りない（与信枠もほぼ使い切った）。', 'money');
       else if (raw) set('in', resName(s, k) + 'が足りない', starved.name + 'が' + resName(s, k) + '待ちで止まりがち。', k);
       else set('make', resName(s, k) + 'が足りない', starved.name + 'が' + resName(s, k) + '待ち。手前の工程を増やす。', F.fixes[k] ? k : 'make');
     }
@@ -1187,13 +1244,14 @@ TM.Engine = (function () {
   function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* 無視 */ } }
 
   return {
+    setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale,
     init: init, newState: newState, step: step, derive: derive, cond: cond, cost: cost, canPay: canPay,
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
     setJob: setJob, train: train, acceptOffer: acceptOffer, declineOffer: declineOffer, claimEvent: claimEvent,
     resName: resName, bldVisible: bldVisible, techAvailable: techAvailable, upgVisible: upgVisible, jobVisible: jobVisible,
     idle: idle, assigned: assigned, moveJob: moveJob, whyNot: whyNot, actLabel: actLabel, heatMul: heatMul,
     bldShown: bldShown, upgShown: upgShown, techShown: techShown, diagnose: diagnose, fixesFor: fixesFor, procStage: procStage,
-    creditLimit: creditLimit, sumEffect: sumEffect, calYear: calYear, seasonIdx: seasonIdx, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
+    creditLimit: creditLimit, sumEffect: sumEffect, calYear: calYear, wasteFree: wasteFree, seasonIdx: seasonIdx, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
     simulateAway: simulateAway, save: save, load: load, exportText: exportText, importText: importText, wipe: wipe,
     addLog: addLog, KEY: KEY,
     get RES() { return RES; }, get BLD() { return BLD; }, get JOB() { return JOB; }, get TECH() { return TECH; },

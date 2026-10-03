@@ -9,7 +9,7 @@ TM.UI = (function () {
   function S() { return TM.state; }
   function RT(d) { return d.rateS || d.rate || {}; }
   function f(n) { return U.fmt(n, S().settings.expo); }
-  function fr(r) { return U.fmtRate(r, S().settings.expo); }
+  function fr(r, key) { return U.fmtRate(r, S().settings.expo, key); }
 
   function init() {
     D = TM.DATA;
@@ -131,11 +131,17 @@ TM.UI = (function () {
     var box = $('resources');
     if (sig !== lastSig.res) {
       lastSig.res = sig; box.innerHTML = ''; refs.res = {};
-      rows.forEach(function (id) {
-        var nm = el('span', { class: 'nm' }), v = el('span', { class: 'v' }), r = el('span', { class: 'r' });
-        var row = el('div', { class: 'res fade', 'data-tip': 'res:' + id }, [nm, v, r]);
-        refs.res[id] = { row: row, nm: nm, v: v, r: r };
-        box.appendChild(row);
+      var byG = {};
+      rows.forEach(function (id) { var g = E.RES[id].grp || 'raw'; (byG[g] = byG[g] || []).push(id); });
+      (D.resGroups || [{ id: 'raw', name: '' }]).forEach(function (G) {
+        var ids = byG[G.id]; if (!ids) return;
+        if (G.name) box.appendChild(el('div', { class: 'resgroup g-' + G.id, text: G.name }));
+        ids.forEach(function (id) {
+          var nm = el('span', { class: 'nm' }), v = el('span', { class: 'v' }), r = el('span', { class: 'r' });
+          var row = el('div', { class: 'res fade g-' + G.id, 'data-tip': 'res:' + id }, [nm, v, r]);
+          refs.res[id] = { row: row, nm: nm, v: v, r: r };
+          box.appendChild(row);
+        });
       });
       if (extra.length) box.appendChild(el('div', { class: 'resgroup', text: '状況' }));
       extra.forEach(function (id) {
@@ -151,10 +157,17 @@ TM.UI = (function () {
       var unit = (id === 'hcl' && !s.flags.acid_known) || (id === 'fecl2' && !s.flags.fecl2_known) ? '' : R.unit;
       var val = f(s.res[id]) + (cap !== undefined && cap !== Infinity && cap !== null ? ' / ' + f(cap) : '') + (unit && unit !== '円' ? ' ' + unit : unit === '円' ? '円' : '');
       setText(x.v, val);
-      var rate = RT(d)[id] || 0;
+      var rate = RT(d)[id] || 0, bal = balanced(d, id, rate);
       var hk = id === 'scrap' ? 'gather' : id === 'fecl2' ? 'dissolve' : id === 'money' ? 'sell' : null;
       var hm = hk && s.era >= 1 ? E.heatMul(s, hk) : 1;
-      setText(x.r, fr(rate) + (hm > 1.05 ? '　手伝い ×' + hm.toFixed(1) : '') + (id === 'money' && s.res.money < 0 ? '　掛け' : ''));
+      var sold = soldNow(s, d, id);
+      x.nm.classList.toggle('sold', sold);
+      var wfull = id === 'waste' && s.res.waste >= cap * 0.9;
+      x.row.classList.toggle('alert', wfull || (id === 'money' && s.res.money < -d.creditLimit));
+      var lim = cap !== undefined && cap !== Infinity && cap > 0, empty = bal && lim && s.res[id] < cap * 0.01, fullB = bal && lim && s.res[id] >= cap * 0.99;
+      x.row.classList.toggle('dry', empty);
+      setText(x.r, wfull ? '満水' : bal ? (empty ? '不足' : fullB ? '満杯' : '釣り合い') : fr(rate, 'res.' + id));
+      if (bal) rate = 0;
       x.row.classList.toggle('hot', hm > 1.05);
       x.row.classList.toggle('full', cap !== Infinity && cap > 0 && s.res[id] >= cap * 0.999);
       x.row.classList.toggle('neg', rate < -1e-9);
@@ -162,14 +175,29 @@ TM.UI = (function () {
     });
     extra.forEach(function (id) {
       var x = refs.res['x_' + id];
-      if (id === 'pop') { setText(x.nm, '人手'); setText(x.v, s.pop + ' / ' + d.popCap + '人'); setText(x.r, (s.flags.broke ? '手が鈍っている ×0.5　' : '') + (E.idle(s) > 0 ? '手すき ' + E.idle(s) + '人' : '')); x.row.classList.toggle('alert', !!s.flags.broke); }
+      if (id === 'pop') { setText(x.nm, '人手'); setText(x.v, s.pop + ' / ' + d.popCap + '人'); setText(x.r, E.idle(s) > 0 ? '手すき ' + E.idle(s) + '人' : ''); x.row.classList.toggle('alert', false); }
       if (id === 'land') { setText(x.nm, '敷地'); setText(x.v, f(d.used) + ' / ' + f(d.land)); x.row.classList.toggle('full', d.used >= d.land * 0.95); setText(x.r, ''); }
-      if (id === 'power') { setText(x.nm, '電力'); setText(x.v, f(d.powerDem) + ' / ' + f(d.powerSup)); x.row.classList.toggle('full', d.powerEff < 1); setText(x.r, d.powerEff < 1 ? '足りない（' + Math.round(d.powerEff * 100) + '%）' : ''); }
-      if (id === 'handling') { setText(x.nm, '荷役'); setText(x.v, f(d.handDem) + ' / ' + f(d.handSup)); x.row.classList.toggle('full', d.handEff < 1); setText(x.r, d.handEff < 1 ? '足りない（' + Math.round(d.handEff * 100) + '%）' : ''); }
+      if (id === 'power') { setText(x.nm, '電力'); setText(x.v, f(d.powerDem) + ' / ' + f(d.powerSup)); x.row.classList.toggle('full', d.powerEff < 1); setText(x.r, d.powerEff < 1 ? '不足 ' + Math.round(d.powerEff * 100) + '%' : ''); }
+      if (id === 'handling') { setText(x.nm, '荷役'); setText(x.v, f(d.handDem) + ' / ' + f(d.handSup)); x.row.classList.toggle('full', d.handEff < 1); setText(x.r, d.handEff < 1 ? '不足 ' + Math.round(d.handEff * 100) + '%' : ''); }
       if (id === 'vent') { setText(x.nm, '換気'); setText(x.v, Math.round((d.ventEff || 1) * 100) + '%'); x.row.classList.toggle('full', d.ventEff < 1); setText(x.r, ''); }
       if (id === 'circ') { setText(x.nm, '循環率'); setText(x.v, Math.round(d.circ * 100) + '%'); setText(x.r, ''); }
-      if (id === 'creditline') { setText(x.nm, '掛けの枠'); setText(x.v, s.res.money < 0 ? '残り ' + f(Math.max(0, d.creditLimit + s.res.money)) + '円' : f(d.creditLimit) + '円'); setText(x.r, s.res.money < 0 ? '掛けで仕入れ中：給料が払えず、作業が半分に' : ''); x.row.classList.toggle('alert', s.res.money < 0); }
+      if (id === 'creditline') { var ov = s.res.money < -d.creditLimit; setText(x.nm, '与信枠'); setText(x.v, s.res.money < 0 ? '借入 ' + f(-s.res.money) + ' / ' + f(d.creditLimit) + '円' : f(d.creditLimit) + '円'); setText(x.r, ov ? 'あと' + Math.ceil(d.overLeft || 0) + '秒' : s.res.money < 0 ? fr(-(d.interest || 0), 'intr') : ''); x.row.classList.toggle('alert', ov); x.row.classList.toggle('full', !ov && s.res.money < -d.creditLimit * 0.8); }
     });
+  }
+
+  /* 出入りがほぼ同じ（差が流れの3%未満）なら「釣り合い」と見せる。小さな差の揺れで数字が踊らないように */
+  var balState = {};
+  function balanced(d, id, net) {
+    if (id === 'money') return false;
+    var L = (d.ledS || {})[id], gin = 0, n; if (!L) return false;
+    for (n in L) if (L[n] > 0) gin += L[n];
+    var r = gin > 1e-6 ? Math.abs(net) / gin : 1, b = balState[id] ? r < 0.06 : r < 0.03;
+    balState[id] = b; return b;
+  }
+  /* いま売っている品か（店先の第一鉄液・缶入り・ローリーで出している液） */
+  function soldNow(s, d, id) {
+    if (id === 'fecl2' && s.flags.sold && s.era >= 1) return true;
+    return (d.sales || []).some(function (x) { return x.stock === id && x.dem > 0 && !(x.p.kind === 'bulk' && x.zone < 0); });
   }
 
   /* ============ 手作業のボタン ============ */
@@ -204,11 +232,17 @@ TM.UI = (function () {
   /* ============ 警告 ============
      給料が払えない状態は、流れの帯の「詰まり」の行に一番優先で出す（行の高さは変えない） */
   function renderAlerts() { /* 帯に統合 */ }
+  /* 与信枠の警告：枠の8割を超えたら帯に出す */
+  function debtAlert(s, d) { return s.era >= 1 && s.res.money < 0 && s.res.money < -(d.creditLimit || 0) * 0.8; }
   function brokeMain(s, d) {
     var drains = [];
     D.buildings.forEach(function (b) { if (b.proc && b.proc.toggle && b.proc.in && b.proc.in.money && s.bld[b.id].on > 0) drains.push(['off', b.id]); });
-    return { stage: 'broke', title: '給料が払えていない', detail: 'みんなの作業が半分（×0.5）、新しい人も来ない。' + (s.res.money < 0 ? '掛けでお金がマイナス（残りの枠 ' + f(Math.max(0, d.creditLimit + s.res.money)) + '円）。' : '') + 'お金がプラスに戻れば元に戻る。', fixes: [['act', 'give']].filter(function (x) { var a = E.actions.give; return a.vis(s); }).concat(drains).slice(0, 3) };
+    var ov = s.res.money < -d.creditLimit;
+    var detail = ov ? 'あと ' + Math.ceil(d.overLeft || 0) + '秒で、設備を1つ手放すことになる。お金を枠の中に戻せば止まる。'
+      : '借入 ' + f(-s.res.money) + '円（枠 ' + f(d.creditLimit) + '円）・利息 ' + f(d.interest || 0) + '円/秒。枠を超えて1分続くと、設備を手放すことになる。';
+    return { stage: 'broke', title: ov ? '与信枠を超えた' : '与信枠が残りわずか', detail: detail, fixes: [['act', 'give']].filter(function (x) { var a = E.actions.give; return a.vis(s); }).concat(drains).slice(0, 3) };
   }
+
 
   /* ============ 流れ（仕入れ → つくる → 詰める → 売る）と、詰まりの手当て ============
      帯の高さは常に3行ぶん（段・詰まり・手当て）で固定。中身が変わってもボタンの位置がずれない。
@@ -217,7 +251,7 @@ TM.UI = (function () {
   function flowVisible(s) {
     if (s.era < 1) return false;
     if (s.era <= 4 && (s.flags.hook || s.flags.cans_known)) s.flags.flow_seen = true;
-    return !!s.flags.flow_seen || !!s.flags.broke;
+    return !!s.flags.flow_seen || debtAlert(s, s._d || E.derive(s));
   }
   function fixLabel(s, d, fx) {
     var kind = fx[0], id = fx[1];
@@ -247,11 +281,12 @@ TM.UI = (function () {
     if (!g) return;
     /* 詰まりの決定（給料未払いは即時、それ以外は2.5秒続いたら） */
     var now = Date.now(), cand;
-    if (s.flags.broke) cand = brokeMain(s, d);
+    var debt = debtAlert(s, d);
+    if (debt) cand = brokeMain(s, d);
     else if (g.main) cand = { stage: g.main.stage, title: g.main.title, detail: g.main.detail, fixes: g.main.fixKey ? E.fixesFor(s, d, g.main.fixKey) : [] };
     else cand = { stage: 'ok', title: '', detail: '', fixes: [] };
     var ck = cand.stage + '|' + cand.title;
-    if (!flowCur || cand.stage === 'broke' || flowCur.stage === 'broke' && !s.flags.broke) { flowCur = cand; flowPend = null; }
+    if (!flowCur || cand.stage === 'broke' || flowCur.stage === 'broke' && !debt) { flowCur = cand; flowPend = null; }
     else if (flowCur.stage + '|' + flowCur.title === ck) { flowCur = cand; flowPend = null; }
     else if (flowPend !== ck) { flowPend = ck; flowPendAt = now; }
     else if (now - flowPendAt > 2500) { flowCur = cand; flowPend = null; }
@@ -283,7 +318,7 @@ TM.UI = (function () {
     }
     g.stages.forEach(function (st) {
       var parts = st.v.filter(function (x) { return x[1] > 1e-6 || st.v.length === 1; }).map(function (x) {
-        var u = x[2] || '', r = fr(x[1]).replace('+', '') || '0';
+        var u = x[2] || '', r = fr(x[1], 'st.' + st.id + x[0]).replace('+', '') || '0';
         if (u && r !== '0') r = r.replace('/', u + '/');
         return (x[0] ? x[0] + ' ' : '') + r;
       });
@@ -356,9 +391,10 @@ TM.UI = (function () {
     var parts = [];
     for (var k in c) {
       var nm = k === 'money' ? '円' : E.resName(s, k);
-      var lack = (s.res[k] || 0) < c[k];
+      var cl = k === 'money' && s.era >= 1 ? ((s._d && s._d.creditLimit) || 0) : 0;
+      var lack = (s.res[k] || 0) + cl < c[k], loan = !lack && (s.res[k] || 0) < c[k];
       var t = k === 'money' ? f(c[k]) + '円' : nm + ' ' + f(c[k]);
-      parts.push(plain ? t : '<span class="' + (lack ? 'lack' : '') + '">' + t + '</span>');
+      parts.push(plain ? t : '<span class="' + (lack ? 'lack' : loan ? 'loan' : '') + '"' + (loan ? ' title="与信枠で買える（利息がつく）"' : '') + '>' + t + '</span>');
     }
     return parts.join('　');
   }
@@ -511,7 +547,7 @@ TM.UI = (function () {
         box.appendChild(lg);
       }
     }, function (R) {
-      setHTML(R.head, '人手 ' + s.pop + '人　手すき ' + E.idle(s) + '人' + (s.training.length ? '　講習中 ' + s.training.length + '人' : '') + (s.flags.broke ? '　<span class="bad">給料が払えず、みんなの手が半分に鈍っている</span>' : ''));
+      setHTML(R.head, '人手 ' + s.pop + '人　手すき ' + E.idle(s) + '人' + (s.training.length ? '　講習中 ' + s.training.length + '人' : '') + (s.res.money < 0 ? '　<span class="warn">借入中（利息がつく）</span>' : ''));
       jobs.forEach(function (j) {
         var r = R[j.id]; setText(r.cnt, s.jobs[j.id] + '人');
         var info = '';
@@ -634,8 +670,8 @@ TM.UI = (function () {
         var stock = x.p.kind === 'can' ? s.res[x.p.id] : s.res[x.p.src];
         var u = x.p.kind === 'can' ? (x.p.container === 'bib' ? '箱' : '缶') : 'kg';
         setText(c[1], f(stock) + u);
-        setText(c[2], fr(x.dem).replace('+', ''));
-        setText(c[3], fr(x.rate).replace('+', ''));
+        setText(c[2], fr(x.dem, 'dem.' + x.p.id).replace('+', ''));
+        setText(c[3], fr(x.rate, 'sr.' + x.p.id).replace('+', ''));
         setText(c[4], f(x.price) + '円/' + u.replace('kg', 'kg'));
       });
     }, null, 'p_sales');
@@ -781,7 +817,7 @@ TM.UI = (function () {
     var n = []; (d.procs || []).forEach(function (p) { if (p.wk === k && p.wt === wt && p.want > 0) n.push(p.name); });
     return n;
   }
-  function eff(s, d) { return (s.flags.broke ? 0.5 : 1); }
+  function eff(s, d) { return 1; }
 
   function tipHTML(s, d, key) {
     var i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1), h = '', C = D.consts;
@@ -793,16 +829,22 @@ TM.UI = (function () {
         h += line('いま', f(v) + '円', v < 0 ? 'bad' : '');
         h += line('毎秒', rateS(net, '円'), net < 0 ? 'bad' : 'good');
         h += ledger(s, d, id, '円');
-        if (v < 0) h += '<div class="tw bad">掛けで仕入れ中。給料が払えないので、みんなの手が半分に鈍っている。</div>';
-        else if (s.flags.broke) h += '<div class="tw bad">給料が払えていない。手が半分に鈍っている。</div>';
+        if (v < 0) h += '<div class="tw ' + (v < -d.creditLimit ? 'bad' : 'warn') + '">与信枠で借りている（枠 ' + f(d.creditLimit) + '円）。利息 ' + f(d.interest || 0) + '円/秒。借りている間は新しい人が来ない。</div>';
         return h;
       }
       h += line('いま', f(v) + (cap !== Infinity && cap !== undefined ? ' / ' + f(cap) : '') + (R.unit ? ' ' + R.unit : ''));
-      if (Math.abs(net) > 1e-9) h += line('毎秒', rateS(net, unit), net < 0 ? 'bad' : 'good');
+      if (balState[id]) h += line('毎秒', '釣り合い（入る量 ≒ 出る量）');
+      else if (Math.abs(net) > 1e-9) h += line('毎秒', rateS(net, unit), net < 0 ? 'bad' : 'good');
+      if (soldNow(s, d, id)) h += '<div class="tw">いま売っている品（<b>売</b>）。</div>';
+      if (id === 'waste') {
+        h += line('そのまま流せる分', rateS(E.wasteFree(s), 'L'));
+        h += '<div class="tw">洗缶' + (s.era >= 2 ? 'と、溶解・塩素化などの洗浄' : '') + 'で出る水。流せない水は出せないので、<b>満水になると、排水を出す工程は流せる分しか動けなくなる</b>' + (s.era >= 2 ? '（製造が止まる）' : '（洗缶が止まる）') + '。' + (s.era >= 2 ? '中和槽・凝集沈殿槽で処理すれば流せる量が増える。' : '新しい缶を買えば、洗わずに済む。') + '</div>';
+      }
       if (cap !== Infinity && v >= cap * 0.995) {
         var bl = stalledBy(d, id, 'full');
         h += '<div class="tw warn">置き場がいっぱい。' + (bl.length ? '止まっている：' + bl.slice(0, 3).join('、') : 'これ以上は増えない') + '</div>';
-      } else if (net > 1e-9 && cap !== Infinity) h += '<div class="tw">あと ' + U.fmtTime((cap - v) / net) + ' で満杯</div>';
+      } else if (balState[id]) { /* 釣り合っている間は残り時間を出さない */ }
+      else if (net > 1e-9 && cap !== Infinity) h += '<div class="tw">あと ' + U.fmtTime((cap - v) / net) + ' で満杯</div>';
       else if (net < -1e-9 && v > 0) h += '<div class="tw ' + (v / -net < 60 ? 'bad' : '') + '">あと ' + U.fmtTime(v / -net) + ' で空になる</div>';
       var st = stalledBy(d, id, 'in');
       if (st.length) h += '<div class="tw bad">足りない → 待っている：' + st.slice(0, 3).join('、') + '</div>';
@@ -812,7 +854,7 @@ TM.UI = (function () {
     if (kind === 'x') {
       if (id === 'pop') {
         h += '<div class="tt">人手</div>' + line('人数', s.pop + ' / ' + d.popCap + '人') + line('手すき', E.idle(s) + '人');
-        if (s.flags.broke) h += '<div class="tw bad">給料が払えず、手が半分に鈍っている。新しい人も来ない。</div>';
+        if (s.res.money < 0 && s.pop < d.popCap) h += '<div class="tw warn">お金を借りている間は、新しい人が来ない。</div>';
         else if (s.pop >= d.popCap) h += '<div class="tw warn">住む場所がいっぱい。寮などを建てると、また人が来る。</div>';
         else if (d.arrivalLeft !== undefined && s.flags.hired) h += '<div class="tw">次の人が来るまで あと ' + U.fmtTime(Math.max(0, d.arrivalLeft)) + '</div>';
         h += line('給料', rateS(-(d.salary || 0), '円'), 'bad');
@@ -822,7 +864,7 @@ TM.UI = (function () {
       if (id === 'handling') return '<div class="tt">荷役</div>' + line('要る / 動かせる', f(d.handDem) + ' / ' + f(d.handSup)) + '<div class="tw">' + (d.handEff < 1 ? '<span class="bad">足りない。出荷と荷を使う設備が ' + Math.round(d.handEff * 100) + '% に落ちている。荷役の人手・フォークリフトを。</span>' : '荷を動かす力には余裕がある。') + '</div>';
       if (id === 'vent') return '<div class="tt">換気</div><div class="tw">' + (d.ventEff < 1 ? '<span class="bad">酸の霧がこもり、溶かす作業が ' + Math.round(d.ventEff * 100) + '% に落ちている。換気扇・スクラバーを。</span>' : '風は通っている。') + '</div>';
       if (id === 'land') return '<div class="tt">敷地</div>' + line('使っている / 広さ', f(d.used) + ' / ' + f(d.land)) + '<div class="tw">' + (d.used >= d.land * 0.95 ? '<span class="warn">ほとんど空きがない。隣の空き地を。</span>' : 'あと ' + f(d.land - d.used) + ' 空いている。') + '</div>';
-      if (id === 'creditline') return '<div class="tt">掛けの枠</div>' + line('枠', f(d.creditLimit) + '円') + (s.res.money < 0 ? line('使っている', f(-s.res.money) + '円', 'bad') : '') + '<div class="tw">お金が足りなくても、この枠の中なら仕入れ（お金を使う設備）が続く。ただし<b>お金がマイナスの間は給料が払えず、みんなの手が半分に鈍る</b>。枠は信用と稼ぎで広がる。</div>';
+      if (id === 'creditline') return '<div class="tt">与信枠</div>' + line('枠', f(d.creditLimit) + '円') + (s.res.money < 0 ? line('借りている', f(-s.res.money) + '円', 'bad') + line('利息', rateS(-(d.interest || 0), '円'), 'bad') : '') + '<div class="tw">お金が足りなくても、この枠の中なら<b>設備・仕入れ・給料</b>に使える。借りている間は<b>利息</b>がつき、新しい人は来ない。<b>枠を超えたまま1分たつと、設備を1つずつ手放す</b>（いちばん高く売れるもの、売値は半額）。枠は信用と稼ぎで広がる。</div>';
       if (id === 'circ') return '<div class="tt">循環率</div><div class="tw">捨てていたものを回収するほど上がる。高いほど、すべての生産と単価が上がる。</div>';
       return '';
     }
@@ -834,7 +876,7 @@ TM.UI = (function () {
         pick: e1 ? '鉄くずを1つ拾う。押すたびに回収を手伝い、しばらく回収（とスクラップの買い付け）が速くなる。' : '鉄くずを1つ拾う。',
         sink: e1 ? '鉄くず1つと塩酸2kgを、その場で溶かす（緑の液3kg）。押すたびに溶解を手伝い、しばらく溶解・反応槽が速くなる。' : '鉄くず1つと酸2kgを壺に沈める。3秒で緑の液が3kgできる。',
         give: e1 ? '店先の客に売る。押すたびに呼び込みになり、しばらく客の足と配達が速くなる。' : '戸口の客に緑の液を渡す（1kg ' + C.walkinPrice + '円）。',
-        buyacid: '塩酸' + C.acidBuy.kg + 'kgを' + C.acidBuy.cost + '円で買う。お金が足りなくても、掛けの枠の中なら買える。',
+        buyacid: '塩酸' + C.acidBuy.kg + 'kgを' + C.acidBuy.cost + '円で買う。お金が足りなくても、与信枠の中なら買える（利息がつく）。',
         hire: '人を1人呼ぶ。鉄くずを集めてくれる。',
         setkama: '釜を据える。',
         buycans: '空きポリ缶を' + C.canBuy.n + '個、' + C.canBuy.cost + '円で買う。'
@@ -874,7 +916,6 @@ TM.UI = (function () {
       if (j.slotsFrom) h += line('置ける人数', (d.slots[j.slotsFrom] || 0) + '人（釜1つに2人）', n > (d.slots[j.slotsFrom] || 0) ? 'bad' : '');
       var pj = procOf(d, 'job.' + id);
       if (pj && pj.reason && n) h += '<div class="tw bad">いま：' + pj.reason + '</div>';
-      if (s.flags.broke) h += '<div class="tw bad">給料が払えず、手が半分に鈍っている。</div>';
       return h;
     }
     if (kind === 'tech' || kind === 'upg') {
@@ -919,6 +960,7 @@ TM.UI = (function () {
     if (p && p.operator) need.push('運転の人手 1人');
     if (p && p.handling) need.push('荷役 ' + p.handling);
     if (p && p.needs) need.push(E.BLD[p.needs].name);
+    if (p && p.rinse && s.era >= 2) need.push('洗浄の排水を流す余裕（満水だと止まる）');
     if (e.needs) need.push(E.BLD[e.needs].name);
     if (b.space) need.push('敷地 ' + b.space);
     if (need.length) h += line('要るもの', need.join('・'));
