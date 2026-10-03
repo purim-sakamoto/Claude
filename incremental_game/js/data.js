@@ -309,7 +309,7 @@ TM.DATA = {
     { id: 'spacelab', name: '軌道研究所', group: '宇宙', desc: '無重力で、地上ではできない実験を。', unlock: { era: 5 },
       cost: { orbit: 50, money: 2e10 }, ratio: 1.3, space: 0, proc: { in: { money: 1e5 }, out: { research: 1e5 }, toggle: true } },
     { id: 'mega5', name: '軌道エレベーター', group: '大型', desc: '地球と宇宙を一本の綱でつなぐ。10段階。', unlock: { tech: 'elevator' },
-      cost: { orbit: 400, money: 3e13 }, ratio: 1.5, space: 0, stages: 10, onComplete: { era: 6 } },
+      cost: { orbit: 400, money: 2e13 }, ratio: 1.5, space: 0, stages: 10, onComplete: { era: 6 } },
 
     /* ---- 時代6：星 ---- */
     { id: 'starfurnace', name: '恒星炉', group: '星', desc: '鉄は、星が最後につくる元素。星の芯を炉にする。', unlock: { era: 6 },
@@ -327,7 +327,7 @@ TM.DATA = {
     { id: 'starstore', name: '星間倉庫', group: '星', desc: '星の鉄と星間物質をためる。', unlock: { era: 6 },
       cost: { money: 5e16 }, ratio: 1.6, space: 0, effects: { cap: { star: 1e7, gfe: 1e7, ism: 1e7 } } },
     { id: 'final', name: '始まりの釜', group: '大型', desc: '宇宙そのものを、一つの釜に。10段階。', unlock: { tech: 'origin' },
-      cost: { money: 1e34, star: 1e6, ism: 1e6, gfe: 1e6 }, ratio: 1e3, ratioRes: { star: 3, ism: 3, gfe: 3 }, space: 0, stages: 10, onComplete: { ending: true } }
+      cost: { money: 3e33, star: 1e6, ism: 1e6, gfe: 1e6 }, ratio: 1e3, ratioRes: { star: 2.5, ism: 2.5, gfe: 2.5 }, space: 0, stages: 10, onComplete: { ending: true } }
   ],
 
   /* フック：まだ買えない先の設備・技術の名前だけを見せる */
@@ -391,10 +391,10 @@ TM.DATA = {
     { id: 'asteroid', name: '小惑星', desc: '鉄とニッケルの塊が、太陽のまわりを回っている。', cost: { research: 1e10 }, era: 5, req: ['venus'] },
     { id: 'elevator', name: '軌道エレベーター', desc: '打ち上げずに、昇る。', cost: { research: 5e10 }, era: 5, req: ['asteroid'] },
 
-    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 1e13 }, era: 6, effects: [['global', 1]] },
-    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 1e14 }, era: 6, req: ['nucleo'] },
-    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 1e17 }, era: 6, req: ['ism'] },
-    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 1e20 }, era: 6, req: ['galaxy'] }
+    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 5e12 }, era: 6, effects: [['global', 1]] },
+    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 3e13 }, era: 6, req: ['nucleo'] },
+    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 1e16 }, era: 6, req: ['ism'] },
+    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 5e18 }, era: 6, req: ['galaxy'] }
   ],
 
   /* ---------------- 改善（一度だけ買える強化） ---------------- */
@@ -547,6 +547,7 @@ TM.DATA = {
       pw: [['bld', 'pwplant'], ['upg', 'u_ro'], ['bld', 'pwplant2'], ['bld', 'wreuse']],
       upw: [['bld', 'upwplant'], ['upg', 'u_uv'], ['bld', 'upwplant2']],
       fecl2: [['job', 'dissolve'], ['bld', 'kama'], ['bld', 'reactor'], ['bld', 'bigreactor'], ['job', 'operate']],
+      next: [['job', 'operate'], ['bld', 'chlor'], ['bld', 'bigchlor'], ['bld', 'megareactor'], ['bld', 'conc']],
       fecl3: [['job', 'check'], ['bld', 'chlor'], ['bld', 'bigchlor'], ['bld', 'decopper']],
       money: [['act', 'give'], ['job', 'deliver']],
       make: [['job', 'dissolve'], ['act', 'sink'], ['upg', 'gloves'], ['bld', 'kama'], ['upg', 'stirrer'], ['bld', 'reactor'], ['bld', 'bigreactor'], ['bld', 'megareactor']],
@@ -563,6 +564,42 @@ TM.DATA = {
       demand: [['upg', 'signboard'], ['tech', 'delivery'], ['bld', 'kei'], ['tech', 'trucks'], ['bld', 'truck2'], ['bld', 'drum'], ['upg', 'eco'], ['tech', 'depot'], ['tech', 'export']],
       walkin: [['upg', 'shopsign'], ['act', 'give']]
     }
+  },
+
+  /* ---------------- 暦 ----------------
+     founded：創業年。yearSec：時代ごとの「ゲーム内1年」の秒数（ふつうの遊び方で、だいたい
+     時代2≒1960年代、時代3≒1980年代、時代4≒2010年ごろ、時代5≒2040年代、エンディング≒2100年代になる） */
+  calendar: {
+    founded: 1946,
+    yearSec: [7400, 7400, 6700, 6000, 2900, 2000, 1200],
+    /* 年商（1年の売上）の節目。一度だけ流れる */
+    sales: [
+      [1e5, '年商が10万円を超えた。'],
+      [1e6, '年商100万円。'],
+      [1e7, '年商1000万円。'],
+      [1e8, '年商1億円。'],
+      [1e9, '年商10億円。'],
+      [1e10, '年商100億円。あの泡から、ここまで来た。'],
+      [1.2e10, '年商120億円。'],
+      [1e11, '年商1000億円。'],
+      [1e12, '年商1兆円。'],
+      [1e16, '年商1京円。数えるのをやめた人もいる。'],
+      [1e20, '年商1垓円。'],
+      [1e28, '年商1穣円。'],
+      [1e40, '年商1正円。'],
+      [1e56, '年商1阿僧祇円。'],
+      [1e68, '年商1無量大数円。']
+    ],
+    anniv: {
+      50: '最初の釜のことを、覚えている人はもう少ない。',
+      60: '工場の裏に、古い壺がひとつ残っている。',
+      70: '缶も、液も、人も、ずいぶん増えた。',
+      80: '「ポリ缶に詰めてくれたら、もっと買う」。あの声から、ここまで。',
+      100: '百年、溶かし続けてきた。',
+      150: '百五十年。社屋の庭の木が大きくなった。',
+      200: '二百年。星の地図に、工場の印がついている。'
+    },
+    annivDefault: ['今日も、どこかで泡が立っている。', '釜の音は、昔と変わらない。', '記念の手ぬぐいを配った。', '社員みんなで、写真を撮った。']
   },
 
   /* ---------------- 定数 ---------------- */

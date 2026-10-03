@@ -24,6 +24,7 @@ TM.Engine = (function () {
       res: {}, flags: {}, bld: {}, jobs: {}, pop: 0, popTimer: 0, lic: {}, training: [],
       techs: {}, upg: {}, manual: { dissolve: 0, step: 0 }, walkin: 0, returnPipe: 0, spentPipe: 0,
       shown: {}, playT: 0, heat: { gather: 0, dissolve: 0, sell: 0 },
+      cal: { yf: 0, y0Earned: 0, salesDone: {}, last: 0 },
       log: [], storySeen: {}, evTimer: 600, evActive: null,
       stats: { batches: 0, acidBuys: 0, cansSold: 0, washed: 0, fecl3: 0, fecl3h: 0, forkUsed: 0, h2: 0, produced: {}, sold: {}, at: {}, earned: 0, offline: 0, clicks: 0 },
       fin: { cur: { inc: {}, exp: {} }, hist: [], monthT: 0 },
@@ -296,6 +297,9 @@ TM.Engine = (function () {
       if (s.walkin < 0.5 && s.res.fecl2 >= 20 && s.era >= 1) { s.flags.walkin_empty = true; if (s.upg.shopsign) s.flags.walkin_empty2 = true; }
     }
 
+    /* 仕入れの設備を先に動かす（後に回すと、使う側が毎ティック空振りして揺れる） */
+    D.buildings.forEach(function (b) { if (IN_PROCS['bld.' + b.id]) runBld(b); });
+
     /* 配属（汎用の入出力） */
     D.jobs.forEach(function (j) {
       if (j.special) return;
@@ -310,7 +314,8 @@ TM.Engine = (function () {
     });
 
     /* 設備のプロセス */
-    D.buildings.forEach(function (b) {
+    D.buildings.forEach(function (b) { if (!IN_PROCS['bld.' + b.id]) runBld(b); });
+    function runBld(b) {
       var p = b.proc; if (!p || !p.out || b.stages) return;
       var n = s.bld[b.id].n; if (!n) return;
       var on = p.toggle ? s.bld[b.id].on : n;
@@ -330,7 +335,7 @@ TM.Engine = (function () {
       if (p.fumes) fumesNow += (p.out.fecl2 || p.out.fecl3w || 0) * on * eff * r;
       if (b.id === 'chlor') s.stats.fecl3 += p.out.fecl3w * on * eff * r * dt;
       if (b.id === 'conc') s.stats.fecl3h += p.out.fecl3h * on * eff * r * dt;
-    });
+    }
 
     /* スクラバーで回収した希塩酸、水素の回収 */
     if (d.hclRecoverEff === undefined) d.hclRecoverEff = 0;
@@ -432,6 +437,7 @@ TM.Engine = (function () {
       d.rate[r2] = dt > 0 ? (s.res[r2] - before[r2]) / dt : 0;
       if (s.res[r2] > 0.0001 && !s.flags['r_' + r2]) s.flags['r_' + r2] = true;
     }
+    smooth(s, d, dt);
 
     /* 敷地 */
     if (d.used >= d.land * 0.85 && s.era >= 1) s.flags.space_tight = true;
@@ -449,10 +455,36 @@ TM.Engine = (function () {
       s.fin.hist.unshift(s.fin.cur); if (s.fin.hist.length > 12) s.fin.hist.length = 12;
       s.fin.cur = { inc: {}, exp: {} };
     }
+    doCalendar(s, dt);
     checkStory(s);
     checkHook(s);
     doEvents(s, dt);
     if (s.flags.claimPending) { s.flags.claimed = true; s.flags.claimPending = false; }
+  }
+
+  /* ---- 暦：創業年から。1年の長さは時代ごとに違う（だいたい史実っぽい年に時代が変わるように） ---- */
+  function seasonIdx(s) { var yf = s.cal ? s.cal.yf : 0; return Math.floor((yf - Math.floor(yf)) * 4) % 4; }
+  function calYear(s) { return D.calendar.founded + Math.floor(s.cal ? s.cal.yf : 0); }
+  function doCalendar(s, dt) {
+    var K = D.calendar, cal = s.cal;
+    if (s.era < 1) return;
+    var before = Math.floor(cal.yf);
+    cal.yf += dt / (K.yearSec[s.era] || K.yearSec[K.yearSec.length - 1]);
+    var after = Math.floor(cal.yf);
+    for (var y = before + 1; y <= after; y++) {
+      var year = K.founded + y;
+      /* 年商（その1年の売上） */
+      var sales = s.stats.earned - (cal.y0Earned || 0);
+      cal.y0Earned = s.stats.earned; cal.last = sales;
+      K.sales.forEach(function (m) {
+        if (sales >= m[0] && !cal.salesDone[m[0]]) { cal.salesDone[m[0]] = 1; addLog(s, year + '年　' + m[1], 'special'); }
+      });
+      /* 周年 */
+      if (y >= 50 && y % (y < 100 ? 10 : y < 300 ? 50 : 100) === 0) {
+        var txt = K.anniv[y] || K.annivDefault[(y / 10) % K.annivDefault.length];
+        addLog(s, '創業' + y + '周年（' + year + '年）。' + txt, 'special anniv');
+      }
+    }
   }
 
   /* 酸も液もお金もなく、手が止まっている（ツケで酸を分けてもらえる） */
@@ -462,6 +494,24 @@ TM.Engine = (function () {
   function creditLimit(s) {
     if (s.era < 1) return 0;
     return 60 + (s.res.credit || 0) * 5 + Math.max(0, s.incAvg || 0) * 1800;
+  }
+
+  /* 画面に出す毎秒の値はならす（工程どうしの取り合いで毎ティック揺れるため） */
+  var SMOOTH_TAU = 6;
+  function smooth(s, d, dt) {
+    var a = 1 - Math.exp(-dt / SMOOTH_TAU), k, n;
+    if (!d.rateS) { d.rateS = {}; d.ledS = {}; a = 1; }
+    for (k in d.rate) { var o = d.rateS[k]; d.rateS[k] = o === undefined ? d.rate[k] : o + (d.rate[k] - o) * a; }
+    for (k in d.led) { var L = d.ledS[k] || (d.ledS[k] = {}); for (n in d.led[k]) if (L[n] === undefined) L[n] = 0; }
+    for (k in d.ledS) {
+      var LS = d.ledS[k], cur = d.led[k] || {};
+      for (n in LS) { LS[n] += ((cur[n] || 0) - LS[n]) * a; if (Math.abs(LS[n]) < 1e-12 && !cur[n]) delete LS[n]; }
+    }
+    var inc = (d.income || 0) + (d.walkinInc || 0);
+    d.incomeS = d.incomeS === undefined ? inc : d.incomeS + (inc - d.incomeS) * a;
+    d.filledS = d.filledS === undefined ? (d.filled || 0) : d.filledS + ((d.filled || 0) - d.filledS) * a;
+    var mo = 0; (d.procs || []).forEach(function (p) { if (procStage(p.key) === 'make') for (var o in p.out) if (D.flow.liquid.indexOf(o) >= 0) mo += p.out[o] * p.rate; });
+    d.makeOutS = d.makeOutS === undefined ? mo : d.makeOutS + (mo - d.makeOutS) * a;
   }
 
   function sumEffect(s, key) {
@@ -583,7 +633,7 @@ TM.Engine = (function () {
   function demandOf(s, d, m, p, zone) {
     if (zone < 0) return 0;
     var z = D.zones[zone];
-    var season = p.season ? p.season[Math.floor(s.t / C.seasonSec) % 4] : 1;
+    var season = p.season ? p.season[seasonIdx(s)] : 1;
     var credit = 1 + Math.log(1 + s.res.credit) / Math.LN10 * 0.6;
     var big = 1 + 0.25 * Math.min(8, sumEffect(s, 'bigpack'));
     return big * p.demand * z.demand * mul(m, 'demand') * mul(m, 'demand.' + p.id) * credit * season;
@@ -954,7 +1004,7 @@ TM.Engine = (function () {
     return 'other';
   }
   function frac(s, d, k) { var c = d.cap[k]; return c && c !== Infinity && c > 0 ? s.res[k] / c : 0; }
-  function sumLed(d, k, sign) { var L = d.led && d.led[k], t = 0; if (L) for (var n in L) if (L[n] * sign > 0) t += L[n]; return t; }
+  function sumLed(d, k, sign) { var L = (d.ledS || d.led || {})[k], t = 0; if (L) for (var n in L) if (L[n] * sign > 0) t += L[n]; return t; }
 
   function diagnose(s, d) {
     if (!d || !d.procs || s.era < 1) return null;
@@ -985,6 +1035,7 @@ TM.Engine = (function () {
       else set('sell', '注文が足りない', nm + 'が置き場いっぱい。届く範囲の注文は、もう出し切っている。', 'demand');
     }
     /* 2. 詰める：液はあるのに缶入りが増えない */
+    var nextBehind = null;
     if (!main && hasFill) {
       var canShort = false, fillShort = null;
       D.products.forEach(function (p) {
@@ -992,6 +1043,9 @@ TM.Engine = (function () {
         if (p.license && !(s.lic[p.license] > 0)) return;
         if (p.unlock && !cond(s, p.unlock)) return;
         if (frac(s, d, p.liquid) < 0.9 || frac(s, d, p.id) >= 0.9) return;
+        /* 次の工程（塩素化など）の原料でもある液なら、詰めるより次の工程の詰まり */
+        var usedNext = (d.procs || []).some(function (q) { return procStage(q.key) === 'make' && q.want > 0 && q.inp && q.inp[p.liquid] > 0 && q.key !== 'job.dissolve'; });
+        if (usedNext) { nextBehind = nextBehind || p.liquid; return; }
         var sx = null; (d.sales || []).forEach(function (x) { if (x.p.id === p.id) sx = x; });
         if (sx && sx.dem * sx.price < 0.03 * (d.income || 0)) return;
         if (p.container === 'can' && s.res.can < 1) canShort = true; else fillShort = fillShort || p;
@@ -999,6 +1053,7 @@ TM.Engine = (function () {
       if (canShort) set('fill', '空き缶が足りない', '液はあるのに、詰める缶がない。', 'cans');
       else if (fillShort) set('fill', '詰めるのが追いつかない', resName(s, fillShort.liquid) + 'が置き場いっぱい。缶に詰める手が足りない。', 'fill');
     }
+    if (!main && nextBehind) set('make', '次の工程が追いつかない', resName(s, nextBehind) + 'が置き場いっぱい。使う側（塩素化など）を増やす。', 'next');
     /* 3. 仕入れ・つくる：つくる工程が止まっている理由 */
     var starved = null, other = null, waitFull = null;
     d.procs.forEach(function (p) {
@@ -1037,15 +1092,14 @@ TM.Engine = (function () {
       } else set('ok', '流れは順調', '詰まっている所はない。どこかを広げれば、全体が伸びる。', null);
     }
     /* 各段の数字 */
-    var makeOut = 0;
-    d.procs.forEach(function (p) { if (procStage(p.key) === 'make') for (var o in p.out) if (F.liquid.indexOf(o) >= 0) makeOut += p.out[o] * p.rate; });
+    var makeOut = d.makeOutS || 0;
     var inScrap = sumLed(d, 'scrap', 1), inHcl = sumLed(d, 'hcl', 1);
     var stages = [
       { id: 'in', name: '仕入れ', v: s.era >= 3 ? [['塩酸', inHcl]] : [['鉄くず', inScrap], ['塩酸', inHcl]] },
       { id: 'make', name: 'つくる', v: [['液', makeOut, 'kg']] }
     ];
-    if (hasFill) stages.push({ id: 'fill', name: '詰める', v: [['', d.filled || 0, '缶']] });
-    stages.push({ id: 'sell', name: '売る', v: [['', (d.income || 0) + (d.walkinInc || 0), '円']] });
+    if (hasFill) stages.push({ id: 'fill', name: '詰める', v: [['', d.filledS || 0, '缶']] });
+    stages.push({ id: 'sell', name: '売る', v: [['', d.incomeS || 0, '円']] });
     return { stages: stages, main: main };
   }
 
@@ -1124,6 +1178,7 @@ TM.Engine = (function () {
       D.techs.forEach(function (t) { if (techAvailable(s, t)) s.shown['t:' + t.id] = -1e9; });
     }
     if (!s.heat) s.heat = { gather: 0, dissolve: 0, sell: 0 };
+    if (!o.cal) s.cal = { yf: s.t / 4800, y0Earned: s.stats.earned, salesDone: {}, last: 0 };
     s.v = D.version;
     return s;
   }
@@ -1138,7 +1193,7 @@ TM.Engine = (function () {
     resName: resName, bldVisible: bldVisible, techAvailable: techAvailable, upgVisible: upgVisible, jobVisible: jobVisible,
     idle: idle, assigned: assigned, moveJob: moveJob, whyNot: whyNot, actLabel: actLabel, heatMul: heatMul,
     bldShown: bldShown, upgShown: upgShown, techShown: techShown, diagnose: diagnose, fixesFor: fixesFor, procStage: procStage,
-    creditLimit: creditLimit, sumEffect: sumEffect, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
+    creditLimit: creditLimit, sumEffect: sumEffect, calYear: calYear, seasonIdx: seasonIdx, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
     simulateAway: simulateAway, save: save, load: load, exportText: exportText, importText: importText, wipe: wipe,
     addLog: addLog, KEY: KEY,
     get RES() { return RES; }, get BLD() { return BLD; }, get JOB() { return JOB; }, get TECH() { return TECH; },

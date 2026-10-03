@@ -7,6 +7,7 @@ TM.UI = (function () {
   var $ = function (id) { return document.getElementById(id); };
 
   function S() { return TM.state; }
+  function RT(d) { return d.rateS || d.rate || {}; }
   function f(n) { return U.fmt(n, S().settings.expo); }
   function fr(r) { return U.fmtRate(r, S().settings.expo); }
 
@@ -84,10 +85,15 @@ TM.UI = (function () {
       if (!memo) memo = '<b>作業メモ</b>……';
     }
     setHTML($('memo'), memo);
-    var year = Math.floor(s.t / (C.seasonSec * 4)) + 1, season = D.seasons[Math.floor(s.t / C.seasonSec) % 4];
-    setHTML($('cal'), s.era >= 1 ? year + '年目　' + season : '');
+    var year = E.calYear(s), season = D.seasons[E.seasonIdx(s)];
+    setHTML($('cal'), s.era >= 1 ? year + '年（' + wareki(year) + '）　' + season : '');
   }
 
+  function wareki(y) {
+    var n, e;
+    if (y >= 2019) { e = '令和'; n = y - 2018; } else if (y >= 1989) { e = '平成'; n = y - 1988; } else { e = '昭和'; n = y - 1925; }
+    return e + (n === 1 ? '元' : n) + '年';
+  }
   function renderLog(s) {
     var sig = s.log.length + ':' + (s.log[0] ? s.log[0].t + s.log[0].text : '');
     if (sig !== lastSig.log) {
@@ -145,7 +151,7 @@ TM.UI = (function () {
       var unit = (id === 'hcl' && !s.flags.acid_known) || (id === 'fecl2' && !s.flags.fecl2_known) ? '' : R.unit;
       var val = f(s.res[id]) + (cap !== undefined && cap !== Infinity && cap !== null ? ' / ' + f(cap) : '') + (unit && unit !== '円' ? ' ' + unit : unit === '円' ? '円' : '');
       setText(x.v, val);
-      var rate = d.rate ? d.rate[id] || 0 : 0;
+      var rate = RT(d)[id] || 0;
       var hk = id === 'scrap' ? 'gather' : id === 'fecl2' ? 'dissolve' : id === 'money' ? 'sell' : null;
       var hm = hk && s.era >= 1 ? E.heatMul(s, hk) : 1;
       setText(x.r, fr(rate) + (hm > 1.05 ? '　手伝い ×' + hm.toFixed(1) : '') + (id === 'money' && s.res.money < 0 ? '　掛け' : ''));
@@ -195,21 +201,24 @@ TM.UI = (function () {
     });
   }
 
-  /* ============ 警告（給料が払えないなど） ============ */
-  function renderAlerts(s, d) {
-    var h = '';
-    if (s.era >= 1 && s.flags.broke) {
-      var drains = [];
-      D.buildings.forEach(function (b) { if (b.proc && b.proc.toggle && b.proc.in && b.proc.in.money && s.bld[b.id].on > 0) drains.push(b.name); });
-      h = '<div class="alert"><b>給料が払えていない</b>　みんなの手が半分に鈍っている（作業 ×0.5・新しい人も来ない）。' +
-        (s.res.money < 0 ? '掛けの仕入れでお金がマイナス（残りの枠 ' + f(Math.max(0, d.creditLimit + s.res.money)) + '円）。' : '') +
-        'お金がプラスに戻れば元に戻る。' + (drains.length ? '<br><span class="dim">お金を使っている設備：' + drains.slice(0, 4).join('、') + '（現場で −で止められる）</span>' : '') + '</div>';
-    }
-    setHTML($('alerts'), h);
+  /* ============ 警告 ============
+     給料が払えない状態は、流れの帯の「詰まり」の行に一番優先で出す（行の高さは変えない） */
+  function renderAlerts() { /* 帯に統合 */ }
+  function brokeMain(s, d) {
+    var drains = [];
+    D.buildings.forEach(function (b) { if (b.proc && b.proc.toggle && b.proc.in && b.proc.in.money && s.bld[b.id].on > 0) drains.push(['off', b.id]); });
+    return { stage: 'broke', title: '給料が払えていない', detail: 'みんなの作業が半分（×0.5）、新しい人も来ない。' + (s.res.money < 0 ? '掛けでお金がマイナス（残りの枠 ' + f(Math.max(0, d.creditLimit + s.res.money)) + '円）。' : '') + 'お金がプラスに戻れば元に戻る。', fixes: [['act', 'give']].filter(function (x) { var a = E.actions.give; return a.vis(s); }).concat(drains).slice(0, 3) };
   }
 
-  /* ============ 流れ（仕入れ → つくる → 詰める → 売る）と、詰まりの手当て ============ */
-  function flowVisible(s) { return s.era >= 1 && s.era <= 4 && (s.flags.hook || s.flags.cans_known); }
+  /* ============ 流れ（仕入れ → つくる → 詰める → 売る）と、詰まりの手当て ============
+     帯の高さは常に3行ぶん（段・詰まり・手当て）で固定。中身が変わってもボタンの位置がずれない。
+     詰まりの表示は2.5秒続いたときだけ切り替える（行ったり来たりでチカチカしない） */
+  var flowCur = null, flowPend = null, flowPendAt = 0;
+  function flowVisible(s) {
+    if (s.era < 1) return false;
+    if (s.era <= 4 && (s.flags.hook || s.flags.cans_known)) s.flags.flow_seen = true;
+    return !!s.flags.flow_seen || !!s.flags.broke;
+  }
   function fixLabel(s, d, fx) {
     var kind = fx[0], id = fx[1];
     if (kind === 'job') return E.JOB[id].name + 'の人手 ＋1';
@@ -217,6 +226,7 @@ TM.UI = (function () {
     if (kind === 'upg') { var u = E.UPG[id]; return u.name + '　' + costText(s, u.cost, true); }
     if (kind === 'tech') { var t2 = E.TECH[id]; return '研究：' + t2.name; }
     if (kind === 'act') return E.actLabel(s, id);
+    if (kind === 'off') return '止める：' + E.BLD[id].name + '（' + s.bld[id].on + '）';
     return id;
   }
   function fixReady(s, d, fx) {
@@ -226,41 +236,50 @@ TM.UI = (function () {
     if (kind === 'upg') return E.canPay(s, E.UPG[id].cost);
     if (kind === 'tech') return E.canPay(s, E.TECH[id].cost);
     if (kind === 'act') { var a = E.actions[id]; return !a.ok || a.ok(s); }
+    if (kind === 'off') return s.bld[id].on > 0;
     return false;
   }
   function renderFlow(s, d) {
     var box = $('flowbar');
     if (!flowVisible(s)) { if (box.innerHTML) box.innerHTML = ''; lastSig.flow = null; return; }
-    var g = E.diagnose(s, d); if (!g) return;
-    var mainSt = g.main ? g.main.stage : 'ok';
-    var fixes = g.main && g.main.fixKey ? E.fixesFor(s, d, g.main.fixKey) : [];
-    var sig = g.stages.map(function (x) { return x.id; }).join(',') + '|' + mainSt + '|' + (g.main ? g.main.title : '') + '|' + fixes.map(function (x) { return x.join(':'); }).join(',');
+    var showStages = s.era <= 4;
+    var g = showStages ? E.diagnose(s, d) : { stages: [], main: null };
+    if (!g) return;
+    /* 詰まりの決定（給料未払いは即時、それ以外は2.5秒続いたら） */
+    var now = Date.now(), cand;
+    if (s.flags.broke) cand = brokeMain(s, d);
+    else if (g.main) cand = { stage: g.main.stage, title: g.main.title, detail: g.main.detail, fixes: g.main.fixKey ? E.fixesFor(s, d, g.main.fixKey) : [] };
+    else cand = { stage: 'ok', title: '', detail: '', fixes: [] };
+    var ck = cand.stage + '|' + cand.title;
+    if (!flowCur || cand.stage === 'broke' || flowCur.stage === 'broke' && !s.flags.broke) { flowCur = cand; flowPend = null; }
+    else if (flowCur.stage + '|' + flowCur.title === ck) { flowCur = cand; flowPend = null; }
+    else if (flowPend !== ck) { flowPend = ck; flowPendAt = now; }
+    else if (now - flowPendAt > 2500) { flowCur = cand; flowPend = null; }
+    var M = flowCur;
+    var sig = g.stages.map(function (x) { return x.id; }).join(',') + '|' + M.stage + '|' + M.title + '|' + M.fixes.map(function (x) { return x.join(':'); }).join(',');
     if (sig !== lastSig.flow) {
       lastSig.flow = sig; box.innerHTML = ''; refs.flow = {};
       var row = el('div', { class: 'stages' });
       g.stages.forEach(function (st, i) {
         if (i) row.appendChild(el('span', { class: 'arrow', text: '→' }));
         var v = el('span', { class: 'v' });
-        var chip = el('span', { class: 'stage' + (st.id === mainSt ? ' bad' : ''), 'data-tip': 'flow:' + st.id }, [el('b', { text: st.name }), v]);
+        var chip = el('span', { class: 'stage' + (st.id === M.stage ? ' bad' : ''), 'data-tip': 'flow:' + st.id }, [el('b', { text: st.name }), v]);
         row.appendChild(chip); refs.flow[st.id] = v;
       });
       box.appendChild(row);
-      var adv = el('div', { class: 'advice' + (mainSt === 'ok' ? ' ok' : '') });
-      if (g.main) {
-        var nm = { in: '仕入れ', make: 'つくる', fill: '詰める', sell: '売る', ok: '' }[mainSt];
-        adv.appendChild(el('span', { class: 'ttl', text: (nm ? '詰まり：' + nm + '　' : '') + g.main.title }));
-        refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
-        if (fixes.length) {
-          var fx = el('div', { class: 'fixes' }, [el('span', { class: 'dim', text: '手当て：' })]);
-          refs.flow.fix = [];
-          fixes.forEach(function (x) {
-            var b = el('button', { class: 'mini fix', 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] + ':' + x[1] });
-            fx.appendChild(b); refs.flow.fix.push([b, x]);
-          });
-          adv.appendChild(fx);
-        } else if (mainSt !== 'ok') adv.appendChild(el('div', { class: 'fixes dim', text: '今は手当ての方法が見つからない。技術や改善を進めると見つかるかもしれない。' }));
-      }
+      var nm = { in: '仕入れ', make: 'つくる', fill: '詰める', sell: '売る', broke: '', ok: '' }[M.stage];
+      var adv = el('div', { class: 'advice' + (M.stage === 'ok' ? ' ok' : '') + (M.stage === 'broke' ? ' broke' : '') });
+      adv.appendChild(el('span', { class: 'ttl', text: M.stage === 'ok' ? '流れは順調' : (nm ? '詰まり：' + nm + '　' : '') + M.title }));
+      refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
       box.appendChild(adv);
+      var fx = el('div', { class: 'fixes' }, [el('span', { class: 'dim', text: '手当て：' })]);
+      refs.flow.fix = [];
+      M.fixes.forEach(function (x) {
+        var b = el('button', { class: 'mini fix', 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] === 'off' ? 'bld:' + x[1] : x[0] + ':' + x[1] });
+        fx.appendChild(b); refs.flow.fix.push([b, x]);
+      });
+      if (!M.fixes.length) fx.appendChild(el('span', { class: 'dim', text: M.stage === 'ok' ? '—' : '今は見つからない（技術や改善を進めると見つかるかも）' }));
+      box.appendChild(fx);
     }
     g.stages.forEach(function (st) {
       var parts = st.v.filter(function (x) { return x[1] > 1e-6 || st.v.length === 1; }).map(function (x) {
@@ -270,7 +289,7 @@ TM.UI = (function () {
       });
       setText(refs.flow[st.id], parts.join('・') || '—');
     });
-    if (refs.flow.detail && g.main) setText(refs.flow.detail, g.main.detail);
+    if (refs.flow.detail) setText(refs.flow.detail, M.stage === 'ok' ? '詰まっている所はない。どこかを広げれば、全体が伸びる。' : M.detail);
     (refs.flow.fix || []).forEach(function (p) { setText(p[0], fixLabel(s, d, p[1])); p[0].classList.toggle('na', !fixReady(s, d, p[1])); });
   }
   function doFix(s, key) {
@@ -280,6 +299,7 @@ TM.UI = (function () {
     if (kind === 'upg') { if (!E.buyUpg(s, id)) goto('upg', 'upg:' + id); return; }
     if (kind === 'tech') { if (!E.research(s, id)) goto('tech', 'tech:' + id); return; }
     if (kind === 'act') E.doAction(s, id);
+    if (kind === 'off') E.setOn(s, id, -1);
   }
   var pendingHL = null;
   function goto(tb, hl) {
@@ -347,7 +367,7 @@ TM.UI = (function () {
     for (var k in c) {
       var need = c[k] - (s.res[k] || 0);
       if (need <= 0) continue;
-      var r = d.rate ? d.rate[k] : 0;
+      var r = RT(d)[k] || 0;
       if (!(r > 0)) return Infinity;
       if (d.cap[k] !== Infinity && d.cap[k] < c[k]) return -1;
       worst = Math.max(worst, need / r);
@@ -750,7 +770,7 @@ TM.UI = (function () {
   function line(a, b2, cls) { return '<div class="tl"><span>' + a + '</span><span class="' + (cls || '') + '">' + b2 + '</span></div>'; }
   function rateS(r, unit) { var x = fr(r) || '0'; return unit ? x.replace('/', unit + '/') : x; }
   function ledger(s, d, k, unit) {
-    var L = d.led && d.led[k], ins = [], outs = [], n, h = '';
+    var L = (d.ledS || d.led || {})[k], ins = [], outs = [], n, h = '';
     if (L) for (n in L) { if (L[n] > 1e-9) ins.push([n, L[n]]); else if (L[n] < -1e-9) outs.push([n, L[n]]); }
     ins.sort(function (a, b) { return b[1] - a[1]; }); outs.sort(function (a, b) { return a[1] - b[1]; });
     if (ins.length) h += '<div class="th">増える</div>' + ins.slice(0, 5).map(function (x) { return line(x[0], rateS(x[1], unit), 'good'); }).join('');
@@ -766,7 +786,7 @@ TM.UI = (function () {
   function tipHTML(s, d, key) {
     var i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1), h = '', C = D.consts;
     if (kind === 'res') {
-      var R = E.RES[id], v = s.res[id], cap = d.cap[id], net = d.rate ? d.rate[id] || 0 : 0;
+      var R = E.RES[id], v = s.res[id], cap = d.cap[id], net = RT(d)[id] || 0;
       var unit = R.unit === '円' ? '円' : R.unit === '個' || R.unit === '缶' || R.unit === '箱' ? '' : R.unit;
       h += '<div class="tt">' + E.resName(s, id) + '</div>';
       if (id === 'money') {
@@ -868,12 +888,12 @@ TM.UI = (function () {
       h += '<div class="tt">' + nm + '</div>';
       if (id === 'in') {
         h += '<div class="tw dim">原料を集めて、置き場にためる。</div>';
-        ['scrap', 'hcl', 'urea'].forEach(function (k) { if (s.flags['r_' + k]) h += line(E.resName(s, k), f(s.res[k]) + ' / ' + f(d.cap[k]) + '　' + (fr(d.rate[k] || 0) || '±0'), s.res[k] >= d.cap[k] * 0.9 ? 'warn' : s.res[k] < d.cap[k] * 0.05 ? 'bad' : ''); });
+        ['scrap', 'hcl', 'urea'].forEach(function (k) { if (s.flags['r_' + k]) h += line(E.resName(s, k), f(s.res[k]) + ' / ' + f(d.cap[k]) + '　' + (fr(RT(d)[k] || 0) || '±0'), s.res[k] >= d.cap[k] * 0.9 ? 'warn' : s.res[k] < d.cap[k] * 0.05 ? 'bad' : ''); });
       } else if (id === 'make') {
         h += '<div class="tw dim">原料を溶かし、液にする。</div>';
         (d.procs || []).forEach(function (p) { if (E.procStage(p.key) === 'make' && (p.want > 0 || p.reason)) h += line(p.name, Math.round(p.want > 0 ? p.rate / p.want * 100 : 0) + '%' + (p.reason ? '　' + p.reason : ''), p.reason ? 'bad' : ''); });
       } else if (id === 'fill') {
-        h += '<div class="tw dim">液を缶に詰める。</div>' + line('詰めている', rateS(d.filled || 0, '缶') + '（詰められる ' + rateS(d.fillCap || 0, '缶') + '）') + line('空きポリ缶', f(s.res.can) + ' / ' + f(d.cap.can), s.res.can < 1 ? 'bad' : '');
+        h += '<div class="tw dim">液を缶に詰める。</div>' + line('詰めている', rateS(d.filledS || 0, '缶') + '（詰められる ' + rateS(d.fillCap || 0, '缶') + '）') + line('空きポリ缶', f(s.res.can) + ' / ' + f(d.cap.can), s.res.can < 1 ? 'bad' : '');
       } else if (id === 'sell') {
         h += '<div class="tw dim">注文に応じて出荷する。左から：出荷 / 注文</div>';
         if (d.walkinInc) h += line('店先の客', rateS(d.walkinInc, '円'));

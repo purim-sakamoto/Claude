@@ -12,7 +12,7 @@ body[data-era="6"] { --bg: #04050b; --fg: #d7d4e8; --dim: #6e6a8a; --line: #1b1a
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; font-size: 14px; transition: background 2s, color 2s; }
+body { font-variant-numeric: tabular-nums; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; font-size: 14px; transition: background 2s, color 2s; }
 button { font: inherit; }
 .hidden { display: none !important; }
 .dim { color: var(--dim); }
@@ -25,11 +25,12 @@ button { font: inherit; }
 #top { display: flex; gap: 16px; align-items: baseline; min-height: 24px; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 10px; }
 #title { font-size: 12px; color: var(--dim); letter-spacing: .1em; white-space: nowrap; }
 #title s { color: var(--dim); }
-#memo { flex: 1; font-size: 13px; }
+#memo { flex: 1; font-size: 13px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #memo b { color: var(--accent); font-weight: normal; margin-right: 6px; }
 #cal { font-size: 12px; color: var(--dim); white-space: nowrap; }
 
-#main { display: grid; grid-template-columns: 260px 1fr 260px; gap: 18px; align-items: start; }
+#main { display: grid; grid-template-columns: 260px minmax(0, 1fr) 260px; gap: 18px; align-items: start; }
+#center { min-width: 0; }
 #logcol { position: sticky; top: 8px; max-height: calc(100vh - 70px); overflow: hidden; }
 #log { font-size: 13px; line-height: 1.6; }
 #log div { margin-bottom: 6px; opacity: 1; transition: opacity .8s; }
@@ -70,13 +71,16 @@ body.noanim .fade { animation: none; }
 #tabs button.on { color: var(--fg); border-bottom-color: var(--accent); }
 #tabs button.new::after { content: "●"; color: var(--accent); font-size: 8px; vertical-align: super; margin-left: 2px; }
 #actions:empty { display: none; }
+/* 手作業ボタンは幅を固定（中の数字や文言が変わっても隣のボタンが動かない） */
+#actions .btn { width: 10.5em; white-space: nowrap; }
+#actions .btn small { overflow: hidden; text-overflow: ellipsis; }
 #actions { margin-bottom: 8px; }
 
 /* 資源 */
 .res { display: grid; grid-template-columns: 1fr auto; gap: 0 6px; font-size: 13px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
 .res .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .res .v { text-align: right; font-variant-numeric: tabular-nums; }
-.res .r { grid-column: 1 / 3; text-align: right; font-size: 11px; color: var(--dim); min-height: 0; }
+.res .r { grid-column: 1 / 3; text-align: right; font-size: 11px; color: var(--dim); min-height: 15px; line-height: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .res.full .v { color: var(--warn); }
 .res.neg .r { color: var(--bad); }
 .resgroup { font-size: 11px; color: var(--dim); margin: 10px 0 2px; letter-spacing: .1em; }
@@ -87,7 +91,7 @@ body.noanim .fade { animation: none; }
 .row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
 .row .btn { flex: 0 0 auto; min-width: 190px; margin: 0; }
 .row .info { flex: 1; font-size: 12px; color: var(--dim); padding-top: 2px; }
-.row .info .st { color: var(--fg); }
+.row .info .st { color: var(--fg); min-height: 17px; }
 .row .ctl { white-space: nowrap; font-size: 12px; padding-top: 4px; }
 .cost { font-size: 11px; }
 .cost .lack { color: var(--bad); }
@@ -141,21 +145,30 @@ p.note { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
 #alerts .alert { border: 1px solid var(--bad); color: var(--fg); padding: 6px 10px; margin-bottom: 8px; font-size: 13px; line-height: 1.6; }
 #alerts .alert b { color: var(--bad); font-weight: normal; margin-right: 4px; }
 
-/* 流れ（上部の細い帯） */
+/* 流れ（上部の細い帯）：高さは固定。中身が変わっても下のボタンが動かない */
 #flowbar:empty { display: none; }
-#flowbar { margin-bottom: 10px; font-size: 12px; opacity: .92; }
-#flowbar .stages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-#flowbar .stage { border: 1px solid var(--line); padding: 2px 8px; border-radius: 2px; color: var(--dim); cursor: default; white-space: nowrap; }
+#flowbar { margin-bottom: 10px; font-size: 12px; height: 78px; overflow: hidden; }
+#flowbar .stages { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; height: 24px; overflow: hidden; }
+#flowbar .stage { border: 1px solid var(--line); padding: 2px 8px; border-radius: 2px; color: var(--dim); cursor: default; white-space: nowrap; font-variant-numeric: tabular-nums; }
 #flowbar .stage b { font-weight: normal; color: var(--fg); margin-right: 6px; }
+#flowbar .stage .v { display: inline-block; min-width: 5.5em; }
+#flowbar .stage:first-child .v { min-width: 12em; }
 #flowbar .stage.bad { border-color: var(--bad); }
 #flowbar .stage.bad b { color: var(--bad); }
 #flowbar .arrow { color: var(--dim); font-size: 11px; }
-#flowbar .advice { margin-top: 5px; color: var(--dim); line-height: 1.6; }
+#flowbar .advice { height: 22px; line-height: 22px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #flowbar .advice .ttl { color: var(--bad); margin-right: 8px; }
 #flowbar .advice.ok .ttl { color: var(--good); }
-#flowbar .fixes { margin-top: 3px; }
-#flowbar .fix { margin: 2px 4px 2px 0; }
+#flowbar .advice.broke { color: var(--fg); }
+#flowbar .fixes { height: 28px; white-space: nowrap; overflow: hidden; display: flex; align-items: center; gap: 4px; }
+#flowbar .fix { margin: 0; min-width: 10em; text-align: left; }
 #flowbar .fix.na { opacity: .55; }
+
+/* 特別な知らせ（周年・年商） */
+#log div.special { color: var(--accent); border-left: 2px solid var(--accent); padding-left: 8px; animation: special 2.4s ease both; }
+#log div.special.anniv { letter-spacing: .05em; }
+@keyframes special { 0% { opacity: 0; transform: translateX(-10px); } 30% { opacity: 1; transform: none; text-shadow: 0 0 8px var(--accent); } 100% { text-shadow: none; } }
+body.noanim #log div.special { animation: none; }
 
 /* 説明の吹き出し */
 #tip { position: fixed; z-index: 70; max-width: 330px; background: var(--panel); color: var(--fg); border: 1px solid var(--btnline); padding: 8px 10px; font-size: 12px; line-height: 1.55; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
@@ -182,4 +195,7 @@ h3.sect:first-child { margin-top: 0; }
   .row { flex-wrap: wrap; }
   .row .btn { min-width: 0; width: 100%; }
   #side #resources { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  #actions .btn { width: calc(50% - 6px); }
+  #flowbar .stages, #flowbar .fixes { overflow-x: auto; }
+  #flowbar .stage .v, #flowbar .stage:first-child .v { min-width: 0; }
 }
