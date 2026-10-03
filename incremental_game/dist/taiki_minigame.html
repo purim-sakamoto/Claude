@@ -79,9 +79,11 @@ body.noanim .fade { animation: none; }
 #tabs button.new::after { content: "●"; color: var(--accent); font-size: 8px; vertical-align: super; margin-left: 2px; }
 #actions:empty { display: none; }
 /* 手作業ボタンは幅を固定（中の数字や文言が変わっても隣のボタンが動かない） */
-#actions .btn { width: 10.5em; white-space: nowrap; }
+#actions { display: flex; gap: 5px; }
+#actions .btn { flex: 1 1 0; min-width: 0; max-width: 11em; margin: 0; white-space: nowrap; }
+#actions .btn > span:first-child { display: block; overflow: hidden; text-overflow: ellipsis; }
 #actions .btn small { overflow: hidden; text-overflow: ellipsis; }
-#actions { margin-bottom: 4px; }
+#actions { margin-bottom: 6px; }
 
 /* 資源 */
 .res { display: grid; grid-template-columns: minmax(0, 1fr) auto 6.6em; gap: 0 8px; font-size: 12.5px; line-height: 19px; padding: 0; border-bottom: 1px dotted var(--line); }
@@ -108,7 +110,7 @@ body.noanim .fade { animation: none; }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--bar); }
 .bar.red i { background: var(--bad); }
 table.t { border-collapse: collapse; width: 100%; font-size: 12px; }
-table.t th, table.t td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: right; }
+table.t th, table.t td { border-bottom: 1px solid var(--line); padding: 2px 6px; text-align: right; }
 table.t th:first-child, table.t td:first-child { text-align: left; }
 table.t th { color: var(--dim); font-weight: normal; }
 .flow { font-size: 12px; padding: 5px 0; border-bottom: 1px dotted var(--line); }
@@ -203,7 +205,8 @@ h3.sect:first-child { margin-top: 0; }
   .row { flex-wrap: wrap; }
   .row .btn { min-width: 0; width: 100%; }
   #side #resources { display: block; }
-  #actions .btn { width: calc(50% - 6px); }
+  #actions { flex-wrap: wrap; }
+  #actions .btn { flex: 1 1 30%; max-width: none; }
   #flowbar .stages, #flowbar .fixes { overflow-x: auto; }
   #flowbar .stage .v, #flowbar .stage:first-child .v { min-width: 0; }
 }
@@ -220,6 +223,13 @@ h3.sect:first-child { margin-top: 0; }
 .res .nm.sold::after { content: '売'; display: inline-block; margin-left: 5px; padding: 0 4px; font-size: 10px; line-height: 14px; border-radius: 3px; background: #c58b2a; color: #fff; vertical-align: 1px; }
 .res.dry .r { color: var(--bad); }
 .loan { color: var(--warn); }
+
+/* 帳簿 */
+.subtabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.subtabs .mini.on { border-color: var(--accent); color: var(--accent); }
+table.t.fs td, table.t.fs th { padding: 2px 6px; }
+table.t.fs tr.sum td { border-top: 1px solid var(--btnline); }
+table.t.fs tr.total td { border-top: 2px double var(--btnline); font-weight: bold; }
 
 </style>
 </head>
@@ -999,6 +1009,8 @@ TM.DATA = {
     wasteFree: 0.05,
     /* 与信枠：借りている額にかかる利息(1秒あたり)と、枠を超えてから設備を手放すまでの猶予(秒) */
     creditRate: 0.0001,
+    /* 帳簿：設備の簿価が減っていく速さ（秒。簿価 × 経過秒 / depSec を減価償却費にする） */
+    depSec: 60000,
     overGrace: 60,
     /* 時代ごとの「そのまま下水に流せる分」(L/秒) と、製造の洗浄水(L/液1kg、時代2から) */
     wasteFreeEra: [0.05, 0.05, 1, 4, 10, 20, 40],
@@ -1097,12 +1109,12 @@ var TM = window.TM = window.TM || {};
 
 TM.Engine = (function () {
   var D, C, U = TM.util;
-  var RES = {}, BLD = {}, JOB = {}, TECH = {}, UPG = {}, LIC = {}, PROD = {}, MOD = {};
+  var RES = {}, BLD = {}, BLDN = {}, JOB = {}, TECH = {}, UPG = {}, LIC = {}, PROD = {}, MOD = {};
 
   function init() {
     D = TM.DATA; C = D.consts;
     D.resources.forEach(function (r) { RES[r.id] = r; });
-    D.buildings.forEach(function (b) { BLD[b.id] = b; });
+    D.buildings.forEach(function (b) { BLD[b.id] = b; BLDN[b.name] = b; });
     D.jobs.forEach(function (j) { JOB[j.id] = j; });
     D.techs.forEach(function (t) { TECH[t.id] = t; });
     D.upgrades.forEach(function (u) { UPG[u.id] = u; });
@@ -1121,7 +1133,7 @@ TM.Engine = (function () {
       cal: { yf: 0, y0Earned: 0, salesDone: {}, last: 0 },
       log: [], storySeen: {}, evTimer: 600, evActive: null,
       stats: { batches: 0, acidBuys: 0, cansSold: 0, washed: 0, fecl3: 0, fecl3h: 0, forkUsed: 0, h2: 0, produced: {}, sold: {}, at: {}, earned: 0, offline: 0, clicks: 0 },
-      fin: { cur: { inc: {}, exp: {} }, hist: [], monthT: 0 },
+      fin: { cur: { inc: {}, exp: {}, dep: 0, cash0: 0, debt0: 0 }, hist: [], monthT: 0, book: 0 },
       contracts: { offers: [], active: [], timer: 120, done: 0, seq: 0 },
       ending: 0, settings: { expo: false, anim: true, theme: 'auto' }
     };
@@ -1189,9 +1201,11 @@ TM.Engine = (function () {
   function pay(s, c, cat) {
     for (var k in c) {
       s.res[k] -= c[k];
-      if (k === 'money') finExp(s, cat || '設備', c[k]);
+      if (k === 'money') { finExp(s, cat || '設備', c[k]); if (CAPEX[cat || '設備']) s.fin.book = (s.fin.book || 0) + c[k]; }
     }
   }
+  /* 帳簿：設備・大型設備・改善は投資（簿価に積み、少しずつ減価償却する） */
+  var CAPEX = { '設備': 1, '大型設備': 1, '改善': 1 };
   function finInc(s, cat, v) { if (v > 0) { s.fin.cur.inc[cat] = (s.fin.cur.inc[cat] || 0) + v; s.stats.earned += v; } }
   function finExp(s, cat, v) { if (v > 0) s.fin.cur.exp[cat] = (s.fin.cur.exp[cat] || 0) + v; }
 
@@ -1573,14 +1587,17 @@ TM.Engine = (function () {
 
     /* 暦・月次・物語・出来事 */
     s.fin.monthT += dt;
+    var dep = (s.fin.book || 0) * Math.min(1, dt / (C.depSec || 6000));
+    s.fin.book = (s.fin.book || 0) - dep; s.fin.cur.dep = (s.fin.cur.dep || 0) + dep;
     if (s.fin.monthT >= C.monthSec) {
       s.fin.monthT -= C.monthSec;
       var inc = 0, exp = 0, k2;
       for (k2 in s.fin.cur.inc) inc += s.fin.cur.inc[k2];
       for (k2 in s.fin.cur.exp) exp += s.fin.cur.exp[k2];
       s.fin.cur.total = { inc: inc, exp: exp };
+      s.fin.cur.cash1 = Math.max(0, s.res.money); s.fin.cur.debt1 = Math.max(0, -s.res.money); s.fin.cur.book1 = s.fin.book; s.fin.cur.inv1 = invValue(s, d);
       s.fin.hist.unshift(s.fin.cur); if (s.fin.hist.length > 12) s.fin.hist.length = 12;
-      s.fin.cur = { inc: {}, exp: {} };
+      s.fin.cur = { inc: {}, exp: {}, dep: 0, cash0: Math.max(0, s.res.money), debt0: Math.max(0, -s.res.money) };
     }
     doCalendar(s, dt);
     checkStory(s);
@@ -1616,6 +1633,35 @@ TM.Engine = (function () {
 
   /* 酸も液もお金もなく、手が止まっている（ツケで酸を分けてもらえる） */
   function stuck(s) { return s.res.hcl < 2 && s.res.fecl2 < 3 && s.res.money < C.acidBuy.cost; }
+
+  /* 在庫の評価（売値の半分＝原価のつもり） */
+  function invValue(s, d) {
+    var seen = {}, v = 0;
+    ((d && d.sales) || []).forEach(function (x) { if (seen[x.stock]) return; seen[x.stock] = 1; v += Math.max(0, s.res[x.stock] || 0) * x.price * 0.5; });
+    if (s.era >= 1 && !seen.fecl2) v += Math.max(0, s.res.fecl2 || 0) * C.walkinPrice * 0.5;
+    return v;
+  }
+  /* 財務三表（月ごと）。p：s.fin.cur か s.fin.hist[i] */
+  function statements(s, d, p, live) {
+    var R = 0, other = 0, saleIn = 0, cogs = 0, sga = 0, rnd = 0, intr = 0, capex = 0, k, v;
+    for (k in p.inc) { v = p.inc[k]; if (k === '臨時') other += v; else if (k === '設備の売却') saleIn += v; else R += v; }
+    for (k in p.exp) {
+      v = p.exp[k];
+      if (CAPEX[k]) capex += v;
+      else if (k === '利息') intr += v;
+      else if (k === '給与' || k === '人件費' || k === '講習') sga += v;
+      else if (k === '研究' || (BLDN[k] && BLDN[k].group === '研究')) rnd += v;
+      else cogs += v;
+    }
+    var dep = p.dep || 0, gross = R - cogs, op = gross - sga - rnd - dep, ord = op + other - intr;
+    var cash1 = live ? Math.max(0, s.res.money) : p.cash1, debt1 = live ? Math.max(0, -s.res.money) : p.debt1;
+    var cfo = R + other - cogs - sga - rnd - intr, cfi = saleIn - capex, cff = (debt1 || 0) - (p.debt0 || 0);
+    return {
+      pl: { sales: R, cogs: cogs, gross: gross, sga: sga, rnd: rnd, dep: dep, op: op, other: other, intr: intr, ord: ord },
+      cf: { op: cfo, inv: cfi, fin: cff, net: cfo + cfi + cff, cash0: p.cash0 || 0, cash1: cash1 || 0, capex: capex, saleIn: saleIn },
+      bs: { cash: cash1 || 0, inv: live ? invValue(s, d) : (p.inv1 || 0), book: live ? (s.fin.book || 0) : (p.book1 || 0), debt: debt1 || 0 }
+    };
+  }
 
   /* 与信枠：借りられる上限（信用と稼ぎに応じて） */
   function creditLimit(s) {
@@ -2079,6 +2125,7 @@ TM.Engine = (function () {
     if (s.bld[id].on > s.bld[id].n) s.bld[id].on = s.bld[id].n;
     var c = cost(s, b, s.bld[id].n);
     for (var k in c) s.res[k] += c[k] * 0.5;
+    if (c.money) { finInc(s, '設備の売却', c.money * 0.5); s.stats.earned -= c.money * 0.5; s.fin.book = Math.max(0, (s.fin.book || 0) - c.money * 0.5); }
   }
   function setOn(s, id, delta) {
     var b = s.bld[id]; if (!b) return;
@@ -2329,6 +2376,12 @@ TM.Engine = (function () {
       D.techs.forEach(function (t) { if (techAvailable(s, t)) s.shown['t:' + t.id] = -1e9; });
     }
     if (!s.heat) s.heat = { gather: 0, dissolve: 0, sell: 0 };
+    if (!o.fin || o.fin.book === undefined) {
+      /* 帳簿の仕組みより前のセーブ：今ある設備を、建てた値段の3割で簿価に入れておく */
+      var bk = 0; D.buildings.forEach(function (b) { for (var i = 0; i < (s.bld[b.id].n || 0); i++) bk += cost(s, b, i).money || 0; });
+      s.fin.book = bk * 0.3;
+      if (s.fin.cur.debt0 === undefined) { s.fin.cur.cash0 = Math.max(0, s.res.money); s.fin.cur.debt0 = Math.max(0, -s.res.money); s.fin.cur.dep = 0; }
+    }
     if (!o.cal) s.cal = { yf: s.t / 4800, y0Earned: s.stats.earned, salesDone: {}, last: 0 };
     s.v = D.version;
     return s;
@@ -2338,7 +2391,7 @@ TM.Engine = (function () {
   function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* 無視 */ } }
 
   return {
-    setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale,
+    setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
     init: init, newState: newState, step: step, derive: derive, cond: cond, cost: cost, canPay: canPay,
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
     setJob: setJob, train: train, acceptOffer: acceptOffer, declineOffer: declineOffer, claimEvent: claimEvent,
@@ -3289,7 +3342,7 @@ TM.UI = (function () {
 
   /* 取引タブ：販売・受託・帳簿を縦に並べる */
   PANELS.market = function (s, d, box) {
-    var hasOem = !!s.techs.oem, hasFin = !!s.techs.bookkeeping, hasSales = !!s.flags.cans_known;
+    var hasOem = !!s.techs.oem, hasFin = false, hasSales = !!s.flags.cans_known;
     keyed(box, 'mk|' + hasSales + hasOem + hasFin, function (R) {
       ['p_sales', 'p_oem', 'p_fin'].forEach(function (k) { lastSig[k] = null; });
       if (hasSales) { box.appendChild(el('h3', { class: 'sect', text: '販売' })); R.sales = el('div'); box.appendChild(R.sales); }
@@ -3408,6 +3461,77 @@ TM.UI = (function () {
   };
 
   PANELS.stats = function (s, d, box) {
+    var hasFs = s.era >= 1;
+    keyed(box, 'statswrap|' + hasFs + '|' + (s.era >= 4), function (R) {
+      ['p_fs', 'p_st'].forEach(function (k) { lastSig[k] = null; });
+      if (hasFs) { box.appendChild(el('h3', { class: 'sect', text: '帳簿（月ごと・ゲーム内の1か月 ≒ 約7分）' })); R.fs = el('div'); box.appendChild(R.fs); }
+      if (s.era >= 4) { R.circ = el('div', { style: 'margin:10px 0', class: 'note' }); box.appendChild(R.circ); }
+      box.appendChild(el('h3', { class: 'sect', text: 'これまで' })); R.st = el('div'); box.appendChild(R.st);
+    }, function (R) {
+      if (R.fs) PANELS.fs(s, d, R.fs);
+      if (R.circ) {
+        var h = '循環率 ' + Math.round(d.circ * 100) + '%（高いほど、すべての生産と単価が上がる）<br>';
+        D.circ.forEach(function (c) { var v = Math.min(1, (d.circParts[c.id] || 0) / c.need); h += '<span class="' + (v >= 1 ? 'good' : 'dim') + '">' + c.name + ' ' + Math.round(v * 100) + '%</span>　'; });
+        setHTML(R.circ, h);
+      }
+      PANELS.st(s, d, R.st);
+    });
+  };
+
+  /* 財務三表：損益計算書・貸借対照表・キャッシュフロー計算書 */
+  var fsView = 'pl';
+  try { fsView = localStorage.getItem('taiki-minigame-fs') || 'pl'; } catch (e) { /* 無視 */ }
+  function yen(v) { return (v < -1e-9 ? '△' : '') + f(Math.abs(v)); }
+  var FS_ROWS = {
+    pl: [['売上高', 'pl.sales'], ['売上原価（仕入れ・材料・燃料）', 'pl.cogs', 1], ['売上総利益', 'pl.gross', 0, 'sum'],
+      ['人件費（給料・講習）', 'pl.sga', 1], ['研究開発費', 'pl.rnd', 1], ['減価償却費', 'pl.dep', 1], ['営業利益', 'pl.op', 0, 'sum'],
+      ['営業外収益（おまけ等）', 'pl.other'], ['支払利息', 'pl.intr', 1], ['経常利益', 'pl.ord', 0, 'total']],
+    cf: [['営業キャッシュフロー', 'cf.op', 0, 'sum'], ['設備・改善への投資', 'cf.capex', 1], ['設備の売却', 'cf.saleIn'], ['投資キャッシュフロー', 'cf.inv', 0, 'sum'],
+      ['財務キャッシュフロー（借入の増減）', 'cf.fin', 0, 'sum'], ['現金の増減', 'cf.net', 0, 'total'], ['月初の現金', 'cf.cash0'], ['月末の現金', 'cf.cash1']],
+    bs: [['【資産】現金', 'bs.cash'], ['在庫（原価）', 'bs.inv'], ['設備（簿価）', 'bs.book'], ['資産合計', 'bs.asset', 0, 'sum'],
+      ['【負債】借入金（与信枠）', 'bs.debt'], ['【純資産】', 'bs.eq', 0, 'total']]
+  };
+  var FS_NOTE = {
+    pl: '設備・改善の代金は費用にせず、簿価に積んで少しずつ減価償却する。△はマイナス。',
+    bs: '在庫は売値の半分で評価。設備の簿価は買った値段から少しずつ減っていく。純資産 ＝ 資産 − 借入金。',
+    cf: '営業＝商売で増えた現金、投資＝設備を買った（売った）分、財務＝与信枠で借りた（返した）分。三つを足すと現金の増減になる。'
+  };
+  PANELS.fs = function (s, d, box) {
+    var nCol = 1 + Math.min(2, s.fin.hist.length);
+    keyed(box, 'fs|' + fsView + '|' + nCol, function (R) {
+      var bar = el('div', { class: 'subtabs' });
+      [['pl', '損益計算書'], ['bs', '貸借対照表'], ['cf', 'キャッシュフロー']].forEach(function (v) {
+        bar.appendChild(el('button', { class: 'mini' + (fsView === v[0] ? ' on' : ''), text: v[1], onclick: function () { fsView = v[0]; try { localStorage.setItem('taiki-minigame-fs', fsView); } catch (e) { /* 無視 */ } } }));
+      });
+      box.appendChild(bar);
+      var tb = el('table', { class: 't fs' }), hr = [el('th', { text: '' })];
+      R.h = [];
+      for (var c = 0; c < nCol; c++) { var th = el('th'); R.h.push(th); hr.push(th); }
+      tb.appendChild(el('tr', {}, hr));
+      R.cells = FS_ROWS[fsView].map(function (r) {
+        var tds = []; for (var c2 = 0; c2 < nCol; c2++) tds.push(el('td'));
+        tb.appendChild(el('tr', { class: r[3] || '' }, [el('td', { text: r[0] })].concat(tds)));
+        return tds;
+      });
+      box.appendChild(tb);
+      box.appendChild(el('p', { class: 'note', style: 'margin-top:6px', text: FS_NOTE[fsView] }));
+    }, function (R) {
+      var cols = [E.statements(s, d, s.fin.cur, true)];
+      s.fin.hist.slice(0, nCol - 1).forEach(function (p) { cols.push(E.statements(s, d, p, false)); });
+      var heads = fsView === 'bs' ? ['いま', '先月末', '先々月末'] : ['今月（' + Math.round(s.fin.monthT / D.consts.monthSec * 100) + '%）', '先月', '先々月'];
+      R.h.forEach(function (th, i) { setText(th, heads[i]); });
+      cols.forEach(function (st) { var b = st.bs; b.asset = b.cash + b.inv + b.book; b.eq = b.asset - b.debt; });
+      FS_ROWS[fsView].forEach(function (r, ri) {
+        var path = r[1].split('.');
+        cols.forEach(function (st, ci) {
+          var v = st[path[0]][path[1]] || 0; if (r[2]) v = -v;
+          var td = R.cells[ri][ci]; setText(td, yen(v)); td.classList.toggle('bad', v < -1e-9);
+        });
+      });
+    }, null, 'p_fs');
+  };
+
+  PANELS.st = function (s, d, box) {
     var sig = 'stats|' + Math.floor(s.t / 5);
     keyed(box, sig, function () {
       var st = s.stats, rows = [];
@@ -3426,7 +3550,7 @@ TM.UI = (function () {
       pr.appendChild(el('tr', {}, [el('th', { text: 'これまでにつくったもの' }), el('th', { text: '' })]));
       Object.keys(st.produced).forEach(function (k) { if (E.RES[k] && k !== 'money' && st.produced[k] > 0) pr.appendChild(el('tr', {}, [el('td', { text: E.resName(s, k) }), el('td', { text: f(st.produced[k]) + ' ' + E.RES[k].unit })])); });
       box.appendChild(pr);
-    }, function () {});
+    }, function () {}, null, 'p_st');
   };
 
   /* ============ カーソルを合わせたときの説明 ============ */

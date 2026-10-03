@@ -629,7 +629,7 @@ TM.UI = (function () {
 
   /* 取引タブ：販売・受託・帳簿を縦に並べる */
   PANELS.market = function (s, d, box) {
-    var hasOem = !!s.techs.oem, hasFin = !!s.techs.bookkeeping, hasSales = !!s.flags.cans_known;
+    var hasOem = !!s.techs.oem, hasFin = false, hasSales = !!s.flags.cans_known;
     keyed(box, 'mk|' + hasSales + hasOem + hasFin, function (R) {
       ['p_sales', 'p_oem', 'p_fin'].forEach(function (k) { lastSig[k] = null; });
       if (hasSales) { box.appendChild(el('h3', { class: 'sect', text: '販売' })); R.sales = el('div'); box.appendChild(R.sales); }
@@ -748,6 +748,77 @@ TM.UI = (function () {
   };
 
   PANELS.stats = function (s, d, box) {
+    var hasFs = s.era >= 1;
+    keyed(box, 'statswrap|' + hasFs + '|' + (s.era >= 4), function (R) {
+      ['p_fs', 'p_st'].forEach(function (k) { lastSig[k] = null; });
+      if (hasFs) { box.appendChild(el('h3', { class: 'sect', text: '帳簿（月ごと・ゲーム内の1か月 ≒ 約7分）' })); R.fs = el('div'); box.appendChild(R.fs); }
+      if (s.era >= 4) { R.circ = el('div', { style: 'margin:10px 0', class: 'note' }); box.appendChild(R.circ); }
+      box.appendChild(el('h3', { class: 'sect', text: 'これまで' })); R.st = el('div'); box.appendChild(R.st);
+    }, function (R) {
+      if (R.fs) PANELS.fs(s, d, R.fs);
+      if (R.circ) {
+        var h = '循環率 ' + Math.round(d.circ * 100) + '%（高いほど、すべての生産と単価が上がる）<br>';
+        D.circ.forEach(function (c) { var v = Math.min(1, (d.circParts[c.id] || 0) / c.need); h += '<span class="' + (v >= 1 ? 'good' : 'dim') + '">' + c.name + ' ' + Math.round(v * 100) + '%</span>　'; });
+        setHTML(R.circ, h);
+      }
+      PANELS.st(s, d, R.st);
+    });
+  };
+
+  /* 財務三表：損益計算書・貸借対照表・キャッシュフロー計算書 */
+  var fsView = 'pl';
+  try { fsView = localStorage.getItem('taiki-minigame-fs') || 'pl'; } catch (e) { /* 無視 */ }
+  function yen(v) { return (v < -1e-9 ? '△' : '') + f(Math.abs(v)); }
+  var FS_ROWS = {
+    pl: [['売上高', 'pl.sales'], ['売上原価（仕入れ・材料・燃料）', 'pl.cogs', 1], ['売上総利益', 'pl.gross', 0, 'sum'],
+      ['人件費（給料・講習）', 'pl.sga', 1], ['研究開発費', 'pl.rnd', 1], ['減価償却費', 'pl.dep', 1], ['営業利益', 'pl.op', 0, 'sum'],
+      ['営業外収益（おまけ等）', 'pl.other'], ['支払利息', 'pl.intr', 1], ['経常利益', 'pl.ord', 0, 'total']],
+    cf: [['営業キャッシュフロー', 'cf.op', 0, 'sum'], ['設備・改善への投資', 'cf.capex', 1], ['設備の売却', 'cf.saleIn'], ['投資キャッシュフロー', 'cf.inv', 0, 'sum'],
+      ['財務キャッシュフロー（借入の増減）', 'cf.fin', 0, 'sum'], ['現金の増減', 'cf.net', 0, 'total'], ['月初の現金', 'cf.cash0'], ['月末の現金', 'cf.cash1']],
+    bs: [['【資産】現金', 'bs.cash'], ['在庫（原価）', 'bs.inv'], ['設備（簿価）', 'bs.book'], ['資産合計', 'bs.asset', 0, 'sum'],
+      ['【負債】借入金（与信枠）', 'bs.debt'], ['【純資産】', 'bs.eq', 0, 'total']]
+  };
+  var FS_NOTE = {
+    pl: '設備・改善の代金は費用にせず、簿価に積んで少しずつ減価償却する。△はマイナス。',
+    bs: '在庫は売値の半分で評価。設備の簿価は買った値段から少しずつ減っていく。純資産 ＝ 資産 − 借入金。',
+    cf: '営業＝商売で増えた現金、投資＝設備を買った（売った）分、財務＝与信枠で借りた（返した）分。三つを足すと現金の増減になる。'
+  };
+  PANELS.fs = function (s, d, box) {
+    var nCol = 1 + Math.min(2, s.fin.hist.length);
+    keyed(box, 'fs|' + fsView + '|' + nCol, function (R) {
+      var bar = el('div', { class: 'subtabs' });
+      [['pl', '損益計算書'], ['bs', '貸借対照表'], ['cf', 'キャッシュフロー']].forEach(function (v) {
+        bar.appendChild(el('button', { class: 'mini' + (fsView === v[0] ? ' on' : ''), text: v[1], onclick: function () { fsView = v[0]; try { localStorage.setItem('taiki-minigame-fs', fsView); } catch (e) { /* 無視 */ } } }));
+      });
+      box.appendChild(bar);
+      var tb = el('table', { class: 't fs' }), hr = [el('th', { text: '' })];
+      R.h = [];
+      for (var c = 0; c < nCol; c++) { var th = el('th'); R.h.push(th); hr.push(th); }
+      tb.appendChild(el('tr', {}, hr));
+      R.cells = FS_ROWS[fsView].map(function (r) {
+        var tds = []; for (var c2 = 0; c2 < nCol; c2++) tds.push(el('td'));
+        tb.appendChild(el('tr', { class: r[3] || '' }, [el('td', { text: r[0] })].concat(tds)));
+        return tds;
+      });
+      box.appendChild(tb);
+      box.appendChild(el('p', { class: 'note', style: 'margin-top:6px', text: FS_NOTE[fsView] }));
+    }, function (R) {
+      var cols = [E.statements(s, d, s.fin.cur, true)];
+      s.fin.hist.slice(0, nCol - 1).forEach(function (p) { cols.push(E.statements(s, d, p, false)); });
+      var heads = fsView === 'bs' ? ['いま', '先月末', '先々月末'] : ['今月（' + Math.round(s.fin.monthT / D.consts.monthSec * 100) + '%）', '先月', '先々月'];
+      R.h.forEach(function (th, i) { setText(th, heads[i]); });
+      cols.forEach(function (st) { var b = st.bs; b.asset = b.cash + b.inv + b.book; b.eq = b.asset - b.debt; });
+      FS_ROWS[fsView].forEach(function (r, ri) {
+        var path = r[1].split('.');
+        cols.forEach(function (st, ci) {
+          var v = st[path[0]][path[1]] || 0; if (r[2]) v = -v;
+          var td = R.cells[ri][ci]; setText(td, yen(v)); td.classList.toggle('bad', v < -1e-9);
+        });
+      });
+    }, null, 'p_fs');
+  };
+
+  PANELS.st = function (s, d, box) {
     var sig = 'stats|' + Math.floor(s.t / 5);
     keyed(box, sig, function () {
       var st = s.stats, rows = [];
@@ -766,7 +837,7 @@ TM.UI = (function () {
       pr.appendChild(el('tr', {}, [el('th', { text: 'これまでにつくったもの' }), el('th', { text: '' })]));
       Object.keys(st.produced).forEach(function (k) { if (E.RES[k] && k !== 'money' && st.produced[k] > 0) pr.appendChild(el('tr', {}, [el('td', { text: E.resName(s, k) }), el('td', { text: f(st.produced[k]) + ' ' + E.RES[k].unit })])); });
       box.appendChild(pr);
-    }, function () {});
+    }, function () {}, null, 'p_st');
   };
 
   /* ============ カーソルを合わせたときの説明 ============ */

@@ -3,12 +3,12 @@ var TM = window.TM = window.TM || {};
 
 TM.Engine = (function () {
   var D, C, U = TM.util;
-  var RES = {}, BLD = {}, JOB = {}, TECH = {}, UPG = {}, LIC = {}, PROD = {}, MOD = {};
+  var RES = {}, BLD = {}, BLDN = {}, JOB = {}, TECH = {}, UPG = {}, LIC = {}, PROD = {}, MOD = {};
 
   function init() {
     D = TM.DATA; C = D.consts;
     D.resources.forEach(function (r) { RES[r.id] = r; });
-    D.buildings.forEach(function (b) { BLD[b.id] = b; });
+    D.buildings.forEach(function (b) { BLD[b.id] = b; BLDN[b.name] = b; });
     D.jobs.forEach(function (j) { JOB[j.id] = j; });
     D.techs.forEach(function (t) { TECH[t.id] = t; });
     D.upgrades.forEach(function (u) { UPG[u.id] = u; });
@@ -27,7 +27,7 @@ TM.Engine = (function () {
       cal: { yf: 0, y0Earned: 0, salesDone: {}, last: 0 },
       log: [], storySeen: {}, evTimer: 600, evActive: null,
       stats: { batches: 0, acidBuys: 0, cansSold: 0, washed: 0, fecl3: 0, fecl3h: 0, forkUsed: 0, h2: 0, produced: {}, sold: {}, at: {}, earned: 0, offline: 0, clicks: 0 },
-      fin: { cur: { inc: {}, exp: {} }, hist: [], monthT: 0 },
+      fin: { cur: { inc: {}, exp: {}, dep: 0, cash0: 0, debt0: 0 }, hist: [], monthT: 0, book: 0 },
       contracts: { offers: [], active: [], timer: 120, done: 0, seq: 0 },
       ending: 0, settings: { expo: false, anim: true, theme: 'auto' }
     };
@@ -95,9 +95,11 @@ TM.Engine = (function () {
   function pay(s, c, cat) {
     for (var k in c) {
       s.res[k] -= c[k];
-      if (k === 'money') finExp(s, cat || '設備', c[k]);
+      if (k === 'money') { finExp(s, cat || '設備', c[k]); if (CAPEX[cat || '設備']) s.fin.book = (s.fin.book || 0) + c[k]; }
     }
   }
+  /* 帳簿：設備・大型設備・改善は投資（簿価に積み、少しずつ減価償却する） */
+  var CAPEX = { '設備': 1, '大型設備': 1, '改善': 1 };
   function finInc(s, cat, v) { if (v > 0) { s.fin.cur.inc[cat] = (s.fin.cur.inc[cat] || 0) + v; s.stats.earned += v; } }
   function finExp(s, cat, v) { if (v > 0) s.fin.cur.exp[cat] = (s.fin.cur.exp[cat] || 0) + v; }
 
@@ -479,14 +481,17 @@ TM.Engine = (function () {
 
     /* 暦・月次・物語・出来事 */
     s.fin.monthT += dt;
+    var dep = (s.fin.book || 0) * Math.min(1, dt / (C.depSec || 6000));
+    s.fin.book = (s.fin.book || 0) - dep; s.fin.cur.dep = (s.fin.cur.dep || 0) + dep;
     if (s.fin.monthT >= C.monthSec) {
       s.fin.monthT -= C.monthSec;
       var inc = 0, exp = 0, k2;
       for (k2 in s.fin.cur.inc) inc += s.fin.cur.inc[k2];
       for (k2 in s.fin.cur.exp) exp += s.fin.cur.exp[k2];
       s.fin.cur.total = { inc: inc, exp: exp };
+      s.fin.cur.cash1 = Math.max(0, s.res.money); s.fin.cur.debt1 = Math.max(0, -s.res.money); s.fin.cur.book1 = s.fin.book; s.fin.cur.inv1 = invValue(s, d);
       s.fin.hist.unshift(s.fin.cur); if (s.fin.hist.length > 12) s.fin.hist.length = 12;
-      s.fin.cur = { inc: {}, exp: {} };
+      s.fin.cur = { inc: {}, exp: {}, dep: 0, cash0: Math.max(0, s.res.money), debt0: Math.max(0, -s.res.money) };
     }
     doCalendar(s, dt);
     checkStory(s);
@@ -522,6 +527,35 @@ TM.Engine = (function () {
 
   /* 酸も液もお金もなく、手が止まっている（ツケで酸を分けてもらえる） */
   function stuck(s) { return s.res.hcl < 2 && s.res.fecl2 < 3 && s.res.money < C.acidBuy.cost; }
+
+  /* 在庫の評価（売値の半分＝原価のつもり） */
+  function invValue(s, d) {
+    var seen = {}, v = 0;
+    ((d && d.sales) || []).forEach(function (x) { if (seen[x.stock]) return; seen[x.stock] = 1; v += Math.max(0, s.res[x.stock] || 0) * x.price * 0.5; });
+    if (s.era >= 1 && !seen.fecl2) v += Math.max(0, s.res.fecl2 || 0) * C.walkinPrice * 0.5;
+    return v;
+  }
+  /* 財務三表（月ごと）。p：s.fin.cur か s.fin.hist[i] */
+  function statements(s, d, p, live) {
+    var R = 0, other = 0, saleIn = 0, cogs = 0, sga = 0, rnd = 0, intr = 0, capex = 0, k, v;
+    for (k in p.inc) { v = p.inc[k]; if (k === '臨時') other += v; else if (k === '設備の売却') saleIn += v; else R += v; }
+    for (k in p.exp) {
+      v = p.exp[k];
+      if (CAPEX[k]) capex += v;
+      else if (k === '利息') intr += v;
+      else if (k === '給与' || k === '人件費' || k === '講習') sga += v;
+      else if (k === '研究' || (BLDN[k] && BLDN[k].group === '研究')) rnd += v;
+      else cogs += v;
+    }
+    var dep = p.dep || 0, gross = R - cogs, op = gross - sga - rnd - dep, ord = op + other - intr;
+    var cash1 = live ? Math.max(0, s.res.money) : p.cash1, debt1 = live ? Math.max(0, -s.res.money) : p.debt1;
+    var cfo = R + other - cogs - sga - rnd - intr, cfi = saleIn - capex, cff = (debt1 || 0) - (p.debt0 || 0);
+    return {
+      pl: { sales: R, cogs: cogs, gross: gross, sga: sga, rnd: rnd, dep: dep, op: op, other: other, intr: intr, ord: ord },
+      cf: { op: cfo, inv: cfi, fin: cff, net: cfo + cfi + cff, cash0: p.cash0 || 0, cash1: cash1 || 0, capex: capex, saleIn: saleIn },
+      bs: { cash: cash1 || 0, inv: live ? invValue(s, d) : (p.inv1 || 0), book: live ? (s.fin.book || 0) : (p.book1 || 0), debt: debt1 || 0 }
+    };
+  }
 
   /* 与信枠：借りられる上限（信用と稼ぎに応じて） */
   function creditLimit(s) {
@@ -985,6 +1019,7 @@ TM.Engine = (function () {
     if (s.bld[id].on > s.bld[id].n) s.bld[id].on = s.bld[id].n;
     var c = cost(s, b, s.bld[id].n);
     for (var k in c) s.res[k] += c[k] * 0.5;
+    if (c.money) { finInc(s, '設備の売却', c.money * 0.5); s.stats.earned -= c.money * 0.5; s.fin.book = Math.max(0, (s.fin.book || 0) - c.money * 0.5); }
   }
   function setOn(s, id, delta) {
     var b = s.bld[id]; if (!b) return;
@@ -1235,6 +1270,12 @@ TM.Engine = (function () {
       D.techs.forEach(function (t) { if (techAvailable(s, t)) s.shown['t:' + t.id] = -1e9; });
     }
     if (!s.heat) s.heat = { gather: 0, dissolve: 0, sell: 0 };
+    if (!o.fin || o.fin.book === undefined) {
+      /* 帳簿の仕組みより前のセーブ：今ある設備を、建てた値段の3割で簿価に入れておく */
+      var bk = 0; D.buildings.forEach(function (b) { for (var i = 0; i < (s.bld[b.id].n || 0); i++) bk += cost(s, b, i).money || 0; });
+      s.fin.book = bk * 0.3;
+      if (s.fin.cur.debt0 === undefined) { s.fin.cur.cash0 = Math.max(0, s.res.money); s.fin.cur.debt0 = Math.max(0, -s.res.money); s.fin.cur.dep = 0; }
+    }
     if (!o.cal) s.cal = { yf: s.t / 4800, y0Earned: s.stats.earned, salesDone: {}, last: 0 };
     s.v = D.version;
     return s;
@@ -1244,7 +1285,7 @@ TM.Engine = (function () {
   function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* 無視 */ } }
 
   return {
-    setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale,
+    setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
     init: init, newState: newState, step: step, derive: derive, cond: cond, cost: cost, canPay: canPay,
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
     setJob: setJob, train: train, acceptOffer: acceptOffer, declineOffer: declineOffer, claimEvent: claimEvent,
