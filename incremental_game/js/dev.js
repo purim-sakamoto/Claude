@@ -73,10 +73,13 @@ TM.Dev = (function () {
             /* 大型設備を完成させたことにする（条件は無視） */
             s.bld[mega.id].n = mega.stages;
             var oc = mega.onComplete || {};
-            if (oc.era !== undefined && s.era < oc.era) { s.era = oc.era; s.stats.at['era' + oc.era] = s.t; }
+            if (oc.era !== undefined && s.era < oc.era) { s.era = oc.era; s.stats.at['era' + oc.era] = s.t; if (TM.War) TM.War.onEra(s); }
             if (oc.ending) { s.ending = 1; s.stats.ended = 1; }
             s.res.money = Math.max(s.res.money, 10 * (E.cost(s, mega).money || 0));
             E.addLog(s, '（開発者モード）' + mega.name + 'を完成させた。', 'dim');
+          } else if (s.era === 10 && TM.War) {
+            /* 星図：敵の母星を落としたことにする */
+            var w = TM.War.ensure(s); w.sys.cap.owner = 'us'; s.era = 11; s.stats.at.era11 = s.t; TM.War.onEra(s);
           }
         }
         TM.UI.resetSig(); break;

@@ -3,8 +3,8 @@
 global.window = global;
 var path = require('path');
 var js = path.join(__dirname, '..', 'js');
-['util.js', 'data.js', 'engine.js', 'sim.js'].forEach(function (f) { require(path.join(js, f)); });
-TM.Engine.init();
+['util.js', 'data.js', 'data_late.js', 'engine.js', 'war.js', 'sim.js'].forEach(function (f) { require(path.join(js, f)); });
+TM.Engine.init(); TM.War.init();
 
 var style = process.argv[2] || 'normal';
 var days = +(process.argv[3] || 16);

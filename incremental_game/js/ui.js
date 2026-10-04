@@ -18,6 +18,7 @@ TM.UI = (function () {
     /* クリックはまとめて受ける（描き直しでボタンが入れ替わっても取りこぼさない） */
     document.body.addEventListener('click', onClick);
     $('gear').addEventListener('click', openSettings);
+    $('boost').addEventListener('click', openBoost);
     initTip();
     try { tab = localStorage.getItem('taiki-minigame-tab') || 'site'; } catch (e) { /* 無視 */ }
   }
@@ -42,6 +43,8 @@ TM.UI = (function () {
       case 'event': E.claimEvent(s); break;
       case 'fix': doFix(s, id); break;
       case 'goto': goto(t.getAttribute('data-tab'), id); break;
+      case 'siteph': sitePh = id; lastSig.panel = null; break;
+      case 'rgrp': { var hh = refs.res['g_' + id]; resFold[id] = !(hh && hh.c); if (hh) hh.c = null; break; }
       case 'close': closeModal(); break;
       default: if (TM.UIActions && TM.UIActions[a]) TM.UIActions[a](t, id, v);
     }
@@ -52,6 +55,7 @@ TM.UI = (function () {
   function render(force) {
     var s = S(); if (!s) return;
     var d = s._d || E.derive(s);
+    U.setMode(s.settings.jpUnits ? 'jp' : 'eng');
     document.body.setAttribute('data-era', s.era);
     document.body.classList.toggle('intro', s.era === 0);
     document.body.classList.toggle('noanim', !s.settings.anim);
@@ -89,6 +93,9 @@ TM.UI = (function () {
     }
     setHTML($('memo'), memo);
     var year = E.calYear(s), season = D.seasons[E.seasonIdx(s)];
+    var bs = E.boostState(s), now = Date.now();
+    setText($('boost'), s.era < 1 ? '' : now < bs.to ? '×2 あと' + U.fmtTime((bs.to - now) / 1000) + '（チケット' + bs.n + '）' : '休憩チケット ' + bs.n + '枚');
+    $('boost').classList.toggle('on', now < bs.to);
     setHTML($('cal'), s.era >= 1 ? year + '年（' + wareki(year) + '）　' + season : '');
   }
 
@@ -115,7 +122,7 @@ TM.UI = (function () {
   }
 
   /* ============ 資源 ============ */
-  var resAt = 0, resSnap = 0;
+  var resAt = 0, resSnap = 0, resFold = {}, GROUND_GRP = { raw: 1, liq: 1, can: 1, prod: 1, water: 1 };
   function renderResources(s, d) {
     var rows = [];
     D.resources.forEach(function (r) {
@@ -139,10 +146,10 @@ TM.UI = (function () {
       rows.forEach(function (id) { var g = E.RES[id].grp || 'raw'; (byG[g] = byG[g] || []).push(id); });
       (D.resGroups || [{ id: 'raw', name: '' }]).forEach(function (G) {
         var ids = byG[G.id]; if (!ids) return;
-        if (G.name) box.appendChild(el('div', { class: 'resgroup g-' + G.id, text: G.name }));
+        if (G.name) { var gh = el('div', { class: 'resgroup g-' + G.id, 'data-a': 'rgrp', 'data-id': G.id, text: G.name }); box.appendChild(gh); refs.res['g_' + G.id] = { h: gh, name: G.name, n: ids.length }; }
         ids.forEach(function (id) {
           var nm = el('span', { class: 'nm' }), v = el('span', { class: 'v' }), r = el('span', { class: 'r' });
-          var row = el('div', { class: 'res fade g-' + G.id, 'data-tip': 'res:' + id }, [nm, v, r]);
+          var row = el('div', { class: 'res fade g-' + G.id + ' rg-' + G.id, 'data-tip': 'res:' + id }, [nm, v, r]);
           refs.res[id] = { row: row, nm: nm, v: v, r: r };
           box.appendChild(row);
         });
@@ -155,6 +162,15 @@ TM.UI = (function () {
         box.appendChild(row);
       });
     }
+    /* 宇宙に出たら、地上の資源の見出しはたたんでおく（押せば開く） */
+    (D.resGroups || []).forEach(function (G) {
+      var h = refs.res['g_' + G.id]; if (!h) return;
+      var c = resFold[G.id] !== undefined ? resFold[G.id] : (s.era >= 6 && GROUND_GRP[G.id]);
+      if (h.c === c) return; h.c = c;
+      h.h.textContent = (c ? '▸ ' : '') + h.name + (c ? '（' + h.n + '）' : '');
+      h.h.classList.toggle('fold', c);
+      [].forEach.call(box.querySelectorAll('.rg-' + G.id), function (e) { e.style.display = c ? 'none' : ''; });
+    });
     /* 数字の書き換えは1秒に5回まで（毎フレームだと末尾の桁がちらつく）。操作の直後はすぐ書き換える */
     var now = Date.now();
     if (sig === lastSig.resN && now - resAt < 200 && resSnap === E.snapCount()) return;
@@ -261,7 +277,7 @@ TM.UI = (function () {
   }
   function fixLabel(s, d, fx) {
     var kind = fx[0], id = fx[1];
-    if (kind === 'job') return E.JOB[id].name + 'の人手 ＋1';
+    if (kind === 'job') return '提案：' + E.JOB[id].name + 'の人手を増やす';
     if (kind === 'bld') { var b = E.BLD[id]; return b.name + '　' + costText(s, E.cost(s, b), true); }
     if (kind === 'upg') { var u = E.UPG[id]; return u.name + '　' + costText(s, u.cost, true); }
     if (kind === 'tech') { var t2 = E.TECH[id]; return '研究：' + t2.name; }
@@ -271,7 +287,7 @@ TM.UI = (function () {
   }
   function fixReady(s, d, fx) {
     var kind = fx[0], id = fx[1];
-    if (kind === 'job') return s.pop > 0;
+    if (kind === 'job') return true;
     if (kind === 'bld') return !E.whyNot(s, E.BLD[id]);
     if (kind === 'upg') return E.canPay(s, E.UPG[id].cost);
     if (kind === 'tech') return E.canPay(s, E.TECH[id].cost);
@@ -318,7 +334,7 @@ TM.UI = (function () {
       adv.appendChild(el('span', { class: 'ttl', text: M.stage === 'ok' ? okTtl : (nm ? '詰まり：' + nm + '　' : '') + M.title }));
       refs.flow.fix = [];
       M.fixes.forEach(function (x) {
-        var b = el('button', { class: 'mini fix', 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] === 'off' ? 'bld:' + x[1] : x[0] + ':' + x[1] });
+        var b = el('button', { class: 'mini fix' + (x[0] === 'job' ? ' sugg' : ''), 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] === 'off' ? 'bld:' + x[1] : x[0] + ':' + x[1] });
         adv.appendChild(b); refs.flow.fix.push([b, x]);
       });
       refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
@@ -338,7 +354,8 @@ TM.UI = (function () {
   }
   function doFix(s, key) {
     var i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1);
-    if (kind === 'job') { if (!E.moveJob(s, id)) goto('staff', 'job:' + id); return; }
+    /* 人の配置は、他の持ち場から引き抜くことになるので自動では動かさない。人手タブの該当の行へ案内するだけ */
+    if (kind === 'job') { goto('staff', 'job:' + id); return; }
     if (kind === 'bld') { if (!E.build(s, id)) goto('site', 'bld:' + id); return; }
     if (kind === 'upg') { if (!E.buyUpg(s, id)) goto('upg', 'upg:' + id); return; }
     if (kind === 'tech') { if (!E.research(s, id)) goto('tech', 'tech:' + id); return; }
@@ -370,13 +387,15 @@ TM.UI = (function () {
     if (s.flags.research_known) t.push(['tech', '技術']);
     if (s.flags.cans_known || s.techs.bookkeeping) t.push(['market', '取引']);
     if (s.flags.hook) t.push(['stats', '記録']);
+    /* 戦時（時代9〜10）は作戦図のタブが加わる */
+    if (s.era === 9 || s.era === 10) t.splice(1, 0, ['war', s.era === 9 ? '前線' : '星図']);
     return t;
   }
   function renderTabs(s) {
     var t = tabsVisible(s);
     var ids = t.map(function (x) { return x[0]; });
     if (ids.length && ids.indexOf(tab) < 0) tab = 'site';
-    var sig = ids.join(',') + '|' + tab;
+    var sig = t.map(function (x) { return x.join(':'); }).join(',') + '|' + tab;
     if (sig === lastSig.tabs) return;
     lastSig.tabs = sig;
     var box = $('tabs'); box.innerHTML = '';
@@ -419,6 +438,19 @@ TM.UI = (function () {
     }
     return worst;
   }
+  /* 買えるまでの時間（ツールチップ用）。与信枠で買えるときは、借りずに買えるまでの時間も出す */
+  function buyLine(s, d, c) {
+    var cash = true, k;
+    for (k in c) if ((s.res[k] || 0) < c[k]) cash = false;
+    if (cash) return '<div class="tw good">いま買える</div>';
+    if (E.canPay(s, c)) {
+      var t0 = timeTo(s, d, c);
+      return '<div class="tw warn">与信枠で買える（利息がつく）' + (t0 > 0 && t0 !== Infinity ? '。借りずに買えるのは あと ' + U.fmtTime(t0) : '') + '</div>';
+    }
+    var cl = {}; for (k in c) cl[k] = k === 'money' && s.era >= 1 ? c[k] - (d.creditLimit || 0) : c[k];
+    var tt = timeTo(s, d, cl);
+    return '<div class="tw">' + (tt === -1 ? '置き場が足りない（この量はためられない）' : tt === Infinity ? 'このままでは貯まらない（足りないものが増えていない）' : 'あと ' + U.fmtTime(tt) + ' で買える') + '</div>';
+  }
   function setText(e, t) { if (e && e.textContent !== t) e.textContent = t; }
   function setHTML(e, h) { if (e && e.innerHTML !== h) e.innerHTML = h; }
 
@@ -435,10 +467,20 @@ TM.UI = (function () {
   /* ============ 各タブ ============ */
   var PANELS = {};
 
+  /* 現場は「場面」ごとに分ける（地上の工場・電気と計算・空…）。古い場面は見出しを押すと見られる */
+  var sitePh = null, sitePhSeen = null;
+  function phOf(b) { return !b.ph || b.ph === 'auto' ? 'ground' : b.ph; }
   PANELS.site = function (s, d, box) {
     var groups = {}, order = [];
+    var phs = {}, phList = [];
+    D.buildings.forEach(function (b) { if (E.bldShown(s, b) && !(b.stages && s.bld[b.id].n >= b.stages)) phs[phOf(b)] = 1; });
+    (D.phases || []).forEach(function (p) { if (phs[p.id]) phList.push(p); });
+    var latest = phList.length ? phList[phList.length - 1].id : 'ground';
+    if (sitePhSeen !== latest) { sitePhSeen = latest; sitePh = latest; }
+    if (!phs[sitePh]) sitePh = latest;
     D.buildings.forEach(function (b) {
       if (!E.bldShown(s, b)) return;
+      if (phList.length > 1 && phOf(b) !== sitePh) return;
       if (b.stages && s.bld[b.id].n >= b.stages) return;
       if (b.max && s.bld[b.id].n >= b.max && !(b.proc && b.proc.toggle)) { (groups['済'] = groups['済'] || []).push(b); return; }
       if (!groups[b.group]) { groups[b.group] = []; order.push(b.group); }
@@ -450,8 +492,13 @@ TM.UI = (function () {
       var names = {}; D.buildings.forEach(function (b) { if (E.bldShown(s, b)) names[b.name] = 1; });
       D.teasers.forEach(function (n) { if (!teaser && !names[n]) teaser = n; });
     }
-    var sig = 'site|' + order.map(function (g) { return g + ':' + groups[g].map(function (b) { return b.id; }).join(','); }).join('|') + '|' + teaser + '|' + (groups['済'] || []).length;
+    var sig = 'site|' + sitePh + '|' + phList.map(function (p) { return p.id; }).join(',') + '|' + order.map(function (g) { return g + ':' + groups[g].map(function (b) { return b.id; }).join(','); }).join('|') + '|' + teaser + '|' + (groups['済'] || []).length;
     keyed(box, sig, function (R) {
+      if (phList.length > 1) {
+        var bar = el('div', { class: 'subtabs phtabs' });
+        phList.forEach(function (p) { bar.appendChild(el('button', { class: 'mini' + (p.id === sitePh ? ' on' : ''), 'data-a': 'siteph', 'data-id': p.id, text: p.name })); });
+        box.appendChild(bar);
+      }
       order.forEach(function (g) {
         var gbox = el('div', { class: 'group' }, [el('h3', { text: g })]);
         groups[g].forEach(function (b) {
@@ -469,7 +516,7 @@ TM.UI = (function () {
           }
           if (!b.stages) ctl.appendChild(el('button', { class: 'mini', 'data-a': 'sell', 'data-id': b.id, title: '解体', text: '×' }));
           var isNew = !s.bld[b.id].n;
-          gbox.appendChild(el('div', { class: 'row fade' + (isNew ? ' isnew' : ''), 'data-hl': 'bld:' + b.id }, [btn, info, ctl]));
+          gbox.appendChild(el('div', { class: 'row fade' + (isNew ? ' isnew' : ''), 'data-hl': 'bld:' + b.id, 'data-tip': 'bld:' + b.id }, [btn, info, ctl]));
           R[b.id] = { btn: btn, nm: nm, cs: cs, st: st, ctl: ctl, line: lineBox };
         });
         box.appendChild(gbox);
@@ -518,6 +565,11 @@ TM.UI = (function () {
     h += lc.det.map(function (x) { return '<span class="' + (x.id === lc.worst ? 'bad' : 'dim') + '">' + x.name + '（' + x.label + '）' + f(x.rate) + '</span>'; }).join(' → ');
     return h;
   }
+
+  PANELS.war = function (s, d, box) {
+    if (!TM.WarUI || s.era < 9) return PANELS.site(s, d, box);
+    TM.WarUI.panel(s, d, box, { keyed: keyed, setText: setText, setHTML: setHTML, costText: costText });
+  };
 
   PANELS.staff = function (s, d, box) {
     var jobs = D.jobs.filter(function (j) { return E.jobVisible(s, j); });
@@ -591,7 +643,7 @@ TM.UI = (function () {
         var cs = el('small', { class: 'cost' });
         b.appendChild(el('span', { text: t.name })); b.appendChild(cs);
         var st = el('div', { class: 'st' });
-        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'tech:' + t.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: t.desc })])]));
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'tech:' + t.id, 'data-tip': 'tech:' + t.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: t.desc })])]));
         R[t.id] = { b: b, cs: cs, st: st, t: t };
       });
       box.appendChild(g);
@@ -620,7 +672,7 @@ TM.UI = (function () {
         var cs = el('small', { class: 'cost' });
         b.appendChild(el('span', { text: u.name })); b.appendChild(cs);
         var st = el('div', { class: 'st' });
-        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'upg:' + u.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: u.desc })])]));
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'upg:' + u.id, 'data-tip': 'upg:' + u.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: u.desc })])]));
         R[u.id] = { b: b, cs: cs, st: st };
       });
       box.appendChild(g);
@@ -987,7 +1039,7 @@ TM.UI = (function () {
       h += bldDetail(s, d, b);
       var why = E.whyNot(s, b);
       if (why && why !== 'お金・資材が足りない') h += '<div class="tw warn">' + why + '</div>';
-      else if (why) { var tt = timeTo(s, d, c); h += '<div class="tw">' + (tt === -1 ? '置き場が足りない（この値段はためられない）' : tt === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(tt) + ' で買える') + '</div>'; }
+      if (!why || why === 'お金・資材が足りない') h += buyLine(s, d, c);
       var pi = procOf(d, 'bld.' + id);
       if (pi && o.n && pi.reason) h += '<div class="tw bad">いま：' + pi.reason + '</div>';
       return h;
@@ -1014,7 +1066,7 @@ TM.UI = (function () {
     if (kind === 'tech' || kind === 'upg') {
       var x = kind === 'tech' ? E.TECH[id] : E.UPG[id];
       h += '<div class="tt">' + x.name + '</div><div class="tw">' + x.desc + '</div>';
-      if (!E.canPay(s, x.cost)) { var t3 = timeTo(s, d, x.cost); h += '<div class="tw">' + (t3 === -1 ? 'ためておける量が足りない' : t3 === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(t3) + ' で手が届く') + '</div>'; }
+      h += buyLine(s, d, x.cost);
       return h;
     }
     if (kind === 'flowdet') return flowDet ? '<div class="tw">' + flowDet + '</div>' : '';
@@ -1090,7 +1142,7 @@ TM.UI = (function () {
   function openSettings() {
     var s = S();
     openModal('<h2>設定</h2>' +
-      '<div class="sect"><label><input type="checkbox" id="o_expo" ' + (s.settings.expo ? 'checked' : '') + '> 大きな数を指数で表示（1.2e45）</label>' +
+      '<div class="sect"><label><input type="checkbox" id="o_expo" ' + (s.settings.jpUnits ? 'checked' : '') + '> 大きな数を万・億・兆…で表示（ふだんは 12.3e9 のような指数）</label>' +
       '<label><input type="checkbox" id="o_anim" ' + (s.settings.anim ? 'checked' : '') + '> 表示のふわっとした動き</label>' +
       '<label><input type="checkbox" id="o_gag" ' + (s.settings.gag !== false ? 'checked' : '') + '> タイトルの小ネタ</label></div>' +
       '<div class="sect"><b style="font-weight:normal">セーブの書き出し（別のPC・ブラウザへ引っ越すとき）</b><textarea id="o_exp" readonly></textarea>' +
@@ -1100,7 +1152,7 @@ TM.UI = (function () {
       '<div class="sect" style="text-align:right"><button class="btn" data-a="close">閉じる</button></div>',
     function (b) {
       b.querySelector('#o_exp').value = E.exportText(s);
-      b.querySelector('#o_expo').onchange = function (e) { s.settings.expo = e.target.checked; lastSig = {}; };
+      b.querySelector('#o_expo').onchange = function (e) { s.settings.jpUnits = e.target.checked; U.setMode(s.settings.jpUnits ? 'jp' : 'eng'); lastSig = {}; };
       b.querySelector('#o_anim').onchange = function (e) { s.settings.anim = e.target.checked; };
       b.querySelector('#o_gag').onchange = function (e) { s.settings.gag = e.target.checked; };
       b.querySelector('#o_copy').onclick = function () { var t = b.querySelector('#o_exp'); t.select(); try { document.execCommand('copy'); } catch (e) { /* 無視 */ } };
@@ -1115,6 +1167,16 @@ TM.UI = (function () {
       };
       b.querySelector('#o_dev').onclick = function () { if (TM.Dev) TM.Dev.ask(); };
     });
+  }
+
+  function openBoost() {
+    var s = S(), b = E.boostState(s), now = Date.now(), B = E.BOOST;
+    var next = Math.max(0, (b.last + B.grant * 1000 - now) / 1000);
+    openModal('<h2>休憩チケット</h2><p>使うと、それから<b>4時間</b>は工場が<b>倍の速さ</b>で動きます。画面を閉じて休憩している間も倍速です。</p>' +
+      '<p class="note">持っている枚数：' + b.n + '枚（' + B.max + '枚まで）。' + (b.n < B.max ? '次の1枚まで あと ' + U.fmtTime(next) + '（20時間ごとに1枚）' : '') +
+      (now < b.to ? '<br>いま倍速中：あと ' + U.fmtTime((b.to - now) / 1000) + '（続けて使うと4時間延びる）' : '') + '</p>' +
+      '<div class="sect" style="text-align:right"><button class="btn" id="bo_use"' + (b.n > 0 ? '' : ' disabled') + '>1枚使う</button> <button class="btn" data-a="close">閉じる</button></div>',
+    function (box) { box.querySelector('#bo_use').onclick = function () { if (E.useBoost(S(), Date.now())) { E.save(S()); closeModal(); } }; });
   }
 
   function resetSig() { lastSig = {}; }

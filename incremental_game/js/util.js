@@ -14,43 +14,45 @@ TM.util = (function () {
     return s;
   }
 
-  /* 数値を日本語の命数で整形する。expo=true なら指数表記 */
-  function fmt(n, expo) {
+  /* 大きな数の書き方。'eng'：指数（工学表記。12.3e9 のように指数を3の倍数にそろえる）、'jp'：万・億・兆… */
+  var mode = { v: 'eng' };
+  function setMode(m) { mode.v = m === 'jp' ? 'jp' : 'eng'; }
+  function eng(n, fixed) {
+    var e = Math.floor(Math.log10(n) / 3) * 3, m = n / Math.pow(10, e);
+    var dg = m >= 100 ? 0 : m >= 10 ? 1 : 2, t = m.toFixed(dg);
+    if (+t >= 1000) { e += 3; m = n / Math.pow(10, e); t = m.toFixed(2); }
+    if (!fixed && t.indexOf('.') >= 0) t = t.replace(/0+$/, '').replace(/\.$/, '');
+    return t + 'e' + e;
+  }
+  function big(n, fixed) {
+    if (mode.v === 'eng') return eng(n, fixed);
+    for (var i = 0; i < UNITS.length; i++) {
+      if (n >= UNITS[i][0]) {
+        var v = n / UNITS[i][0];
+        return fixed ? v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2) + UNITS[i][1] : (v >= 1000 ? trim(v, 0) : v >= 100 ? trim(v, 1) : trim(v, 2)) + UNITS[i][1];
+      }
+    }
+    return n.toExponential(2);
+  }
+
+  /* 数値を整形する（1万未満はそのまま、それより大きい数は big() の書き方） */
+  function fmt(n) {
     if (n === null || n === undefined || isNaN(n)) return '0';
     if (!isFinite(n)) return '∞';
     var neg = n < 0; if (neg) n = -n;
-    var out;
-    if (n < 1e4) {
-      out = n >= 100 ? trim(Math.floor(n), 0) : n >= 10 ? trim(n, 1) : trim(n, 2);
-    } else if (expo) {
-      out = n.toExponential(2).replace('e+', 'e');
-    } else {
-      out = null;
-      for (var i = 0; i < UNITS.length; i++) {
-        if (n >= UNITS[i][0]) {
-          var v = n / UNITS[i][0];
-          out = (v >= 1000 ? trim(v, 0) : v >= 100 ? trim(v, 1) : trim(v, 2)) + UNITS[i][1];
-          break;
-        }
-      }
-      if (out === null) out = n.toExponential(2);
-    }
+    var out = n < 1e4 ? (n >= 100 ? trim(Math.floor(n), 0) : n >= 10 ? trim(n, 1) : trim(n, 2)) : big(n, false);
     return (neg ? '-' : '') + out;
   }
 
   /* 桁の決まった数（0.10 / 1.20 / 12.0 / 120）。末尾の0を落とさないので、値が揺れても幅が変わらない */
-  function fmtFixed(n, expo) {
+  function fmtFixed(n) {
+    if (!isFinite(n)) return '∞';
     var neg = n < 0; if (neg) n = -n;
     var out;
     if (n < 10) out = n.toFixed(2);
     else if (n < 100) out = n.toFixed(1);
     else if (n < 1e4) out = String(Math.round(n));
-    else if (expo) out = n.toExponential(2).replace('e+', 'e');
-    else {
-      out = null;
-      for (var i = 0; i < UNITS.length; i++) if (n >= UNITS[i][0]) { var v = n / UNITS[i][0]; out = v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2) + UNITS[i][1]; break; }
-      if (out === null) out = n.toExponential(2);
-    }
+    else out = big(n, true);
     return (neg ? '-' : '') + out;
   }
 
@@ -104,5 +106,5 @@ TM.util = (function () {
 
   function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
 
-  return { fmt: fmt, fmtFixed: fmtFixed, fmtRate: fmtRate, fmtTime: fmtTime, clamp: clamp, el: el, rng: rng, deepCopy: deepCopy };
+  return { setMode: setMode, fmt: fmt, fmtFixed: fmtFixed, fmtRate: fmtRate, fmtTime: fmtTime, clamp: clamp, el: el, rng: rng, deepCopy: deepCopy };
 })();

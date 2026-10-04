@@ -17,7 +17,13 @@ TM.Sim = (function () {
     ['decopper', 1], ['i_cond', 1], ['pwplant', 2], ['i_aa', 1], ['i_uv', 1], ['i_ic', 1], ['cooler', 1], ['hypoline', 1], ['i_visc', 1], ['pacline', 1], ['psiline', 1],
     ['ureabuy', 1], ['ureadis', 1], ['upwplant', 1], ['i_icp', 1], ['bibline', 1], ['office', 1], ['canline', 1], ['i_ftir', 1], ['lorry', 4], ['depot', 1], ['lorry20', 2], ['rnd', 4],
     ['newplant', 1], ['autowh', 1], ['h2rec', 3], ['msscrub', 2], ['wreuse', 5], ['curefine', 4], ['farm', 3], ['megareactor', 2], ['ureasyn', 1], ['rnd2', 2], ['upwplant2', 1], ['hpline', 1], ['port', 1], ['canline', 3],
-    ['fuelplant', 2], ['electrolysis', 2], ['launch', 2], ['fusionpower', 1], ['spacelab', 1], ['moonplant', 2], ['orbtank', 1], ['spacewater', 3], ['venus', 2], ['orbreactor', 2], ['spacewater', 6], ['moonplant', 4], ['orbreactor', 4], ['venus', 4], ['asteroid', 1], ['asteroidreactor', 1], ['spacewater', 10],
+    ['heatpump', 2], ['solarfarm', 4], ['charger', 1], ['evlorry', 2], ['dronehub', 2],
+    ['battery', 2], ['ctower', 1], ['dc', 2], ['fusion', 1], ['dc', 4], ['ctower', 2], ['ailab', 1], ['aiplant', 1], ['dc', 8],
+    ['electrolysis', 2], ['fuelplant', 2], ['launch', 2], ['orbtank', 1], ['sat', 2], ['station', 1], ['orbdc', 2], ['spacelab', 1],
+    ['lift', 2], ['moonplant', 2], ['venus', 2], ['orbreactor', 2], ['colonywater', 3], ['marsbase', 1], ['marsplant', 2], ['mirror', 2], ['airfac', 2], ['comet', 2], ['algae', 2],
+    ['asteroid', 2], ['asteroidreactor', 2], ['jupscoop', 2], ['fusion2', 1], ['europa', 2], ['titan', 2], ['ch4fuel', 2], ['outercity', 2], ['coldc', 1], ['kuiper', 1],
+    ['wfuel', 2], ['wcool', 2], ['warmor', 2], ['wwater', 2], ['wterminal', 2], ['convoy', 3], ['fdepot', 1],
+    ['dock', 2], ['fleetdepot', 1], ['shipyard2', 1],
     ['starfurnace', 2], ['starlab', 1], ['ismnet', 1], ['alien', 1], ['galwater', 1], ['starlorry', 1]];
 
   function botIntro(s) {
@@ -124,7 +130,51 @@ TM.Sim = (function () {
     });
     /* 受託 */
     while (s.contracts.offers.length && s.contracts.active.filter(function (c) { return c.step < TM.DATA.contracts.steps.length; }).length < (s.jobs.sales || 0) + 1) E.acceptOffer(s, s.contracts.offers[0].id);
+    if (s.era === 9 && TM.War) {
+      /* 前線：いちばん押し返している前線に重点を置いて、一つずつ片づける */
+      var w9 = TM.War.ensure(s), top = null;
+      for (var fk in w9.fronts) { var F = w9.fronts[fk]; if (!F.won && (!top || F.pos > w9.fronts[top].pos)) top = fk; }
+      for (var fk2 in w9.fronts) TM.War.setPrio(s, fk2, fk2 === top ? 3 : 1);
+    }
+    if (s.era >= 10 && TM.War) warBot(s, E.derive(s));
     assignJobs(s, E.derive(s));
+  }
+
+  /* 戦略：造船して、いちばん守りの薄い敵の星系を、隣の味方の星系から攻める */
+  function warBot(s, d) {
+    var W = TM.DATA.war, w = TM.War.ensure(s), A = TM.War.adj();
+    var docks = E.sumEffect(s, 'dock');
+    for (var g = 0; g < 10 && w.queue.length < docks * 2; g++) {
+      var built = false;
+      for (var i = W.ships.length - 1; i >= 0 && !built; i--) {
+        var sh = W.ships[i], rich = true;
+        for (var k in sh.cost) if ((s.res[k] || 0) < sh.cost[k] * 3) rich = false;
+        if (rich) built = TM.War.buildShip(s, sh.id);
+      }
+      if (!built) break;
+    }
+    var fm = w.fm || 1, best = null;
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id]; if (X.owner === 'us' || X.battle) return;
+      var nb = A[x.id].filter(function (y) { return w.sys[y].owner === 'us'; });
+      if (!nb.length) return;
+      var sc = X.owner === 'free' ? -1 : X.def;
+      if (!best || sc < best.sc) best = { id: x.id, sc: sc, nb: nb, X: X };
+    });
+    if (!best) return;
+    var avail = 0; best.nb.forEach(function (y) { avail += w.sys[y].str; });
+    var incoming = 0; w.moves.forEach(function (mv) { if (mv.side === 'us' && mv.to === best.id) incoming += mv.str; });
+    if (best.X.owner === 'free') { if (!incoming) best.nb.some(function (y) { return TM.War.send(s, y, best.id, 0.2); }); }
+    else if ((avail + incoming) * fm > best.sc * 1.5 && avail > 0) best.nb.forEach(function (y) { TM.War.send(s, y, best.id, w.sys[y].str > 0 ? (y === 'sol' ? 0.9 : 0.85) : 0); });
+    /* 後ろの艦を前へ寄せる */
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id]; if (X.owner !== 'us' || X.str < 2 || best.nb.indexOf(x.id) >= 0) return;
+      var prev = {}, q = [x.id], seen = {}; seen[x.id] = 1; var hit = null;
+      while (q.length && !hit) { var c = q.shift(); A[c].forEach(function (y) { if (seen[y] || w.sys[y].owner !== 'us') return; seen[y] = 1; prev[y] = c; if (best.nb.indexOf(y) >= 0) hit = y; q.push(y); }); }
+      if (!hit) return;
+      var stepTo = hit; while (prev[stepTo] !== x.id) stepTo = prev[stepTo];
+      TM.War.send(s, x.id, stepTo, 0.8);
+    });
   }
 
   function fixBottlenecks(s, d) {
@@ -188,7 +238,12 @@ TM.Sim = (function () {
       case 'boiler': return n < 1 + (s.bld.conc.n + s.bld.ureadis.n) / 2;
       case 'fork': return n < 6 + s.era * 2;
       case 'h2tank': return nearCap(s, d, ['h2']);
-      case 'orbtank': case 'starstore': return true;
+      case 'orbtank': return nearCap(s, d, ['orbit', 'fuel'], 0.8) || n < 1;
+      case 'ctower': return n * 4 < (s.bld.dc.n || 0) + 1;
+      case 'battery': case 'solarfarm': case 'fusion': case 'fusion2': return d.powerDem > d.powerSup * 0.8;
+      case 'charger': return n < 1;
+      case 'ailab': case 'spacelab': case 'aiplant': return ((d.rate || {}).compute || 0) > 0.5 * (n + 1) || (s.res.compute || 0) > 1000;
+      case 'marsbase': case 'outercity': case 'station': return true;
       case 'farm': return n < 3;
       case 'newplant': return d.used > d.land * 0.7 || s.pop >= d.popCap - 2;
       default: return true;

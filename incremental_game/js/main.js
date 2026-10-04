@@ -1,7 +1,7 @@
 /* 起動・ループ・保存・留守中の進行・エンディング */
 (function () {
   var TM = window.TM, E = TM.Engine, U = TM.util;
-  E.init();
+  E.init(); TM.War.init();
   TM.UI.init();
   TM.Dev.init();
 
@@ -11,10 +11,12 @@
   var s = E.load();
   var report = null;
   if (s) {
-    var away = (Date.now() - (s.saved || Date.now())) / 1000;
+    /* 経過時間はこのPCの時計で数える。進んでいればそのまま、戻っていれば何もしない */
+    var nowMs = Date.now(), away = Math.max(0, (nowMs - (s.saved || nowMs)) / 1000);
+    E.boostGrant(s, nowMs);
     if (away > 60 && s.era >= 1 && !s.ending) {
       var before = U.deepCopy(s.res);
-      var r = E.simulateAway(s, away);
+      var r = E.simulateAway(s, away, E.boostOverlap(s, s.saved, nowMs));
       report = { away: away, sim: r.simulated, before: before };
     }
   } else {
@@ -43,16 +45,17 @@
   var last = Date.now(), saveTimer = 0;
   function loop() {
     var now = Date.now();
-    var real = (now - last) / 1000; last = now;
+    var real = Math.max(0, (now - last) / 1000), last0 = last; last = now;
     var st = TM.state;
+    E.boostGrant(st, now);
     if (st.ending === 1 || st.ending === 2) { TM.UI.render(); return; }
     if (real > 120 && st.era >= 1) {
       /* スリープ復帰など：留守扱い */
       var before = U.deepCopy(st.res);
-      var r = E.simulateAway(st, real);
+      var r = E.simulateAway(st, real, E.boostOverlap(st, last0, now));
       showReport({ away: real, sim: r.simulated, before: before });
     } else {
-      var dt = real * TM.speed;
+      var dt = real * TM.speed * (now < E.boostState(st).to ? 2 : 1);
       var stepSec = TM.speed >= 1000 ? 5 : TM.speed > 1 ? 1 : real > 2 ? 1 : 0.2;
       var n = Math.min(2000, Math.ceil(dt / stepSec));
       for (var i = 0; i < n; i++) { TM.Dev.tick(st); E.step(st, dt / n); }

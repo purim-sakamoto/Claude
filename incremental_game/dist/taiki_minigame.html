@@ -15,6 +15,10 @@ body[data-era="2"], body[data-era="3"] { --bg: #ecebe7; --fg: #222; --dim: #777;
 body[data-era="3"] { --bg: #e7ecee; --panel: #f3f6f7; --bar: #4f7f99; }
 body[data-era="4"] { --bg: #e6ece6; --fg: #1f2a22; --dim: #6c786f; --line: #c8d3ca; --btn: #fff; --btnfg: #1f2a22; --btnline: #9fb0a3; --panel: #f2f6f2; --bar: #4f8a62; --accent: #2f6f4a; --bad: #b0473a; --good: #2f7f4f; --warn: #a8741a; --story: #000; }
 body[data-era="5"] { --bg: #0c1222; --fg: #d8e0f0; --dim: #7584a3; --line: #243150; --btn: #131c33; --btnfg: #e6ecff; --btnline: #3a4a73; --panel: #10182c; --bar: #5f7fc0; --accent: #9fb8ff; --story: #fff; }
+body[data-era="7"] { --bg: #140b08; --fg: #ecd9cc; --dim: #96786a; --line: #3a231b; --btn: #1d110c; --btnfg: #f6e6da; --btnline: #6a4031; --panel: #190e0a; --bar: #c0603a; --accent: #e8915f; --story: #fff; }
+body[data-era="8"] { --bg: #06121a; --fg: #d3e8ef; --dim: #6b8c99; --line: #15303d; --btn: #0a1a24; --btnfg: #e6f7ff; --btnline: #2f5a6c; --panel: #08161f; --bar: #4fb3c9; --accent: #8fd9ea; --story: #fff; }
+body[data-era="9"], body[data-era="10"] { --bg: #0b0f0b; --fg: #d6e2cf; --dim: #74866f; --line: #233023; --btn: #111811; --btnfg: #e6f2de; --btnline: #3e5a3c; --panel: #0e140e; --bar: #c9a03a; --accent: #ffb347; --bad: #ff6a55; --good: #8fe08a; --warn: #ffb347; --story: #fff; }
+body[data-era="11"] { --bg: #000; --fg: #e8e6f0; --dim: #6d6a7a; --line: #1a1822; --btn: #07070b; --btnfg: #f4f2ff; --btnline: #33303f; --panel: #050508; --bar: #b8b0e8; --accent: #e6dfff; --story: #fff; }
 body[data-era="6"] { --bg: #04050b; --fg: #d7d4e8; --dim: #6e6a8a; --line: #1b1a2e; --btn: #0b0b18; --btnfg: #eeeaff; --btnline: #34305a; --panel: #08081a; --bar: #8c79d6; --accent: #c9b8ff; --story: #fff; }
 
 * { box-sizing: border-box; }
@@ -93,7 +97,7 @@ body.noanim .fade { animation: none; }
 .res .r { text-align: right; font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .res.full .v { color: var(--warn); }
 .res.neg .r { color: var(--bad); }
-.resgroup { font-size: 10.5px; color: var(--dim); margin: 6px 0 1px; letter-spacing: .1em; line-height: 15px; }
+.resgroup { cursor: pointer; user-select: none; font-size: 10.5px; color: var(--dim); margin: 6px 0 1px; letter-spacing: .1em; line-height: 15px; }
 
 /* 設備など */
 .group { margin-bottom: 8px; }
@@ -124,6 +128,11 @@ table.t th { color: var(--dim); font-weight: normal; }
 p.note { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
 
 #gear { background: none; border: 1px solid var(--btnline); color: var(--dim); font-size: 12px; padding: 0 8px; line-height: 18px; border-radius: 2px; cursor: pointer; white-space: nowrap; align-self: center; margin-left: auto; }
+#boost { background: none; border: 1px solid var(--btnline); color: var(--accent); font-size: 12px; padding: 0 8px; line-height: 18px; border-radius: 2px; cursor: pointer; white-space: nowrap; align-self: center; margin-left: auto; }
+#boost:empty { display: none; }
+#boost + #gear { margin-left: 6px; }
+#boost:empty + #gear { margin-left: auto; }
+#boost.on { border-color: var(--accent); background: var(--accent); color: var(--bg); }
 #gear:hover { color: var(--fg); border-color: var(--fg); }
 
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
@@ -174,6 +183,7 @@ p.note { font-size: 12px; color: var(--dim); margin: 0 0 10px; }
 #flowbar .advice .det { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 6px; }
 #flowbar .fix { margin: 0; flex: none; text-align: left; line-height: 18px; padding: 0 7px; }
 #flowbar .fix.na { opacity: .55; }
+#flowbar .fix.sugg { background: none; border-style: dashed; color: var(--dim); }
 
 /* 特別な知らせ（周年・年商） */
 #log div.special { color: var(--accent); border-left: 2px solid var(--accent); padding-left: 8px; animation: special 2.4s ease both; }
@@ -221,6 +231,22 @@ h3.sect:first-child { margin-top: 0; }
 .resgroup.g-water { border-left-color: #3a78b5; }
 .resgroup.g-lab { border-left-color: #8a6bb5; }
 .resgroup.g-space { border-left-color: #4a5bb5; }
+.resgroup.g-calc, .resgroup.g-mars, .resgroup.g-outer, .resgroup.g-war, .resgroup.g-end { border-left: 3px solid var(--line); padding-left: 6px; }
+.resgroup.g-calc { border-left-color: #5f9fd6; }
+.resgroup.g-mars { border-left-color: #c0603a; }
+.resgroup.g-outer { border-left-color: #4fb3c9; }
+.resgroup.g-war { border-left-color: #ffb347; }
+.resgroup.g-end { border-left-color: #e6dfff; }
+/* 作戦図 */
+body[data-era="9"] #title, body[data-era="10"] #title { letter-spacing: .2em; }
+.wartitle { font-family: monospace; letter-spacing: .15em; color: var(--accent); }
+canvas.warmap { width: 100%; height: auto; display: block; border: 1px solid #2e4a2e; background: #0a0f0c; cursor: crosshair; image-rendering: auto; }
+.warinfo { font-size: 12px; margin: 6px 0; line-height: 1.6; }
+.warbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 6px 0; font-size: 12px; }
+.warbar .mini.on, table.wart .mini.on { border-color: var(--accent); color: var(--accent); }
+table.wart td, table.wart th { padding: 2px 6px; font-size: 12px; white-space: nowrap; }
+.warlog { font-size: 12px; font-family: monospace; margin-top: 8px; line-height: 1.6; max-height: 10em; overflow: hidden; }
+.phtabs { flex-wrap: wrap; }
 .res .nm.sold::after { content: '売'; display: inline-block; margin-left: 5px; padding: 0 4px; font-size: 10px; line-height: 14px; border-radius: 3px; background: #c58b2a; color: #fff; vertical-align: 1px; }
 .res.dry .r { color: var(--bad); }
 .loan { color: var(--warn); }
@@ -241,6 +267,7 @@ table.t.fs tr.total td { border-top: 2px double var(--btnline); font-weight: bol
     <div id="title">タイキ薬品工業　<span id="mini">ミニ</span>ゲーム</div>
     <div id="memo"></div>
     <div id="cal"></div>
+    <button id="boost" title="休憩チケット"></button>
     <button id="gear" title="設定・開発者モード">⚙ 設定</button>
   </header>
   <main id="main">
@@ -276,43 +303,45 @@ TM.util = (function () {
     return s;
   }
 
-  /* 数値を日本語の命数で整形する。expo=true なら指数表記 */
-  function fmt(n, expo) {
+  /* 大きな数の書き方。'eng'：指数（工学表記。12.3e9 のように指数を3の倍数にそろえる）、'jp'：万・億・兆… */
+  var mode = { v: 'eng' };
+  function setMode(m) { mode.v = m === 'jp' ? 'jp' : 'eng'; }
+  function eng(n, fixed) {
+    var e = Math.floor(Math.log10(n) / 3) * 3, m = n / Math.pow(10, e);
+    var dg = m >= 100 ? 0 : m >= 10 ? 1 : 2, t = m.toFixed(dg);
+    if (+t >= 1000) { e += 3; m = n / Math.pow(10, e); t = m.toFixed(2); }
+    if (!fixed && t.indexOf('.') >= 0) t = t.replace(/0+$/, '').replace(/\.$/, '');
+    return t + 'e' + e;
+  }
+  function big(n, fixed) {
+    if (mode.v === 'eng') return eng(n, fixed);
+    for (var i = 0; i < UNITS.length; i++) {
+      if (n >= UNITS[i][0]) {
+        var v = n / UNITS[i][0];
+        return fixed ? v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2) + UNITS[i][1] : (v >= 1000 ? trim(v, 0) : v >= 100 ? trim(v, 1) : trim(v, 2)) + UNITS[i][1];
+      }
+    }
+    return n.toExponential(2);
+  }
+
+  /* 数値を整形する（1万未満はそのまま、それより大きい数は big() の書き方） */
+  function fmt(n) {
     if (n === null || n === undefined || isNaN(n)) return '0';
     if (!isFinite(n)) return '∞';
     var neg = n < 0; if (neg) n = -n;
-    var out;
-    if (n < 1e4) {
-      out = n >= 100 ? trim(Math.floor(n), 0) : n >= 10 ? trim(n, 1) : trim(n, 2);
-    } else if (expo) {
-      out = n.toExponential(2).replace('e+', 'e');
-    } else {
-      out = null;
-      for (var i = 0; i < UNITS.length; i++) {
-        if (n >= UNITS[i][0]) {
-          var v = n / UNITS[i][0];
-          out = (v >= 1000 ? trim(v, 0) : v >= 100 ? trim(v, 1) : trim(v, 2)) + UNITS[i][1];
-          break;
-        }
-      }
-      if (out === null) out = n.toExponential(2);
-    }
+    var out = n < 1e4 ? (n >= 100 ? trim(Math.floor(n), 0) : n >= 10 ? trim(n, 1) : trim(n, 2)) : big(n, false);
     return (neg ? '-' : '') + out;
   }
 
   /* 桁の決まった数（0.10 / 1.20 / 12.0 / 120）。末尾の0を落とさないので、値が揺れても幅が変わらない */
-  function fmtFixed(n, expo) {
+  function fmtFixed(n) {
+    if (!isFinite(n)) return '∞';
     var neg = n < 0; if (neg) n = -n;
     var out;
     if (n < 10) out = n.toFixed(2);
     else if (n < 100) out = n.toFixed(1);
     else if (n < 1e4) out = String(Math.round(n));
-    else if (expo) out = n.toExponential(2).replace('e+', 'e');
-    else {
-      out = null;
-      for (var i = 0; i < UNITS.length; i++) if (n >= UNITS[i][0]) { var v = n / UNITS[i][0]; out = v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2) + UNITS[i][1]; break; }
-      if (out === null) out = n.toExponential(2);
-    }
+    else out = big(n, true);
     return (neg ? '-' : '') + out;
   }
 
@@ -366,7 +395,7 @@ TM.util = (function () {
 
   function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
 
-  return { fmt: fmt, fmtFixed: fmtFixed, fmtRate: fmtRate, fmtTime: fmtTime, clamp: clamp, el: el, rng: rng, deepCopy: deepCopy };
+  return { setMode: setMode, fmt: fmt, fmtFixed: fmtFixed, fmtRate: fmtRate, fmtTime: fmtTime, clamp: clamp, el: el, rng: rng, deepCopy: deepCopy };
 })();
 
 </script>
@@ -411,15 +440,6 @@ TM.DATA = {
     { id: 'uw', name: '尿素水（AUS32）', unit: 'kg', cap: 0, grp: 'liq' },
     { id: 'hp', name: '高純度薬品', unit: 'kg', cap: 0, grp: 'liq' },
     { id: 'h2', name: '水素', unit: 'kg', cap: 0, grp: 'liq' },
-    { id: 'fuel', name: 'ロケット燃料', unit: 't', cap: 0, grp: 'space' },
-    { id: 'orbit', name: '軌道資材', unit: 't', cap: null, grp: 'space' },
-    { id: 'moonfe', name: '月の砂鉄', unit: 't', cap: null, grp: 'space' },
-    { id: 'vhcl', name: '金星の塩化水素', unit: 't', cap: null, grp: 'space' },
-    { id: 'aster', name: '小惑星の鉄', unit: 't', cap: null, grp: 'space' },
-    { id: 'sfecl3', name: '宇宙製 塩化第二鉄', unit: 't', cap: null, grp: 'space' },
-    { id: 'star', name: '恒星エネルギー', unit: '', cap: null, grp: 'space' },
-    { id: 'ism', name: '星間物質', unit: '', cap: null, grp: 'space' },
-    { id: 'gfe', name: '星の鉄', unit: '', cap: null, grp: 'space' },
     { id: 'research', name: '技術', unit: 'pt', cap: 100, grp: 'lab' },
     { id: 'credit', name: '信用', unit: '', cap: null, grp: 'money' }
   ],
@@ -433,7 +453,6 @@ TM.DATA = {
     { id: 'prod', name: '売り物（缶・箱）' },
     { id: 'water', name: '水・排水' },
     { id: 'lab', name: '研究' },
-    { id: 'space', name: '宇宙' }
   ],
 
   /* ロット：検査待ち → 合格 */
@@ -668,58 +687,12 @@ TM.DATA = {
     { id: 'rnd2', name: '研究都市', group: '研究', desc: '大学と企業が集まる研究の街。', unlock: { era: 4 },
       cost: { money: 2e8 }, ratio: 1.32, space: 0, proc: { in: { money: 1500 }, out: { research: 1500 }, power: 50, toggle: true } },
     { id: 'mega4', name: '閉じた系', group: '大型', desc: '水素・酸・銅・水・缶・汚泥。捨てるものをなくす。循環率90%以上で建設できる。8段階。', unlock: { tech: 'closedloop' },
-      cost: { money: 2e9 }, ratio: 1.5, space: 0, stages: 8, buildCond: { circ: 0.9 }, onComplete: { era: 5 } },
-
-    /* ---- 時代5：空 ---- */
-    { id: 'electrolysis', name: '水電解装置', group: '宇宙', desc: '純水を電気で分けて、水素をつくる。', unlock: { tech: 'propellant' },
-      cost: { money: 2e10 }, ratio: 1.3, space: 0, effects: { cap: { h2: 5000 } }, proc: { in: { pw: 20 }, out: { h2: 2 }, power: 40, toggle: true } },
-    { id: 'fusionpower', name: '核融合発電所', group: '宇宙', desc: '重水素の火で、電気を。', unlock: { tech: 'moon' },
-      cost: { money: 1e11 }, ratio: 1.35, space: 0, effects: { power: 3000 } },
-    { id: 'fuelplant', name: '液化水素プラント', group: '宇宙', desc: '集めた水素を冷やして液体に。ロケット燃料になる。', unlock: { era: 5 },
-      cost: { money: 5e9 }, ratio: 1.3, space: 0, effects: { cap: { fuel: 200 } }, proc: { in: { h2: 2 }, out: { fuel: 0.5 }, power: 50, toggle: true } },
-    { id: 'launch', name: '打ち上げ場', group: '宇宙', desc: '燃料を燃やして、資材を軌道へ上げる。', unlock: { era: 5 },
-      cost: { money: 1e10 }, ratio: 1.35, space: 0, effects: { cap: { orbit: 500 } }, proc: { in: { fuel: 0.5, money: 2e5 }, out: { orbit: 0.2 }, toggle: true } },
-    { id: 'moonplant', name: '月面溶解プラント', group: '宇宙', desc: '月の砂には鉄が混じっている。地球の塩酸で溶かす。', unlock: { tech: 'moon' },
-      cost: { orbit: 60, money: 5e9 }, ratio: 1.3, space: 0, effects: { cap: { moonfe: 2000 } }, proc: { in: { orbit: 0.01, money: 1e5 }, out: { moonfe: 2 }, toggle: true } },
-    { id: 'venus', name: '金星浮遊プラント', group: '宇宙', desc: '金星の雲は硫酸と塩化水素でできている。浮かんで、集める。', unlock: { tech: 'venus' },
-      cost: { orbit: 150, money: 2e10 }, ratio: 1.3, space: 0, effects: { cap: { vhcl: 3000 } }, proc: { out: { vhcl: 5 }, in: {}, toggle: true } },
-    { id: 'asteroid', name: '小惑星溶解船', group: '宇宙', desc: '鉄とニッケルの塊を、まるごと酸に沈める。', unlock: { tech: 'asteroid' },
-      cost: { orbit: 500, money: 5e11 }, ratio: 1.3, space: 0, effects: { cap: { aster: 10000 } }, proc: { in: { vhcl: 1 }, out: { aster: 5 }, toggle: true } },
-    { id: 'orbreactor', name: '軌道上反応槽', group: '宇宙', desc: '無重力の反応槽。月の鉄と金星の塩化水素から、宇宙製の塩化第二鉄を。', unlock: { tech: 'venus' },
-      cost: { orbit: 200, money: 3e10 }, ratio: 1.3, space: 0, effects: { cap: { sfecl3: 5000 } }, proc: { in: { moonfe: 1, vhcl: 1.5 }, out: { sfecl3: 4 }, toggle: true } },
-    { id: 'asteroidreactor', name: '小惑星反応炉', group: '宇宙', desc: '小惑星の鉄を、宇宙製の塩化第二鉄に。', unlock: { tech: 'asteroid' },
-      cost: { orbit: 1500, money: 2e12 }, ratio: 1.3, space: 0, proc: { in: { aster: 4, vhcl: 2 }, out: { sfecl3: 8 }, toggle: true } },
-    { id: 'spacewater', name: '宇宙の水処理', group: '宇宙', desc: '月面基地と軌道ステーションの水を、宇宙製の凝集剤で澄ませる。', unlock: { tech: 'moon' },
-      cost: { orbit: 100, money: 1e10 }, ratio: 1.25, space: 0, effects: { gmul: 1.1 }, proc: { in: { sfecl3: 0.5 }, out: { money: 4e8 }, toggle: true } },
-    { id: 'orbtank', name: '軌道上タンク', group: '宇宙', desc: '宇宙で液をためる。', unlock: { tech: 'moon' },
-      cost: { orbit: 80, money: 3e10 }, ratio: 1.3, space: 0, effects: { cap: { orbit: 1000, moonfe: 3000, sfecl3: 5000, vhcl: 3000, fuel: 300 } } },
-    { id: 'spacelab', name: '軌道研究所', group: '宇宙', desc: '無重力で、地上ではできない実験を。', unlock: { era: 5 },
-      cost: { orbit: 50, money: 2e10 }, ratio: 1.3, space: 0, proc: { in: { money: 1e5 }, out: { research: 1e5 }, toggle: true } },
-    { id: 'mega5', name: '軌道エレベーター', group: '大型', desc: '地球と宇宙を一本の綱でつなぐ。10段階。', unlock: { tech: 'elevator' },
-      cost: { orbit: 400, money: 2e13 }, ratio: 1.5, space: 0, stages: 10, onComplete: { era: 6 } },
-
-    /* ---- 時代6：星 ---- */
-    { id: 'starfurnace', name: '恒星炉', group: '星', desc: '鉄は、星が最後につくる元素。星の芯を炉にする。', unlock: { era: 6 },
-      cost: { orbit: 5000, money: 5e13 }, ratio: 1.7, space: 0, effects: { gmul: 3, cap: { star: 1e6, gfe: 1e6 } }, proc: { out: { star: 10, gfe: 3 }, in: {}, toggle: true } },
-    { id: 'ismnet', name: '星間雲回収網', group: '星', desc: '星間雲には塩化水素も尿素も漂っている。網で集める。', unlock: { tech: 'ism' },
-      cost: { star: 5000, money: 1e17 }, ratio: 1.7, space: 0, effects: { gmul: 3, cap: { ism: 1e6 } }, proc: { in: { star: 0.5 }, out: { ism: 5 }, toggle: true } },
-    { id: 'galwater', name: '銀河水処理網', group: '星', desc: '銀河じゅうの水を澄ませる。', unlock: { tech: 'galaxy' },
-      cost: { gfe: 2e4, ism: 2e4, money: 1e20 }, ratio: 1.8, space: 0, effects: { gmul: 5 }, proc: { in: { gfe: 0.2, ism: 0.2 }, out: { money: 1e15 }, toggle: true } },
-    { id: 'starlorry', name: '恒星間ローリー', group: '星', desc: '光の速さの手前で、液を運ぶ。', unlock: { tech: 'galaxy' },
-      cost: { star: 1e5, money: 1e22 }, ratio: 1.8, space: 0, effects: { gmul: 5 } },
-    { id: 'alien', name: '異星の商会', group: '星', desc: 'ケイ素の体をもつ取引先。星間物質を高く買ってくれる。', unlock: { tech: 'ism' },
-      cost: { ism: 1e4, money: 1e18 }, ratio: 1.7, space: 0, effects: { gmul: 3 }, proc: { in: { ism: 0.3 }, out: { money: 1e13 }, toggle: true } },
-    { id: 'starlab', name: '恒星計算機', group: '星', desc: '星ひとつぶんの計算機。', unlock: { era: 6 },
-      cost: { star: 2000, money: 1e16 }, ratio: 1.4, space: 0, proc: { in: { star: 0.1 }, out: { research: 1e8 }, toggle: true } },
-    { id: 'starstore', name: '星間倉庫', group: '星', desc: '星の鉄と星間物質をためる。', unlock: { era: 6 },
-      cost: { money: 5e16 }, ratio: 1.6, space: 0, effects: { cap: { star: 1e7, gfe: 1e7, ism: 1e7 } } },
-    { id: 'final', name: '始まりの釜', group: '大型', desc: '宇宙そのものを、一つの釜に。10段階。', unlock: { tech: 'origin' },
-      cost: { money: 3e33, star: 1e6, ism: 1e6, gfe: 1e6 }, ratio: 1e3, ratioRes: { star: 2.5, ism: 2.5, gfe: 2.5 }, space: 0, stages: 10, onComplete: { ending: true } }
+      cost: { money: 2e9 }, ratio: 1.5, space: 0, stages: 8, buildCond: { circ: 0.9 }, onComplete: { era: 5 } }
   ],
 
   /* フック：まだ買えない先の設備・技術の名前だけを見せる */
   teasers: ['ベルトコンベア', '自動洗缶ライン', 'フォークリフト', '天井クレーン', 'タンクローリー', '分析室', '純水装置', 'ICP発光分光分析装置', '脱銅処理設備'],
-  teaserTechs: ['濃縮', '脱銅', '超純水', '尿素水', '推進剤', '大気化学', '恒星元素合成'],
+  teaserTechs: ['濃縮', '脱銅', '超純水', '尿素水', '核融合', 'データセンター', '推進剤'],
 
   /* ---------------- 技術 ---------------- */
   techs: [
@@ -772,16 +745,7 @@ TM.DATA = {
     { id: 'export', name: '海の向こう', desc: '船に積めば、海外の客にも届く。', cost: { research: 3e+07 }, era: 4, req: ['highpurity'], effects: [['zone', 1]] },
     { id: 'closedloop', name: '閉じた系', desc: 'すべてを回収すれば、工場は一つの生き物になる。', cost: { research: 6e+07 }, era: 4, req: ['loop', 'ureasyn', 'export'] },
 
-    { id: 'propellant', name: '推進剤', desc: '捨てていた泡が、空へ昇る燃料になる。', cost: { research: 5e8 }, era: 5, effects: [['bld.fuelplant', 1]] },
-    { id: 'moon', name: '月面冶金', desc: '月の砂には、鉄が混じっている。', cost: { research: 1e9 }, era: 5, req: ['propellant'] },
-    { id: 'venus', name: '大気化学', desc: '金星の雲は硫酸と塩化水素でできている。仕入れ先が一つ増えた。', cost: { research: 3e9 }, era: 5, req: ['moon'] },
-    { id: 'asteroid', name: '小惑星', desc: '鉄とニッケルの塊が、太陽のまわりを回っている。', cost: { research: 1e10 }, era: 5, req: ['venus'] },
-    { id: 'elevator', name: '軌道エレベーター', desc: '打ち上げずに、昇る。', cost: { research: 5e10 }, era: 5, req: ['asteroid'] },
 
-    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 5e12 }, era: 6, effects: [['global', 1]] },
-    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 3e13 }, era: 6, req: ['nucleo'] },
-    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 1e16 }, era: 6, req: ['ism'] },
-    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 5e18 }, era: 6, req: ['galaxy'] }
   ],
 
   /* ---------------- 改善（一度だけ買える強化） ---------------- */
@@ -835,12 +799,6 @@ TM.DATA = {
     { id: 'h2burner', name: '水素ボイラー', desc: '集めた水素を燃料に。濃縮・尿素溶解 +30%', cost: { money: 5e7 }, unlock: { bld: { h2rec: 1 } }, effects: [['bld.conc', 0.3], ['bld.ureadis', 0.3]] },
     { id: 'solar', name: '屋根の太陽光', desc: '使える電気 +30%', cost: { money: 3e7 }, unlock: { era: 4 }, effects: [['power', 0.3]] },
     { id: 'semigrade', name: '半導体グレード', desc: '高純度薬品の単価 +50%', cost: { money: 3e8 }, unlock: { bld: { hpline: 1 } }, effects: [['price.b_hp', 0.5]] },
-    { id: 'cryo', name: '断熱タンク', desc: 'ロケット燃料・軌道資材の置き場 ×3', cost: { money: 2e10 }, unlock: { era: 5 }, effects: [['cap.fuel', 2], ['cap.orbit', 2]] },
-    { id: 'reuse_rocket', name: '再使用ロケット', desc: '打ち上げ場 +100%', cost: { money: 1e11 }, unlock: { bld: { launch: 1 } }, effects: [['bld.launch', 1]] },
-    { id: 'zerog', name: '無重力の撹拌', desc: '宇宙の反応 +100%', cost: { money: 2e12 }, unlock: { bld: { orbreactor: 1 } }, effects: [['bld.orbreactor', 1], ['bld.asteroidreactor', 1]] },
-    { id: 'stargrade', name: '宇宙規格', desc: '宇宙の水処理 +100%', cost: { money: 5e12 }, unlock: { bld: { spacewater: 3 } }, effects: [['bld.spacewater', 1]] },
-    { id: 'dyson', name: '星を包む配管', desc: 'すべての生産 ×2', cost: { money: 1e19, star: 1e5 }, unlock: { bld: { starfurnace: 3 } }, effects: [['global', 1]] },
-    { id: 'lightcone', name: '光円錐の配車', desc: 'すべての生産 ×2', cost: { money: 1e24, ism: 1e5 }, unlock: { bld: { starlorry: 1 } }, effects: [['global', 1]] }
   ],
 
   /* 小分けラインのモジュール（能力：缶/秒） */
@@ -941,7 +899,7 @@ TM.DATA = {
       make: [['job', 'dissolve'], ['act', 'sink'], ['upg', 'gloves'], ['bld', 'kama'], ['upg', 'stirrer'], ['bld', 'reactor'], ['bld', 'bigreactor'], ['bld', 'megareactor']],
       slots: [['bld', 'kama'], ['upg', 'bigkama'], ['bld', 'reactor'], ['bld', 'bigreactor']],
       operator: [['job', 'operate']],
-      power: [['bld', 'powerc'], ['bld', 'substation'], ['upg', 'solar'], ['bld', 'fusionpower']],
+      power: [['bld', 'powerc'], ['bld', 'substation'], ['upg', 'solar'], ['bld', 'solarfarm'], ['bld', 'fusion']],
       handling: [['job', 'handle'], ['upg', 'handlift'], ['bld', 'fork'], ['bld', 'crane'], ['bld', 'autowh']],
       vent: [['bld', 'vent'], ['bld', 'scrubber'], ['bld', 'msscrub']],
       check: [['job', 'check'], ['upg', 'hydrometer'], ['bld', 'lab'], ['bld', 'i_refract'], ['bld', 'lab2'], ['upg', 'lotsize']],
@@ -1058,10 +1016,6 @@ TM.DATA = {
     { id: 'purewater_fight', cond: { all: [{ bld: { i_icp: 1 } }, { bld: { ureadis: 2 } }] }, text: '尿素水が売れるほど、分析室の水が細る。' },
     { id: 'era4', cond: { era: 4 }, text: '捨てていたものが、まだたくさんある。' },
     { id: 'circ', cond: { circ: 0.5 }, text: '水素も、酸も、水も、銅も。少しずつ、輪が閉じていく。' },
-    { id: 'era5', cond: { era: 5 }, text: 'あの泡を覚えているか。ぽんと鳴った、あの泡を。いま、それで空へ昇る。' },
-    { id: 'venus', cond: { bld: { venus: 1 } }, text: '金星の雲は硫酸と塩化水素でできている。仕入れ先が一つ増えた。' },
-    { id: 'era6', cond: { era: 6 }, text: '鉄は、星が最後につくるもの。' },
-    { id: 'ash', cond: { tech: 'nucleo' }, text: 'ずっと、星の灰を溶かしていた。' }
   ],
 
   /* ---------------- 作業メモ ---------------- */
@@ -1093,12 +1047,7 @@ TM.DATA = {
     { text: '受託案件を一つ製品化する', done: { stat: { contractsDone: 1 } } },
     { text: '貯蔵出荷基地を完成させる', done: { era: 4 } },
     { text: '循環率を90%にする', done: { circ: 0.9 } },
-    { text: '閉じた系を完成させる', done: { era: 5 } },
-    { text: '月で鉄を溶かす', done: { bld: { moonplant: 1 } } },
-    { text: '金星の雲から酸を集める', done: { bld: { venus: 1 } } },
-    { text: '軌道エレベーターを完成させる', done: { era: 6 } },
-    { text: '恒星炉に火を入れる', done: { bld: { starfurnace: 1 } } },
-    { text: '始まりの釜を完成させる', done: { stat: { ended: 1 } } }
+    { text: '閉じた系を完成させる', done: { era: 5 } }
   ],
 
   /* ランダムな良い出来事 */
@@ -1108,6 +1057,373 @@ TM.DATA = {
     { id: 'idea', text: '休憩中に、ひらめいた。', button: '書き留める', give: { research: 'cap' }, cond: { flag: 'research_known' } }
   ]
 };
+
+</script>
+<script>
+/* ゲームデータ（後半）：時代4の自動化の続きから、電気と計算・空・惑星・外太陽系・戦争・果てまで。
+   data.js のあとに読み込み、TM.DATA の配列に足す。
+   ph：設備の「場面」。現場タブは場面ごとに分けて見せる（古い場面の設備は別の見出しにまとめる） */
+(function () {
+  var D = TM.DATA;
+  function add(list, items) { items.forEach(function (x) { list.push(x); }); }
+
+  /* ---------------- 場面 ---------------- */
+  D.phases = [
+    { id: 'ground', name: '地上の工場' },
+    { id: 'auto', name: '自動化' },
+    { id: 'power', name: '電気と計算' },
+    { id: 'sky', name: '空' },
+    { id: 'planet', name: '惑星' },
+    { id: 'outer', name: '外太陽系' },
+    { id: 'war', name: '戦時' },
+    { id: 'end', name: '果て' }
+  ];
+  D.eraNames = ['暗闇', '町工場', '工場', '基地', '自動化', '電気と計算', '空', '惑星', '外太陽系', '兵站', '戦略', '果て'];
+
+  /* ---------------- 資源 ---------------- */
+  add(D.resources, [
+    { id: 'compute', name: '計算力', unit: 'PF', cap: null, grp: 'calc' },
+    { id: 'fuel', name: 'ロケット燃料', unit: 't', cap: 0, grp: 'space' },
+    { id: 'orbit', name: '軌道資材', unit: 't', cap: 0, grp: 'space' },
+    { id: 'moonfe', name: '月の砂鉄', unit: 't', cap: null, grp: 'space' },
+    { id: 'vhcl', name: '金星の塩化水素', unit: 't', cap: null, grp: 'space' },
+    { id: 'sfecl3', name: '宇宙製 塩化第二鉄', unit: 't', cap: null, grp: 'space' },
+    { id: 'tf_heat', name: '火星：気温', unit: '', cap: null, grp: 'mars' },
+    { id: 'tf_air', name: '火星：大気', unit: '', cap: null, grp: 'mars' },
+    { id: 'tf_water', name: '火星：水', unit: '', cap: null, grp: 'mars' },
+    { id: 'tf_life', name: '火星：緑', unit: '', cap: null, grp: 'mars' },
+    { id: 'aster', name: '小惑星の鉄', unit: 't', cap: null, grp: 'outer' },
+    { id: 'he3', name: 'ヘリウム3', unit: 't', cap: null, grp: 'outer' },
+    { id: 'ice', name: 'エウロパの氷', unit: 't', cap: null, grp: 'outer' },
+    { id: 'ch4', name: 'タイタンのメタン', unit: 't', cap: null, grp: 'outer' },
+    { id: 'w_fuel', name: '推進剤', unit: 't', cap: null, grp: 'war' },
+    { id: 'w_cool', name: '冷却材', unit: 't', cap: null, grp: 'war' },
+    { id: 'w_armor', name: '装甲材', unit: 't', cap: null, grp: 'war' },
+    { id: 'w_water', name: '浄水剤', unit: 't', cap: null, grp: 'war' },
+    { id: 'star', name: '恒星エネルギー', unit: '', cap: null, grp: 'end' },
+    { id: 'ism', name: '星間物質', unit: '', cap: null, grp: 'end' },
+    { id: 'gfe', name: '星の鉄', unit: '', cap: null, grp: 'end' }
+  ]);
+  /* 「研究」より前に計算・宇宙…を差し込む */
+  var gi = 0; D.resGroups.forEach(function (g, i) { if (g.id === 'lab') gi = i; });
+  D.resGroups.splice(gi, 0,
+    { id: 'calc', name: '計算' },
+    { id: 'space', name: '宇宙' },
+    { id: 'mars', name: '火星（テラフォーミング）' },
+    { id: 'outer', name: '外太陽系' },
+    { id: 'war', name: '軍需（前線へ送る物資）' },
+    { id: 'end', name: '星' });
+
+  /* ---------------- 設備 ---------------- */
+  add(D.buildings, [
+    /* ---- 時代4の続き：自動配送・電化 ---- */
+    { id: 'heatpump', ph: 'auto', name: 'ヒートポンプ', group: '電化', desc: '燃やさずに、電気で熱をくみ上げる。ボイラーの代わりになり、燃料代がかからない。', unlock: { tech: 'electrify' },
+      cost: { money: 4e7 }, ratio: 1.3, space: 2, effects: { steam: 2 }, proc: { power: 25 } },
+    { id: 'evlorry', ph: 'auto', name: '自動運転ローリー', group: '自動配送', desc: '電気で走り、運転手がいらないローリー。充電所が要る。全国・海外の港まで。', unlock: { tech: 'autodrive' },
+      cost: { money: 6e7 }, ratio: 1.22, space: 4, effects: { transport: { kind: 'bulk', rate: 220, zone: 5, auto: true, requires: ['charger', 'shiptank'] } }, proc: { power: 6 } },
+    { id: 'charger', ph: 'auto', name: '急速充電所', group: '自動配送', desc: '電動の車を充電する。', unlock: { tech: 'autodrive' },
+      cost: { money: 2e7 }, ratio: 1.5, space: 2, max: 3, proc: { power: 10 } },
+    { id: 'dronehub', ph: 'auto', name: 'ドローン配送拠点', group: '自動配送', desc: '缶や箱を、空から届ける。人はいらない。', unlock: { tech: 'drone' },
+      cost: { money: 5e7 }, ratio: 1.25, space: 2, effects: { transport: { rate: 6, zone: 5, auto: true } }, proc: { power: 8 } },
+    { id: 'solarfarm', ph: 'auto', name: '太陽光発電所', group: '電化', desc: '遊んでいる土地に、パネルを並べる。', unlock: { tech: 'electrify' },
+      cost: { money: 8e7 }, ratio: 1.22, space: 0, effects: { power: 120 } },
+
+    /* ---- 時代5：電気と計算 ---- */
+    { id: 'battery', ph: 'power', name: '蓄電池', group: '電気', desc: '昼の電気を夜に回す。使える電気が増える。', unlock: { era: 5 },
+      cost: { money: 3e9 }, ratio: 1.3, space: 0, effects: { power: 900 } },
+    { id: 'fusion', ph: 'power', name: '核融合炉', group: '電気', desc: '理屈は、まだ誰にも分からない。でも、動く。燃料は海の水から取る重水素。', unlock: { tech: 'fusion' },
+      cost: { money: 4e10 }, ratio: 1.32, space: 0, effects: { power: 12000 } },
+    { id: 'ctower', ph: 'power', name: '冷却塔', group: '計算', desc: 'データセンターの熱を、水で捨てる。冷却水の藻を薬で抑える（薬代がかかる）。', unlock: { tech: 'datacenter' },
+      cost: { money: 2e9 }, ratio: 1.3, space: 0, effects: { cool: 4 }, proc: { in: { money: 3e5 }, out: {}, toggle: true } },
+    { id: 'dc', ph: 'power', name: 'データセンター', group: '計算', desc: '電気を計算に変える。冷却塔1基で4棟まで冷やせる。計算力は売れるし、研究にも使える。', unlock: { tech: 'datacenter' },
+      cost: { money: 6e9 }, ratio: 1.24, space: 0, proc: { in: {}, out: { compute: 1 }, power: 800, toggle: true, cooled: true } },
+    { id: 'ailab', ph: 'power', name: 'AI研究所', group: '計算', desc: '計算力で、研究を回す。', unlock: { tech: 'aiops' },
+      cost: { money: 1.5e10 }, ratio: 1.3, space: 0, proc: { in: { compute: 0.6 }, out: { research: 3e6 }, power: 200, toggle: true } },
+    { id: 'aiplant', ph: 'power', name: 'AIの工場長', group: '計算', desc: '工場全体の段取りを、計算で組む。すべての生産 +4%（1つごと）。', unlock: { tech: 'aiops' },
+      cost: { money: 2e10, compute: 200 }, ratio: 1.4, space: 0, effects: { global: 0.04 }, proc: { in: { compute: 0.3 }, out: {}, power: 100 } },
+    { id: 'mega5', ph: 'power', name: '宇宙港', group: '大型', desc: '海の上の発射台と、燃料と、管制の計算機。10段階で完成。', unlock: { tech: 'spaceport' },
+      cost: { money: 5e10, compute: 800 }, ratio: 1.45, ratioRes: { compute: 1.35 }, space: 0, stages: 10, onComplete: { era: 6 } },
+
+    /* ---- 時代6：空 ---- */
+    { id: 'electrolysis', ph: 'sky', name: '水電解装置', group: '燃料', desc: '純水を電気で分けて、水素をつくる。', unlock: { era: 6 },
+      cost: { money: 3e11 }, ratio: 1.25, space: 0, effects: { cap: { h2: 20000 } }, proc: { in: { pw: 40 }, out: { h2: 4 }, power: 3000, toggle: true } },
+    { id: 'fuelplant', ph: 'sky', name: '液化水素プラント', group: '燃料', desc: '水素を冷やして液体に。ロケット燃料になる。', unlock: { era: 6 },
+      cost: { money: 2e11 }, ratio: 1.25, space: 0, effects: { cap: { fuel: 400 } }, proc: { in: { h2: 4 }, out: { fuel: 1 }, power: 1500, toggle: true } },
+    { id: 'launch', ph: 'sky', name: '打ち上げ場', group: '打ち上げ', desc: '燃料を燃やして、資材を軌道へ上げる。', unlock: { era: 6 },
+      cost: { money: 6e11 }, ratio: 1.3, space: 0, effects: { cap: { orbit: 400 } }, proc: { in: { fuel: 1, money: 5e7 }, out: { orbit: 0.25 }, toggle: true } },
+    { id: 'orbtank', ph: 'sky', name: '軌道上タンク', group: '打ち上げ', desc: '軌道で資材と燃料をためる。', unlock: { bld: { launch: 1 } },
+      cost: { money: 4e11, orbit: 20 }, ratio: 1.35, space: 0, effects: { cap: { orbit: 1500, fuel: 600 } } },
+    { id: 'sat', ph: 'sky', name: '通信衛星の網', group: '軌道', desc: '地球をくるむ衛星の網。どこでも配車でき、計算をつなぐ。すべての生産 +3%（1つごと）。', unlock: { tech: 'satellite' },
+      cost: { money: 3e11, orbit: 30 }, ratio: 1.4, space: 0, effects: { global: 0.03 } },
+    { id: 'station', ph: 'sky', name: '軌道ステーション', group: '軌道', desc: '人の住む宇宙の家。飲み水と空気を、地上から上げた薬で整える。宇宙の住人が増える。', unlock: { tech: 'station' },
+      cost: { money: 8e11, orbit: 80 }, ratio: 1.4, space: 0, effects: { popCap: 60 }, proc: { in: { orbit: 0.01, money: 1e7 }, out: { money: 6e8 }, toggle: true } },
+    { id: 'orbdc', ph: 'sky', name: '軌道データセンター', group: '軌道', desc: '宇宙は冷たい。冷却塔はいらない。電気は太陽から。', unlock: { tech: 'orbdc' },
+      cost: { money: 1.5e12, orbit: 60 }, ratio: 1.3, space: 0, proc: { in: { orbit: 0.004 }, out: { compute: 12 }, toggle: true } },
+    { id: 'spacelab', ph: 'sky', name: '軌道研究所', group: '軌道', desc: '無重力で、地上ではできない実験を。', unlock: { bld: { station: 1 } },
+      cost: { money: 1e12, orbit: 50 }, ratio: 1.32, space: 0, proc: { in: { compute: 1 }, out: { research: 3e7 }, toggle: true } },
+    { id: 'mega6', ph: 'sky', name: '軌道エレベーター', group: '大型', desc: '地球と宇宙を一本の綱でつなぐ。打ち上げずに、昇る。10段階。', unlock: { tech: 'elevator' },
+      cost: { money: 1.5e12, orbit: 300 }, ratio: 1.45, ratioRes: { orbit: 1.3 }, space: 0, stages: 10, onComplete: { era: 7 } },
+
+    /* ---- 時代7：惑星 ---- */
+    { id: 'lift', ph: 'planet', name: 'エレベーターの昇降機', group: '月と金星', desc: '綱を昇って、資材を軌道へ。燃料はいらない。', unlock: { era: 7 },
+      cost: { money: 3e13 }, ratio: 1.25, space: 0, effects: { cap: { orbit: 6000 } }, proc: { in: { money: 2e9 }, out: { orbit: 4 }, power: 20000, toggle: true } },
+    { id: 'moonplant', ph: 'planet', name: '月面溶解プラント', group: '月と金星', desc: '月の砂には鉄が混じっている。', unlock: { tech: 'moon' },
+      cost: { money: 2e13, orbit: 300 }, ratio: 1.28, space: 0, proc: { in: { orbit: 0.05 }, out: { moonfe: 3 }, toggle: true } },
+    { id: 'venus', ph: 'planet', name: '金星浮遊プラント', group: '月と金星', desc: '金星の雲は硫酸と塩化水素でできている。浮かんで、集める。', unlock: { tech: 'venus' },
+      cost: { money: 3e13, orbit: 400 }, ratio: 1.28, space: 0, proc: { out: { vhcl: 5 }, in: {}, toggle: true } },
+    { id: 'orbreactor', ph: 'planet', name: '軌道上反応槽', group: '月と金星', desc: '月の鉄と金星の塩化水素から、宇宙製の塩化第二鉄を。', unlock: { tech: 'venus' },
+      cost: { money: 4e13, orbit: 300 }, ratio: 1.28, space: 0, proc: { in: { moonfe: 2, vhcl: 3 }, out: { sfecl3: 4 }, toggle: true } },
+    { id: 'colonywater', ph: 'planet', name: '月と火星の街の水道', group: '街', desc: '宇宙の街の水を、宇宙製の第二鉄で澄ませる。', unlock: { tech: 'moon' },
+      cost: { money: 3e13, orbit: 200 }, ratio: 1.26, space: 0, proc: { in: { sfecl3: 1 }, out: { money: 2e10 }, toggle: true } },
+    { id: 'marsbase', ph: 'planet', name: '火星基地', group: '街', desc: '赤い土の上の、最初の街。住む人が増える。', unlock: { tech: 'mars' },
+      cost: { money: 1e14, orbit: 1000 }, ratio: 1.4, space: 0, effects: { popCap: 300 } },
+    { id: 'marsplant', ph: 'planet', name: '火星の赤土プラント', group: '火星', desc: '火星の赤は、酸化鉄の赤。塩化水素で溶かせば、そのまま第二鉄液になる。', unlock: { tech: 'mars' },
+      cost: { money: 1.2e14, orbit: 600 }, ratio: 1.28, space: 0, proc: { in: { vhcl: 3 }, out: { sfecl3: 8 }, toggle: true } },
+    { id: 'mirror', ph: 'planet', name: '軌道ミラー', group: 'テラフォーミング', desc: '太陽の光を集めて、火星を温める。', unlock: { tech: 'terraform' },
+      cost: { money: 1e14, orbit: 800 }, ratio: 1.3, space: 0, proc: { in: { orbit: 0.02 }, out: { tf_heat: 0.02 }, toggle: true } },
+    { id: 'airfac', ph: 'planet', name: '大気工場', group: 'テラフォーミング', desc: '赤土を塩化水素で溶かすときに、酸素と塩素を回して空へ返す。', unlock: { tech: 'terraform' },
+      cost: { money: 1e14, orbit: 800 }, ratio: 1.3, space: 0, proc: { in: { vhcl: 2 }, out: { tf_air: 0.02 }, toggle: true } },
+    { id: 'comet', ph: 'planet', name: '彗星の誘導', group: 'テラフォーミング', desc: '氷の彗星の軌道を、少しだけ曲げる。', unlock: { tech: 'terraform' },
+      cost: { money: 1e14, orbit: 800 }, ratio: 1.3, space: 0, proc: { in: { fuel: 2 }, out: { tf_water: 0.02 }, toggle: true } },
+    { id: 'algae', ph: 'planet', name: '藻の散布', group: 'テラフォーミング', desc: '澄ませた水に藻をまく。凝集剤で濁りを沈めてから。', unlock: { tech: 'terraform' },
+      cost: { money: 1e14, orbit: 800 }, ratio: 1.3, space: 0, proc: { in: { sfecl3: 1 }, out: { tf_life: 0.02 }, toggle: true } },
+    { id: 'mega7', ph: 'planet', name: 'テラフォーミング', group: '大型', desc: '火星に、空と海と森を。気温・大気・水・緑をためて、10段階で完成。', unlock: { tech: 'terraform' },
+      cost: { money: 2e14, tf_heat: 40, tf_air: 40, tf_water: 40, tf_life: 40 }, ratio: 1.4, ratioRes: { tf_heat: 1.3, tf_air: 1.3, tf_water: 1.3, tf_life: 1.3 }, space: 0, stages: 10, onComplete: { era: 8 } },
+
+    /* ---- 時代8：外太陽系 ---- */
+    { id: 'asteroid', ph: 'outer', name: '小惑星溶解船', group: '小惑星帯', desc: '鉄とニッケルの塊を、まるごと酸に沈める。', unlock: { era: 8 },
+      cost: { money: 3e15, orbit: 3000 }, ratio: 1.28, space: 0, proc: { in: { vhcl: 2 }, out: { aster: 6 }, toggle: true } },
+    { id: 'asteroidreactor', ph: 'outer', name: '小惑星反応炉', group: '小惑星帯', desc: '小惑星の鉄を、宇宙製の塩化第二鉄に。', unlock: { era: 8 },
+      cost: { money: 4e15, orbit: 3000 }, ratio: 1.28, space: 0, proc: { in: { aster: 4, vhcl: 3 }, out: { sfecl3: 16 }, toggle: true } },
+    { id: 'jupscoop', ph: 'outer', name: '木星の大気採取船', group: '木星と土星', desc: '木星の雲をすくって、ヘリウム3を集める。', unlock: { tech: 'jupiter' },
+      cost: { money: 6e15, orbit: 5000 }, ratio: 1.28, space: 0, proc: { in: { fuel: 1 }, out: { he3: 0.5 }, toggle: true } },
+    { id: 'fusion2', ph: 'outer', name: 'ヘリウム3核融合炉', group: '木星と土星', desc: '中性子の出ない火。とても大きな電気。', unlock: { tech: 'jupiter' },
+      cost: { money: 8e15 }, ratio: 1.3, space: 0, effects: { power: 4e6 }, proc: { in: { he3: 0.2 }, out: {} } },
+    { id: 'europa', ph: 'outer', name: 'エウロパの氷採掘', group: '木星と土星', desc: '氷の月を掘る。溶かせば、純水よりきれいな水。', unlock: { tech: 'europa' },
+      cost: { money: 5e15, orbit: 4000 }, ratio: 1.28, space: 0, proc: { in: { fuel: 0.5 }, out: { ice: 10 }, toggle: true } },
+    { id: 'titan', ph: 'outer', name: 'タイタンのメタン井', group: '木星と土星', desc: 'メタンの湖から、燃料を汲む。', unlock: { tech: 'titan' },
+      cost: { money: 6e15, orbit: 4000 }, ratio: 1.28, space: 0, proc: { out: { ch4: 6 }, in: {}, toggle: true } },
+    { id: 'ch4fuel', ph: 'outer', name: 'メタン燃料プラント', group: '木星と土星', desc: 'メタンを冷やして、ロケット燃料に。', unlock: { tech: 'titan' },
+      cost: { money: 3e15 }, ratio: 1.26, space: 0, effects: { cap: { fuel: 20000 } }, proc: { in: { ch4: 4 }, out: { fuel: 6 }, toggle: true } },
+    { id: 'outercity', ph: 'outer', name: '外惑星の街', group: '街', desc: '木星と土星の月に住む人たちの水を、氷と第二鉄で。', unlock: { tech: 'europa' },
+      cost: { money: 1e16, orbit: 5000 }, ratio: 1.26, space: 0, effects: { popCap: 400 }, proc: { in: { ice: 4, sfecl3: 3 }, out: { money: 2e12 }, toggle: true } },
+    { id: 'coldc', ph: 'outer', name: '氷の月の計算機', group: '木星と土星', desc: 'マイナス180度。冷やす手間がいらない。', unlock: { tech: 'europa' },
+      cost: { money: 8e15, orbit: 4000 }, ratio: 1.3, space: 0, proc: { in: { ice: 2 }, out: { compute: 300 }, power: 2e5, toggle: true } },
+    { id: 'kuiper', ph: 'outer', name: '外縁観測所', group: '外縁', desc: '太陽系の外れから、星の向こうを見る。', unlock: { tech: 'kuiper' },
+      cost: { money: 2e16, orbit: 8000 }, ratio: 1.35, space: 0, proc: { in: { compute: 20 }, out: { research: 2e10 }, toggle: true } },
+    { id: 'mega8', ph: 'outer', name: 'ヘリオポーズ基地', group: '大型', desc: '太陽の風が届く、いちばん外の線。10段階で完成。', unlock: { tech: 'heliopause' },
+      cost: { money: 5e16, orbit: 20000 }, ratio: 1.45, ratioRes: { orbit: 1.3 }, space: 0, stages: 10, onComplete: { era: 9 } },
+
+    /* ---- 時代9〜10：戦時 ---- */
+    { id: 'wfuel', ph: 'war', name: '推進剤工場', group: '軍需工場', desc: 'ロケット燃料を、艦の推進剤に仕立てる。', unlock: { era: 9 },
+      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { fuel: 6 }, out: { w_fuel: 3 }, toggle: true } },
+    { id: 'wcool', ph: 'war', name: '冷却材工場', group: '軍需工場', desc: '氷を溶かし、純度を上げて、艦の冷却材に。', unlock: { era: 9 },
+      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { ice: 6 }, out: { w_cool: 3 }, power: 1e5, toggle: true } },
+    { id: 'warmor', ph: 'war', name: '装甲材の圧延所', group: '軍需工場', desc: '小惑星の鉄を、装甲の板に。', unlock: { era: 9 },
+      cost: { money: 3e17 }, ratio: 1.25, space: 0, proc: { in: { aster: 6 }, out: { w_armor: 3 }, power: 2e5, toggle: true } },
+    { id: 'wwater', ph: 'war', name: '浄水剤工場', group: '軍需工場', desc: '前線の水を澄ませるのは、うちの液だ。', unlock: { era: 9 },
+      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { sfecl3: 6 }, out: { w_water: 3 }, toggle: true } },
+    { id: 'wterminal', ph: 'war', name: '宇宙港ターミナル', group: '兵站', desc: '物資を仕分けて、船に積む。積める量が増える。', unlock: { era: 9 },
+      cost: { money: 3e17 }, ratio: 1.3, space: 0, effects: { wload: 4 } },
+    { id: 'convoy', ph: 'war', name: '輸送船団', group: '兵站', desc: '前線へ物資を運ぶ船団。運べる量が増える。', unlock: { era: 9 },
+      cost: { money: 2.5e17 }, ratio: 1.26, space: 0, effects: { wlift: 3 } },
+    { id: 'fdepot', ph: 'war', name: '前線補給基地', group: '兵站', desc: '前線のそばに物資をためておく。補給が途切れても、しばらく持ちこたえる。', unlock: { tech: 'depotwar' },
+      cost: { money: 5e17, w_armor: 50 }, ratio: 1.35, space: 0, effects: { wbuf: 1 } },
+    { id: 'mega9', ph: 'war', name: '反攻艦隊の造船所', group: '大型', desc: '4つの前線をすべて押し返したら、こちらから打って出る。10段階で完成。', unlock: { tech: 'counter' },
+      cost: { money: 1e18, w_armor: 400 }, ratio: 1.42, ratioRes: { w_armor: 1.3 }, space: 0, stages: 10, buildCond: { war: 'fronts' }, onComplete: { era: 10 } },
+    { id: 'dock', ph: 'war', name: '宇宙ドック', group: '造船', desc: '艦を造る船台。多いほど、同時にたくさん造れる。', unlock: { era: 10 },
+      cost: { money: 3e18, w_armor: 300 }, ratio: 1.35, space: 0, effects: { dock: 1 } },
+    { id: 'shipyard2', ph: 'war', name: '自動造船ライン', group: '造船', desc: '艦の部品を、ラインで流して組む。造船が速くなる。', unlock: { tech: 'autoyard' },
+      cost: { money: 1e19, w_armor: 1000 }, ratio: 1.4, space: 0, effects: { dockSpeed: 0.5 } },
+    { id: 'fleetdepot', ph: 'war', name: '艦隊補給所', group: '造船', desc: '艦に物資を積む。遠くで戦う艦の補給が続く。', unlock: { era: 10 },
+      cost: { money: 4e18 }, ratio: 1.35, space: 0, effects: { fsupply: 1 } },
+
+    /* ---- 時代11：果て ---- */
+    { id: 'starfurnace', ph: 'end', name: '恒星炉', group: '星', desc: '鉄は、星が最後につくる元素。星の芯を炉にする。', unlock: { era: 11 },
+      cost: { money: 5e21 }, ratio: 1.35, space: 0, proc: { out: { star: 10, gfe: 3 }, in: {}, toggle: true } },
+    { id: 'ismnet', ph: 'end', name: '星間雲回収網', group: '星', desc: '星間雲には塩化水素も尿素も漂っている。網で集める。', unlock: { tech: 'ism' },
+      cost: { money: 1e22, star: 5000 }, ratio: 1.35, space: 0, proc: { in: { star: 1 }, out: { ism: 5 }, toggle: true } },
+    { id: 'galwater', ph: 'end', name: '銀河水処理網', group: '星', desc: '銀河じゅうの水を澄ませる。', unlock: { tech: 'galaxy' },
+      cost: { money: 3e22, gfe: 2e4, ism: 2e4 }, ratio: 1.3, space: 0, proc: { in: { gfe: 2, ism: 2 }, out: { money: 1e19 }, toggle: true } },
+    { id: 'starlorry', ph: 'end', name: '恒星間ローリー', group: '星', desc: '光の速さの手前で、液を運ぶ。すべての生産 +10%（1つごと）。', unlock: { tech: 'galaxy' },
+      cost: { money: 5e22, star: 1e5 }, ratio: 1.5, space: 0, effects: { global: 0.1 } },
+    { id: 'alien', ph: 'end', name: '異星の商会', group: '星', desc: 'かつての敵。ケイ素の体の取引先。星間物質を高く買ってくれる。', unlock: { tech: 'ism' },
+      cost: { money: 2e22, ism: 1e4 }, ratio: 1.3, space: 0, proc: { in: { ism: 3 }, out: { money: 2e19 }, toggle: true } },
+    { id: 'starlab', ph: 'end', name: '恒星計算機', group: '星', desc: '星ひとつぶんの計算機。', unlock: { era: 11 },
+      cost: { money: 1e22, star: 2000 }, ratio: 1.3, space: 0, proc: { in: { star: 0.5 }, out: { research: 1e15 }, toggle: true } },
+    { id: 'final', ph: 'end', name: '始まりの釜', group: '大型', desc: '宇宙そのものを、一つの釜に。10段階。', unlock: { tech: 'origin' },
+      cost: { money: 1e24, star: 2e5, ism: 2e5, gfe: 1e5 }, ratio: 1.6, ratioRes: { star: 1.4, ism: 1.4, gfe: 1.4 }, space: 0, stages: 10, onComplete: { ending: true } }
+  ]);
+
+  /* ---------------- 技術 ---------------- */
+  add(D.techs, [
+    /* 時代4の続き */
+    { id: 'electrify', name: '電化', desc: '燃やすのをやめて、電気で温め、電気で走る。', cost: { research: 4e6 }, era: 4, req: ['automation'] },
+    { id: 'autodrive', name: '自動運転', desc: '運転手のいないローリーとトラック。', cost: { research: 8e6 }, era: 4, req: ['electrify', 'autofork'], effects: [['auto.drive', 1]] },
+    { id: 'drone', name: '配送ドローン', desc: '缶は、空を飛んで届く。', cost: { research: 1.2e7 }, era: 4, req: ['autodrive'] },
+    /* 時代5：電気と計算 */
+    { id: 'fusion', name: '核融合', desc: '「なぜ動くのかは、まだ分からない」。報告書の一行目にそう書いてある。', cost: { research: 3e8 }, era: 5 },
+    { id: 'datacenter', name: 'データセンター', desc: '電気を、計算に。', cost: { research: 2e8 }, era: 5 },
+    { id: 'aiops', name: 'AI運転', desc: '計算で研究し、計算で工場を回す。', cost: { research: 8e8 }, era: 5, req: ['datacenter'] },
+    { id: 'immersion', name: '液浸冷却', desc: '計算機を、冷たい液に沈める。データセンター +50%。', cost: { research: 2e9 }, era: 5, req: ['datacenter'], effects: [['bld.dc', 0.5]] },
+    { id: 'spaceport', name: '宇宙港', desc: '電気も、計算も、燃料もそろった。空へ。', cost: { research: 5e9 }, era: 5, req: ['fusion', 'aiops'] },
+    /* 時代6：空 */
+    { id: 'reusable', name: '再使用ロケット', desc: '降りてきて、また昇る。打ち上げ場 +100%。', cost: { research: 3e10 }, era: 6, effects: [['bld.launch', 1]] },
+    { id: 'satellite', name: '衛星', desc: '空の上に、網を張る。', cost: { research: 2e10 }, era: 6 },
+    { id: 'station', name: '軌道ステーション', desc: '宇宙に住む。', cost: { research: 6e10 }, era: 6, req: ['satellite'] },
+    { id: 'orbdc', name: '宇宙の計算機', desc: '冷却はいらない。電気は太陽から。', cost: { research: 1e11 }, era: 6, req: ['satellite'] },
+    { id: 'elevator', name: '軌道エレベーター', desc: '打ち上げずに、昇る。', cost: { research: 4e11 }, era: 6, req: ['reusable', 'station'] },
+    /* 時代7：惑星 */
+    { id: 'moon', name: '月面冶金', desc: '月の砂には、鉄が混じっている。', cost: { research: 2e12 }, era: 7 },
+    { id: 'venus', name: '大気化学', desc: '金星の雲は硫酸と塩化水素でできている。仕入れ先が一つ増えた。', cost: { research: 3e12 }, era: 7, req: ['moon'] },
+    { id: 'mars', name: '火星', desc: '赤は、酸化鉄の赤。', cost: { research: 6e12 }, era: 7, req: ['venus'] },
+    { id: 'terraform', name: 'テラフォーミング', desc: '星ひとつを、住める星に。', cost: { research: 1.5e13 }, era: 7, req: ['mars'] },
+    /* 時代8：外太陽系 */
+    { id: 'jupiter', name: 'ヘリウム3', desc: '木星の雲に、未来の燃料が眠っている。', cost: { research: 8e13 }, era: 8 },
+    { id: 'europa', name: '氷の月', desc: 'エウロパの氷の下に、海がある。', cost: { research: 1e14 }, era: 8 },
+    { id: 'titan', name: 'メタンの湖', desc: 'タイタンには、燃料の湖がある。', cost: { research: 1.2e14 }, era: 8, req: ['europa'] },
+    { id: 'kuiper', name: '外縁', desc: '太陽系のいちばん外を、見に行く。', cost: { research: 3e14 }, era: 8, req: ['jupiter', 'titan'] },
+    { id: 'heliopause', name: 'ヘリオポーズ', desc: '太陽の風が、星の風とぶつかる場所。', cost: { research: 1e15 }, era: 8, req: ['kuiper'] },
+    /* 時代9：兵站 */
+    { id: 'depotwar', name: '前線補給', desc: '前線のそばに倉庫を。', cost: { research: 5e15 }, era: 9 },
+    { id: 'convoyai', name: '船団の自動編成', desc: '船団の積み合わせを計算で組む。運べる量 +50%。', cost: { research: 1e16 }, era: 9, effects: [['wlift', 0.5]] },
+    { id: 'counter', name: '反攻', desc: '守るだけでは、終わらない。', cost: { research: 3e16 }, era: 9, req: ['depotwar'] },
+    /* 時代10：戦略 */
+    { id: 'autoyard', name: '自動造船', desc: '艦も、ラインで造る。', cost: { research: 1e17 }, era: 10 },
+    { id: 'tactics', name: '艦隊戦術', desc: '数より、並べ方。艦隊の強さ +30%。', cost: { research: 2e17 }, era: 10, effects: [['fleet', 0.3]] },
+    { id: 'tactics2', name: '電子戦', desc: '相手の目をふさぐ。艦隊の強さ +30%。', cost: { research: 6e17 }, era: 10, req: ['tactics'], effects: [['fleet', 0.3]] },
+    /* 時代11：果て */
+    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 1e20 }, era: 11 },
+    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 5e20 }, era: 11, req: ['nucleo'] },
+    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 3e21 }, era: 11, req: ['ism'] },
+    { id: 'entropy', name: 'エントロピー', desc: '星が冷えていく。宇宙が、暗くなっていく。', cost: { research: 2e22 }, era: 11, req: ['galaxy'] },
+    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 1e23 }, era: 11, req: ['entropy'] }
+  ]);
+
+  /* ---------------- 改善 ---------------- */
+  add(D.upgrades, [
+    { id: 'heatswap', name: 'ボイラーの電化', desc: 'ボイラーをヒートポンプに置き換える。濃縮・尿素溶解 +50%', cost: { money: 3e8 }, unlock: { bld: { heatpump: 2 } }, effects: [['bld.conc', 0.5], ['bld.ureadis', 0.5]] },
+    { id: 'routeai', name: '配車の最適化', desc: '空いた荷台をなくす。輸送 +50%', cost: { money: 5e8 }, unlock: { bld: { evlorry: 1 } }, effects: [['transport', 0.5]] },
+    { id: 'gpu2', name: '新しい計算チップ', desc: 'データセンター +100%', cost: { money: 1e11 }, unlock: { bld: { dc: 3 } }, effects: [['bld.dc', 1]] },
+    { id: 'cloudsales', name: 'クラウドの営業', desc: '計算力の注文 ×2', cost: { money: 6e10 }, unlock: { bld: { dc: 2 } }, effects: [['demand.cloud', 1]] },
+    { id: 'gridsc', name: '超伝導の送電網', desc: '使える電気 +50%', cost: { money: 2e11 }, unlock: { bld: { fusion: 1 } }, effects: [['power', 0.5]] },
+    { id: 'cryo', name: '断熱タンク', desc: 'ロケット燃料・軌道資材の置き場 ×3', cost: { money: 1e12 }, unlock: { bld: { launch: 1 } }, effects: [['cap.fuel', 2], ['cap.orbit', 2]] },
+    { id: 'spacecloud', name: '宇宙のクラウド', desc: '計算力の注文 ×2', cost: { money: 3e12 }, unlock: { bld: { orbdc: 2 } }, effects: [['demand.cloud', 2]] },
+    { id: 'zerog', name: '無重力の撹拌', desc: '宇宙の反応 +100%', cost: { money: 2e14 }, unlock: { bld: { orbreactor: 2 } }, effects: [['bld.orbreactor', 1], ['bld.marsplant', 1], ['bld.asteroidreactor', 1]] },
+    { id: 'stargrade', name: '宇宙規格', desc: '宇宙の街の水道 +100%', cost: { money: 3e14 }, unlock: { bld: { colonywater: 3 } }, effects: [['bld.colonywater', 1], ['bld.outercity', 1]] },
+    { id: 'tfboost', name: '温室ガスの工夫', desc: 'テラフォーミングの設備 +50%', cost: { money: 6e14 }, unlock: { bld: { mirror: 2 } }, effects: [['bld.mirror', 0.5], ['bld.airfac', 0.5], ['bld.comet', 0.5], ['bld.algae', 0.5]] },
+    { id: 'he3boost', name: '磁場閉じ込めの改良', desc: 'ヘリウム3核融合炉の電気 ×2', cost: { money: 3e16 }, unlock: { bld: { fusion2: 1 } }, effects: [['power', 1]] },
+    { id: 'ftl', name: '外惑星の配車網', desc: '外太陽系の採掘 +100%', cost: { money: 4e16 }, unlock: { bld: { europa: 2 } }, effects: [['bld.europa', 1], ['bld.titan', 1], ['bld.jupscoop', 1], ['bld.asteroid', 1]] },
+    { id: 'warfac', name: '24時間の軍需工場', desc: '軍需工場 +100%', cost: { money: 2e18 }, unlock: { bld: { warmor: 2 } }, effects: [['bld.wfuel', 1], ['bld.wcool', 1], ['bld.warmor', 1], ['bld.wwater', 1]] },
+    { id: 'dyson', name: '星を包む配管', desc: 'すべての生産 ×2', cost: { money: 1e23, star: 1e5 }, unlock: { bld: { starfurnace: 3 } }, effects: [['global', 1]] },
+    { id: 'lightcone', name: '光円錐の配車', desc: 'すべての生産 ×2', cost: { money: 1e24, ism: 1e5 }, unlock: { bld: { starlorry: 1 } }, effects: [['global', 1]] }
+  ]);
+
+  /* ---------------- 売り物 ---------------- */
+  add(D.products, [
+    { id: 'cloud', kind: 'direct', src: 'compute', name: '計算力（クラウド）', price: 3e6, demand: 0.6, creditPer: 0.0002 }
+  ]);
+
+  /* ---------------- 時代ごとの数 ---------------- */
+  D.eraSalary = [0, 0.3, 2.5, 8, 30, 200, 2000, 2e4, 2e5, 2e6, 2e7, 2e8];
+  D.consts.wasteFreeEra = [0.05, 0.05, 1, 4, 10, 20, 40, 80, 160, 320, 640, 1280];
+  D.calendar.yearSec = [7400, 7400, 6700, 6000, 2900, 9000, 9000, 6000, 4000, 20000, 20000, 1500];
+
+  /* ---------------- 戦争 ----------------
+     前線（時代9）：need は1秒あたりに要る物資。補給が足りると前線が進み、足りないと押し戻される。
+     星図（時代10）：x,y は0〜100。owner：us / enemy / free。def：守りの強さ */
+  D.war = {
+    fronts: [
+      { id: 'jup', name: '木星前線', need: { w_fuel: 1.0, w_cool: 0.6, w_armor: 0.8, w_water: 0.4 }, ang: -40 },
+      { id: 'sat', name: '土星前線', need: { w_fuel: 0.8, w_cool: 0.8, w_armor: 0.6, w_water: 0.6 }, ang: 30 },
+      { id: 'ura', name: '天王星前線', need: { w_fuel: 1.2, w_cool: 0.5, w_armor: 1.0, w_water: 0.5 }, ang: 120 },
+      { id: 'nep', name: '海王星前線', need: { w_fuel: 1.0, w_cool: 1.0, w_armor: 1.2, w_water: 0.8 }, ang: 210 }
+    ],
+    frontSpeed: 0.006, frontHold: 0.7, frontStart: 25, needScale: 12,
+    ships: [
+      { id: 'frigate', name: '護衛艦', cost: { w_armor: 40, w_fuel: 20, w_cool: 10, compute: 2000 }, str: 1, sec: 120 },
+      { id: 'cruiser', name: '巡洋艦', cost: { w_armor: 200, w_fuel: 90, w_cool: 50, compute: 1e4 }, str: 6, sec: 420 },
+      { id: 'battleship', name: '戦艦', cost: { w_armor: 900, w_fuel: 400, w_cool: 250, compute: 5e4 }, str: 30, sec: 1200 }
+    ],
+    /* 艦1隻の強さ1あたり、1秒に使う物資（補給が切れると強さが半分） */
+    upkeep: { w_fuel: 0.002, w_cool: 0.001 },
+    systems: [
+      { id: 'sol', name: '太陽系', x: 12, y: 55, owner: 'us', home: true },
+      { id: 'cen', name: 'ケンタウルス', x: 26, y: 38, owner: 'free', def: 0, reward: 1 },
+      { id: 'bar', name: 'バーナード', x: 27, y: 70, owner: 'free', def: 0, reward: 1 },
+      { id: 'wol', name: 'ウォルフ', x: 40, y: 22, owner: 'enemy', def: 40, reward: 2 },
+      { id: 'las', name: 'ラランド', x: 42, y: 52, owner: 'enemy', def: 60, reward: 2 },
+      { id: 'sir', name: 'シリウス', x: 41, y: 82, owner: 'enemy', def: 50, reward: 2 },
+      { id: 'eps', name: 'エリダヌス', x: 56, y: 35, owner: 'enemy', def: 140, reward: 3 },
+      { id: 'tau', name: 'くじら座タウ', x: 57, y: 68, owner: 'enemy', def: 160, reward: 3 },
+      { id: 'pro', name: 'プロキオン', x: 70, y: 18, owner: 'enemy', def: 300, reward: 4 },
+      { id: 'alt', name: 'アルタイル', x: 71, y: 50, owner: 'enemy', def: 420, reward: 4 },
+      { id: 'veg', name: 'ベガ', x: 72, y: 84, owner: 'enemy', def: 350, reward: 4 },
+      { id: 'arc', name: 'アークトゥルス', x: 85, y: 33, owner: 'enemy', def: 900, reward: 5 },
+      { id: 'den', name: 'デネブ', x: 86, y: 70, owner: 'enemy', def: 1000, reward: 5 },
+      { id: 'cap', name: '敵の母星', x: 95, y: 51, owner: 'enemy', def: 3000, reward: 10, capital: true }
+    ],
+    lanes: [['sol', 'cen'], ['sol', 'bar'], ['cen', 'bar'], ['cen', 'wol'], ['cen', 'las'], ['bar', 'las'], ['bar', 'sir'], ['wol', 'eps'], ['las', 'eps'], ['las', 'tau'], ['sir', 'tau'],
+      ['wol', 'pro'], ['eps', 'pro'], ['eps', 'alt'], ['tau', 'alt'], ['tau', 'veg'], ['sir', 'veg'], ['pro', 'arc'], ['alt', 'arc'], ['alt', 'den'], ['veg', 'den'], ['arc', 'cap'], ['den', 'cap'], ['alt', 'cap']],
+    laneSec: 150,
+    /* 敵の守りの回復（1秒あたり、もとの守りに対する割合）と、反撃の間隔(秒)・強さ（もとの守りに対する割合） */
+    regen: 0.0004, raidSec: 1800, raidStr: 0.35,
+    battleK: 0.004
+  };
+
+  /* ---------------- 流れの手当て（後半） ---------------- */
+  D.flow.fixes.power.push(['bld', 'battery'], ['upg', 'gridsc'], ['bld', 'fusion2']);
+  D.flow.fixes.compute = [['bld', 'dc'], ['bld', 'ctower'], ['upg', 'gpu2'], ['bld', 'orbdc'], ['bld', 'coldc']];
+  D.flow.fixes.orbit = [['bld', 'launch'], ['tech', 'reusable'], ['bld', 'fuelplant'], ['bld', 'lift']];
+  D.flow.fixes.fuel = [['bld', 'fuelplant'], ['bld', 'electrolysis'], ['bld', 'ch4fuel']];
+
+  /* ---------------- 物語（後半） ---------------- */
+  add(D.story, [
+    { id: 'electric', cond: { tech: 'electrify' }, text: '最後のボイラーの火を落とした。工場が、静かになった。' },
+    { id: 'drone', cond: { bld: { dronehub: 1 } }, text: '缶が、空を飛んでいく。昔、台車で押した道の上を。' },
+    { id: 'era5', cond: { era: 5 }, text: '捨てるものがなくなった。あとは、電気さえあれば。' },
+    { id: 'fusion', cond: { bld: { fusion: 1 } }, text: '核融合炉に火が入った。なぜ動くのか、誰もうまく説明できない。でも、動いている。' },
+    { id: 'dc', cond: { bld: { dc: 1 } }, text: '電気が、計算に変わる。冷却塔の水は、自分たちの液で澄ませている。' },
+    { id: 'ai', cond: { bld: { aiplant: 1 } }, text: 'AIが段取りを組んだ。最初に出した答えは「釜をもう一つ」だった。' },
+    { id: 'era6', cond: { era: 6 }, text: 'あの泡を覚えているか。ぽんと鳴った、あの泡を。いま、それで空へ昇る。' },
+    { id: 'station', cond: { bld: { station: 1 } }, text: '軌道ステーションに、最初の住人が来た。飲み水の消毒は、地上と同じ次亜塩素酸ソーダ。' },
+    { id: 'era7', cond: { era: 7 }, text: '綱を昇って、月へ、金星へ、火星へ。' },
+    { id: 'venus', cond: { bld: { venus: 1 } }, text: '金星の雲は硫酸と塩化水素でできている。仕入れ先が一つ増えた。' },
+    { id: 'mars', cond: { bld: { marsplant: 1 } }, text: '火星の赤は、酸化鉄の赤だった。溶かせば、いつもの赤褐色の液になる。' },
+    { id: 'era8', cond: { era: 8 }, text: '火星に、雨が降った。' },
+    { id: 'europa', cond: { bld: { europa: 1 } }, text: 'エウロパの氷を溶かした。地上のどの水より、澄んでいた。' },
+    { id: 'signal', cond: { bld: { kuiper: 1 } }, text: '外縁観測所が、規則正しい信号を拾った。自然には、こんな並び方はしない。' },
+    { id: 'era9', cond: { era: 9 }, text: '外から来た。木星の衛星が一つ、連絡を絶った。前線が、四つできた。', cls: 'warn' },
+    { id: 'firstwin', cond: { flag: 'front_won' }, text: '前線を一つ押し返した。届けた浄水剤の缶に、兵士がありがとうと書いて返してきた。' },
+    { id: 'era10', cond: { era: 10 }, text: '造船所に、最初の艦が浮かんだ。こんどは、こちらから行く。', cls: 'warn' },
+    { id: 'captured', cond: { flag: 'sys_captured' }, text: '星系を一つ取った。相手の工場の跡に、見慣れた赤褐色の染みがあった。' },
+    { id: 'era11', cond: { era: 11 }, text: '敵の母星の地下に、巨大な釜があった。彼らもまた、鉄を溶かしていた。戦争は終わった。' },
+    { id: 'ash', cond: { tech: 'nucleo' }, text: 'ずっと、星の灰を溶かしていた。' },
+    { id: 'cold', cond: { tech: 'entropy' }, text: '星が、一つずつ消えていく。最後の灯りのそばで、釜はまだ温かい。' }
+  ]);
+
+  /* ---------------- 作業メモ（後半） ---------------- */
+  add(D.memos, [
+    { text: '自動運転のローリーを走らせる', done: { bld: { evlorry: 1 } } },
+    { text: '核融合炉に火を入れる', done: { bld: { fusion: 1 } } },
+    { text: '計算力を売る', done: { stat: { cloudSold: 1 } } },
+    { text: '宇宙港を完成させる', done: { era: 6 } },
+    { text: '軌道ステーションに水を届ける', done: { bld: { station: 1 } } },
+    { text: '軌道エレベーターを完成させる', done: { era: 7 } },
+    { text: '月で鉄を溶かす', done: { bld: { moonplant: 1 } } },
+    { text: '火星の赤土を溶かす', done: { bld: { marsplant: 1 } } },
+    { text: '火星のテラフォーミングを完成させる', done: { era: 8 } },
+    { text: 'エウロパの氷を掘る', done: { bld: { europa: 1 } } },
+    { text: 'ヘリオポーズ基地を完成させる', done: { era: 9 } },
+    { text: '前線を一つ押し返す', done: { flag: 'front_won' } },
+    { text: '4つの前線をすべて押し返す', done: { flag: 'fronts_all' } },
+    { text: '反攻艦隊の造船所を完成させる', done: { era: 10 } },
+    { text: '星系を一つ取る', done: { flag: 'sys_captured' } },
+    { text: '敵の母星を落とす', done: { era: 11 } },
+    { text: '恒星炉に火を入れる', done: { bld: { starfurnace: 1 } } },
+    { text: '始まりの釜を完成させる', done: { stat: { ended: 1 } } }
+  ]);
+})();
 
 </script>
 <script>
@@ -1177,6 +1493,7 @@ TM.Engine = (function () {
     if (c.job) for (k in c.job) if ((s.jobs[k] || 0) < c.job[k]) return false;
     if (c.stat) for (k in c.stat) if ((s.stats[k] || 0) < c.stat[k]) return false;
     if (c.circ !== undefined && (s._d ? s._d.circ : 0) < c.circ) return false;
+    if (c.war === 'fronts' && !(TM.War && TM.War.frontsWon(s))) return false;
     return true;
   }
 
@@ -1299,6 +1616,7 @@ TM.Engine = (function () {
       if (b.stages && s.bld[b.id].n >= b.stages && b.onComplete && b.onComplete.land) d.land += b.onComplete.land;
       if (b.stages && b.onComplete && b.onComplete.popCap && s.bld[b.id].n >= b.stages) d.popCap += b.onComplete.popCap;
     });
+    if (s.war) d.globalB += s.war.bonus || 0;
     if (s.era >= 3) d.cap.research = Infinity;
     for (var ck2 in m) if (ck2.indexOf('cap.') === 0) { var rid = ck2.slice(4); if (d.cap[rid] !== undefined) d.cap[rid] *= 1 + m[ck2]; }
     if (m['cap.all']) D.resources.forEach(function (r) { if (r.cap !== null && r.id !== 'research') d.cap[r.id] *= 1 + m['cap.all']; });
@@ -1319,6 +1637,7 @@ TM.Engine = (function () {
     var jobAll = mul(m, 'job.all') * morale;
     if (d.gmul > 1e55) d.gmul = 1e55; /* 数が大きくなりすぎないように */
     var glob = (1 + d.globalB) * d.gmul * mul(m, 'global') * (s.era >= 4 ? 1 + d.circ * (D.circBonus || 1) : 1);
+    if (s.war && s.war.fall && s.era === 9) glob *= 0.8;
     d.glob = glob;
     d.rate = {}; d.procs = []; d.led = {}; d.heatX = {};
     var before = {}; for (var r in s.res) before[r] = s.res[r];
@@ -1437,6 +1756,7 @@ TM.Engine = (function () {
       return o;
     }
 
+    d.coolCap = 0; d.coolUsed = 0;
     /* 仕入れの設備を先に動かす（後に回すと、使う側が毎ティック空振りして揺れる） */
     D.buildings.forEach(function (b) { if (IN_PROCS['bld.' + b.id] || TREAT[b.id]) runBld(b); });
 
@@ -1467,7 +1787,9 @@ TM.Engine = (function () {
       /* 新缶は補充だけ：空き缶が置き場の3割を超えている間は買わない */
       if (b.id === 'canbuy' && s.res.can >= d.cap.can * 0.3) { on = 0; reason = '缶は足りている'; }
       if (p.operator === 'operate') { if (opActive[b.id] < on) reason = '運転の人手が足りない'; on = opActive[b.id]; }
-      if (p.needs && !(s.bld[p.needs] && s.bld[p.needs].n > 0)) { on = 0; reason = '必要な設備がない'; }
+      if (p.needs && !hasBld(s, p.needs)) { on = 0; reason = '必要な設備がない'; }
+      /* データセンターは冷却塔で冷やせる分だけ動く */
+      if (p.cooled) { var cl = Math.floor((d.coolCap || 0) - (d.coolUsed || 0) + 1e-9); if (cl < on) { on = Math.max(0, cl); reason = reason || '冷やしきれない（冷却塔が足りない）'; } d.coolUsed = (d.coolUsed || 0) + on; }
       var eff = mul(m, 'bld.' + b.id) * glob;
       if (p.power) { eff *= d.powerEff; if (d.powerEff < 0.999) reason = reason || '電力不足'; }
       if (p.handling) { eff *= d.handEff; if (d.handEff < 0.999) reason = reason || '荷役が足りない'; }
@@ -1483,6 +1805,7 @@ TM.Engine = (function () {
       if (b.group === '容器' && outs.waste) outs = washWater(outs);
       var r = run('bld.' + b.id, b.name, p.in || {}, outs, on * eff, on === 0 && n > 0 ? (reason || '停止中') : reason, p.spill, bh);
       if (p.fumes) fumesNow += (p.out.fecl2 || p.out.fecl3w || 0) * on * eff * r;
+      if (b.effects && b.effects.cool) d.coolCap = (d.coolCap || 0) + b.effects.cool * on * r;
       if (b.id === 'chlor') s.stats.fecl3 += p.out.fecl3w * on * eff * r * dt;
       if (b.id === 'conc') s.stats.fecl3h += p.out.fecl3h * on * eff * r * dt;
     }
@@ -1535,6 +1858,9 @@ TM.Engine = (function () {
 
     /* 受託 */
     doContracts(s, d, m, dt, glob);
+
+    /* 戦争（時代9から） */
+    if (s.era >= 9 && TM.War) TM.War.step(s, d, dt);
 
     /* 給与と人の増加 */
     /* 給料はいつも払う（足りなければ与信枠から借りる） */
@@ -1708,6 +2034,12 @@ TM.Engine = (function () {
     d.makeOutS = d.makeOutS === undefined ? mo : d.makeOutS + (mo - d.makeOutS) * a;
   }
 
+  /* 「必要な設備」：ボイラーはヒートポンプでもよい */
+  var NEEDS_ALT = { boiler: ['heatpump'] };
+  function hasBld(s, id) {
+    if (s.bld[id] && s.bld[id].n > 0) return true;
+    return (NEEDS_ALT[id] || []).some(function (a) { return s.bld[a] && s.bld[a].n > 0; });
+  }
   function sumEffect(s, key) {
     var t = 0;
     D.buildings.forEach(function (b) {
@@ -1798,7 +2130,7 @@ TM.Engine = (function () {
       var why = null;
       if (t.requires) { for (var i = 0; i < t.requires.length; i++) if (!(s.bld[t.requires[i]] && s.bld[t.requires[i]].n > 0)) { missing.push(t.requires[i]); n = 0; why = '足りない設備：' + BLD[t.requires[i]].name; } }
       var manned = n;
-      if (!autoDrv) {
+      if (!autoDrv && !t.auto) {
         manned = Math.min(n, drivers - used);
         if (t.license) {
           var pool = t.license === 'jmid' ? (lic.jmid || 0) + (lic.mid || 0) + (lic.big || 0) : t.license === 'mid' ? (lic.mid || 0) + (lic.big || 0) : (lic[t.license] || 0);
@@ -1885,6 +2217,7 @@ TM.Engine = (function () {
         finInc(s, p.name, inc);
         s.stats.sold[p.id] = (s.stats.sold[p.id] || 0) + amt;
         if (p.kind === 'bulk') s.stats.lorryUsed = 1;
+        if (p.id === 'cloud') s.stats.cloudSold = 1;
         if (p.kind === 'can') {
           s.stats.cansSold += amt;
           s.res.credit += amt * 0.02 * mul(m, 'credit');
@@ -2021,7 +2354,8 @@ TM.Engine = (function () {
       label: function (s) { return s.era >= 1 ? (s.flags.acid_known ? '塩酸で溶かす' : '酸で溶かす') : '沈める'; },
       heat: 'dissolve',
       busy: function (s) { return s.manual.dissolve > 0; },
-      can: function (s) { return s.res.scrap >= 1 && s.res.hcl >= 2; },
+      /* 溶かした液を置く場所がなければ溶かさない（作りすぎて捨てることはしない） */
+      can: function (s) { var d = derive(s); return s.res.scrap >= 1 && s.res.hcl >= 2 && s.res.fecl2 + C.manualBatch.fecl2 * (s.era >= 1 ? mul(d.m, 'manual.dissolve') : 1) <= d.cap.fecl2 + 3; },
       ok: function (s) { return s.era >= 1 || (actions.sink.can(s) && s.manual.dissolve <= 0); },
       run: function (s) {
         if (!actions.sink.ok(s)) return;
@@ -2056,13 +2390,13 @@ TM.Engine = (function () {
     buyacid: {
       vis: function (s) { return s.flags.sold && s.era < 3; },
       label: function (s) { return s.flags.acid_known ? '塩酸を買う' : '酸を買う'; },
-      ok: function (s) { var d = derive(s); return (s.res.money + creditLimit(s) >= C.acidBuy.cost || stuck(s)) && s.res.hcl < d.cap.hcl; },
+      ok: function (s) { var d = derive(s); return (s.res.money + creditLimit(s) >= C.acidBuy.cost || stuck(s)) && s.res.hcl + C.acidBuy.kg <= d.cap.hcl; },
       cost: function () { return { money: C.acidBuy.cost }; },
       run: function (s) {
         var d = derive(s); if (!actions.buyacid.ok(s)) return;
         if (s.res.money + creditLimit(s) < C.acidBuy.cost && !s.flags.tab) { s.flags.tab = true; addLog(s, '店の主人が「ツケでいいよ」と塩酸を分けてくれた。'); }
         s.res.money -= C.acidBuy.cost; finExp(s, '仕入れ', C.acidBuy.cost);
-        s.res.hcl = Math.min(d.cap.hcl, s.res.hcl + C.acidBuy.kg);
+        s.res.hcl += C.acidBuy.kg;
         s.flags.bought_acid = true; s.stats.acidBuys = (s.stats.acidBuys || 0) + 1;
       }
     },
@@ -2120,9 +2454,13 @@ TM.Engine = (function () {
     if (b.max && s.bld[b.id].n >= b.max) return 'これ以上は置けない';
     var d = derive(s);
     if ((b.space || 0) > 0 && d.used + b.space > d.land) return '敷地が足りない';
-    if (b.buildCond && !cond(s, b.buildCond)) return '条件：循環率' + Math.round((b.buildCond.circ || 0) * 100) + '%以上';
+    if (b.buildCond && !cond(s, b.buildCond)) return condText(b.buildCond);
     if (!canPay(s, cost(s, b))) return 'お金・資材が足りない';
     return '';
+  }
+  function condText(c) {
+    if (c.war === 'fronts') return '条件：4つの前線をすべて押し返す';
+    return '条件：循環率' + Math.round((c.circ || 0) * 100) + '%以上';
   }
   function build(s, id) {
     var b = BLD[id]; if (!b || whyNot(s, b)) return false;
@@ -2132,7 +2470,7 @@ TM.Engine = (function () {
     if (b.proc && b.proc.toggle) s.bld[id].on++;
     if (b.stages && s.bld[id].n >= b.stages && b.onComplete) {
       var oc = b.onComplete;
-      if (oc.era !== undefined && s.era < oc.era) { s.era = oc.era; s.stats.at['era' + oc.era] = s.t; }
+      if (oc.era !== undefined && s.era < oc.era) { s.era = oc.era; s.stats.at['era' + oc.era] = s.t; if (TM.War) TM.War.onEra(s); }
       if (oc.flag) s.flags[oc.flag] = true;
       if (oc.ending) { s.ending = 1; s.stats.at.ending = s.t; s.stats.ended = 1; }
       addLog(s, b.name + 'が完成した。', 'story');
@@ -2367,10 +2705,11 @@ TM.Engine = (function () {
   function m2(d, k) { return d.m && d.m[k] > 0; }
 
   /* ================= オフライン進行 ================= */
-  function simulateAway(s, sec, onDone) {
+  /* bonus：休憩チケットで倍速だった秒数（上限とは別に足す） */
+  function simulateAway(s, sec, bonus) {
     var full = Math.min(sec, C.offlineFull);
     var half = Math.max(0, Math.min(sec, C.offlineHalf) - C.offlineFull) * C.offlineHalfRate;
-    var total = full + half;
+    var total = full + half + Math.max(0, Math.min(bonus || 0, sec));
     var before = U.deepCopy(s.res);
     var dtStep = Math.max(1, Math.min(15, total / 6000));
     var t = 0;
@@ -2380,15 +2719,42 @@ TM.Engine = (function () {
     return { away: sec, simulated: total, before: before };
   }
 
+  /* ================= 休憩チケット =================
+     使うと、それから4時間は倍速で進む（留守中も）。チケットは20時間ごとに1枚もらえる（3枚まで） */
+  var BOOST = { sec: 4 * 3600, grant: 20 * 3600, max: 3 };
+  function boostState(s) {
+    if (!s.boost) s.boost = { n: 1, from: 0, to: 0, last: Date.now() };
+    return s.boost;
+  }
+  function boostGrant(s, now) {
+    var b = boostState(s);
+    if (s.era < 1) { b.last = now; return; }
+    if (now > b.last + BOOST.grant * 1000) {
+      var k = Math.floor((now - b.last) / (BOOST.grant * 1000));
+      b.n = Math.min(BOOST.max, b.n + k); b.last += k * BOOST.grant * 1000;
+      if (b.n >= BOOST.max) b.last = now;
+    }
+  }
+  function useBoost(s, now) {
+    var b = boostState(s); if (b.n <= 0) return false;
+    b.n--;
+    if (now < b.to) b.to += BOOST.sec * 1000; else { b.from = now; b.to = now + BOOST.sec * 1000; }
+    addLog(s, '休憩チケットを使った。これから4時間、工場が倍の速さで動く。', 'story');
+    return true;
+  }
+  /* [a, b] の間で倍速だった秒数 */
+  function boostOverlap(s, a, b) { var x = boostState(s); return Math.max(0, Math.min(b, x.to) - Math.max(a, x.from)) / 1000; }
+
   /* ================= セーブ ================= */
   var KEY = 'taiki-minigame-save';
   function serialize(s) {
     var copy = {}; for (var k in s) if (k !== '_d' && k !== '_away') copy[k] = s[k];
-    copy.saved = Date.now();
+    /* 時計が戻っていたら知らんぷり（最後に見た時刻より前には戻さない） */
+    copy.saved = Math.max(s.saved || 0, Date.now());
     return JSON.stringify(copy);
   }
   function save(s) {
-    try { s.saved = Date.now(); localStorage.setItem(KEY, serialize(s)); return true; } catch (e) { return false; }
+    try { s.saved = Math.max(s.saved || 0, Date.now()); localStorage.setItem(KEY, serialize(s)); return true; } catch (e) { return false; }
   }
   function load() {
     try { var raw = localStorage.getItem(KEY); if (!raw) return null; var o = JSON.parse(raw); if ((o.v || 1) < 2) return null; /* 缶の循環を入れる前のセーブは、最初から */ return migrate(o); } catch (e) { return null; }
@@ -2429,6 +2795,7 @@ TM.Engine = (function () {
   function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* 無視 */ } }
 
   return {
+    pay: pay, condText: condText, hasBld: hasBld,
     snap: snap, snapCount: function () { return snapN; }, setNoCredit: function (v) { noCredit = !!v; }, forcedSale: forcedSale, statements: statements, invValue: invValue,
     init: init, newState: newState, step: step, derive: derive, cond: cond, cost: cost, canPay: canPay,
     actions: actions, doAction: doAction, build: build, sell: sell, setOn: setOn, research: research, buyUpg: buyUpg,
@@ -2437,10 +2804,284 @@ TM.Engine = (function () {
     idle: idle, assigned: assigned, moveJob: moveJob, whyNot: whyNot, actLabel: actLabel, heatMul: heatMul,
     bldShown: bldShown, upgShown: upgShown, techShown: techShown, diagnose: diagnose, fixesFor: fixesFor, procStage: procStage,
     creditLimit: creditLimit, sumEffect: sumEffect, calYear: calYear, wasteFree: wasteFree, seasonIdx: seasonIdx, lineCap: lineCap, mods: mods, priceOf: priceOf, demandOf: demandOf, tplById: tplById,
-    simulateAway: simulateAway, save: save, load: load, exportText: exportText, importText: importText, wipe: wipe,
+    simulateAway: simulateAway, boostState: boostState, boostGrant: boostGrant, useBoost: useBoost, boostOverlap: boostOverlap, BOOST: BOOST, save: save, load: load, exportText: exportText, importText: importText, wipe: wipe,
     addLog: addLog, KEY: KEY,
     get RES() { return RES; }, get BLD() { return BLD; }, get JOB() { return JOB; }, get TECH() { return TECH; },
     get UPG() { return UPG; }, get LIC() { return LIC; }, get PROD() { return PROD; }
+  };
+})();
+
+</script>
+<script>
+/* 戦争（時代9〜10）の計算。画面には触れない。
+   時代9「兵站」：4つの前線へ物資を送る。補給が足りた前線は押し返し、足りないと押し込まれる。
+   時代10「戦略」：ドックで艦を造り、星図の上で艦隊を動かして星系を取る。敵の母星を落とせば終わる。 */
+var TM = window.TM = window.TM || {};
+
+TM.War = (function () {
+  var E = TM.Engine, D, W;
+  var RES4 = ['w_fuel', 'w_cool', 'w_armor', 'w_water'];
+
+  function init() { D = TM.DATA; W = D.war; }
+
+  function fresh(s) {
+    if (!W) init();
+    var w = { fronts: {}, sys: {}, moves: [], queue: [], raidT: W.raidSec, log: [], bonus: 0, seq: 0, lift: 0, upkeepMul: 1, started: s.t };
+    W.fronts.forEach(function (f) { w.fronts[f.id] = { pos: W.frontStart, prio: 1, won: false, r: 0 }; });
+    W.systems.forEach(function (x) { w.sys[x.id] = { owner: x.owner, def: x.def || 0, base: x.def || 0, str: 0, battle: null }; });
+    return w;
+  }
+  function ensure(s) { if (!s.war || !s.war.fronts) s.war = fresh(s); if (!W) init(); return s.war; }
+  function wlog(s, text, cls) {
+    var w = ensure(s);
+    w.log.unshift({ t: s.t, text: text, cls: cls || '' });
+    if (w.log.length > 40) w.log.length = 40;
+  }
+
+  function onEra(s) {
+    if (s.era < 9) return;
+    var w = ensure(s);
+    if (s.era === 9) { w.started9 = s.t; wlog(s, '前線が4つできた。物資を送れ。', 'warn'); }
+    if (s.era === 10) { w.sys.sol.str += 20; wlog(s, '造船所が完成した。太陽系に艦隊を集める。', 'warn'); }
+    if (s.era === 11) wlog(s, '敵の母星が落ちた。停戦。', 'warn');
+  }
+
+  function frontsWon(s) {
+    var w = s.war; if (!w || !w.fronts) return false;
+    for (var k in w.fronts) if (!w.fronts[k].won) return false;
+    return true;
+  }
+
+  /* 前線1つが1秒に要る物資（押し込むほど、たくさん要る） */
+  function frontNeed(s, f, st) {
+    var out = {}, sc = (W.needScale || 1) * (1 + st.pos / 25);
+    for (var k in f.need) out[k] = f.need[k] * sc;
+    return out;
+  }
+
+  /* ================= 1ティック ================= */
+  function step(s, d, dt) {
+    var w = ensure(s);
+    var m = d.m || {};
+    /* 細かく刻む（留守中は大きな刻みで来るので） */
+    var n = Math.max(1, Math.ceil(dt / 5)), h = dt / n;
+    for (var i = 0; i < n; i++) {
+      if (s.era === 9) stepFronts(s, d, w, h, m);
+      if (s.era >= 10) stepStrategy(s, d, w, h, m);
+    }
+  }
+
+  function stepFronts(s, d, w, dt, m) {
+    var glob = d.glob || 1;
+    var lift = E.sumEffect(s, 'wlift') * (1 + (m.wlift || 0)) * glob;
+    var load = E.sumEffect(s, 'wload') * glob;
+    var cap = Math.min(lift, load);
+    w.lift = lift; w.load = load; w.cap = cap;
+    var depot = Math.min(0.5, 0.1 * E.sumEffect(s, 'wbuf'));
+    /* 送る量を、重点の重みと必要量で配る */
+    var act = W.fronts.filter(function (f) { return !w.fronts[f.id].won; });
+    var wsum = 0, needs = {};
+    act.forEach(function (f) { var st = w.fronts[f.id], nd = frontNeed(s, f, st), tot = 0; for (var k in nd) tot += nd[k]; needs[f.id] = { nd: nd, tot: tot }; wsum += tot * st.prio; });
+    var lost = false;
+    act.forEach(function (f) {
+      var st = w.fronts[f.id], N = needs[f.id];
+      var share = wsum > 0 ? cap * N.tot * st.prio / wsum : 0;
+      /* 船に積める量の範囲で、物資ごとに必要量の割合で積む */
+      var f1 = Math.min(1, share / Math.max(1e-9, N.tot));
+      var minR = 1, sumR = 0, cnt = 0;
+      for (var k in N.nd) {
+        var want = N.nd[k] * f1 * dt;
+        var got = Math.min(want, Math.max(0, s.res[k]));
+        s.res[k] -= got;
+        if (d.ledf) d.ledf(k, f.name, -got);
+        var r = N.nd[k] > 0 ? got / (N.nd[k] * dt) : 1;
+        minR = Math.min(minR, r); sumR += r; cnt++;
+      }
+      var r0 = cnt ? 0.5 * (sumR / cnt) + 0.5 * minR : 0;
+      var rEff = Math.min(1.2, r0 * (1 + depot));
+      st.r = st.r + (rEff - st.r) * Math.min(1, dt / 30);
+      var hold = W.frontHold;
+      /* 押し込まれるのは、押し返すよりゆっくり。始まって1時間は相手も様子を見ている */
+      var grace = s.t - (w.started9 || 0) < 3600;
+      if (rEff >= hold || !grace) st.pos += W.frontSpeed * (rEff - hold) / (1 - hold) * dt * (rEff >= hold ? 1 : 0.3);
+      if (st.pos <= 0) { st.pos = 0; lost = true; if (!st.fell) { st.fell = true; wlog(s, f.name + 'が押し込まれた。工場の生産が落ちる。', 'bad'); } }
+      else if (st.pos > 15) st.fell = false;
+      if (st.pos >= 100) {
+        st.pos = 100; st.won = true; s.flags.front_won = true;
+        wlog(s, f.name + 'を押し返した。', 'good');
+        E.addLog(s, f.name + 'を押し返した。', 'story');
+        w.bonus += 0.05;
+      }
+    });
+    w.fall = lost;
+    if (frontsWon(s) && !s.flags.fronts_all) { s.flags.fronts_all = true; wlog(s, '4つの前線をすべて押し返した。反攻の準備を。', 'good'); }
+  }
+
+  /* ================= 星図 ================= */
+  var ADJ = null;
+  function adj() {
+    if (ADJ) return ADJ;
+    ADJ = {}; W.systems.forEach(function (x) { ADJ[x.id] = []; });
+    W.lanes.forEach(function (l) { ADJ[l[0]].push(l[1]); ADJ[l[1]].push(l[0]); });
+    return ADJ;
+  }
+  function sysDef(id) { for (var i = 0; i < W.systems.length; i++) if (W.systems[i].id === id) return W.systems[i]; return null; }
+  function dist(a, b) { var A = sysDef(a), B = sysDef(b); return Math.sqrt((A.x - B.x) * (A.x - B.x) + (A.y - B.y) * (A.y - B.y)); }
+  function laneTime(a, b) { return W.laneSec * dist(a, b) / 20; }
+  /* 太陽系からつながっている自分の星系（補給が届く） */
+  function supplied(s) {
+    var w = s.war, A = adj(), seen = { sol: true }, q = ['sol'];
+    while (q.length) { var x = q.shift(); A[x].forEach(function (y) { if (!seen[y] && w.sys[y].owner === 'us') { seen[y] = true; q.push(y); } }); }
+    return seen;
+  }
+  function totalStr(s) {
+    var w = s.war, t = 0, k;
+    for (k in w.sys) { t += w.sys[k].str; if (w.sys[k].battle) t += w.sys[k].battle.att; }
+    w.moves.forEach(function (mv) { if (mv.side === 'us') t += mv.str; });
+    return t;
+  }
+  function fleetMul(s, d) {
+    var m = d.m || {}, w = s.war;
+    return (1 + (m.fleet || 0)) * (1 + 0.05 * E.sumEffect(s, 'fsupply')) * (0.4 + 0.6 * (w.upkeepMul === undefined ? 1 : w.upkeepMul));
+  }
+
+  function stepStrategy(s, d, w, dt, m) {
+    var glob = d.glob || 1;
+    /* 造船 */
+    var docks = E.sumEffect(s, 'dock'), sp = (1 + E.sumEffect(s, 'dockSpeed')) * Math.sqrt(glob);
+    for (var qi = 0; qi < w.queue.length && qi < docks; qi++) w.queue[qi].left -= dt * sp;
+    for (var qj = w.queue.length - 1; qj >= 0; qj--) {
+      if (w.queue[qj].left <= 0) {
+        var sh = shipDef(w.queue[qj].type);
+        w.sys.sol.str += sh.str; w.built = (w.built || 0) + 1;
+        w.queue.splice(qj, 1);
+      }
+    }
+    /* 補給（艦の維持） */
+    var str = totalStr(s), ratio = 1;
+    if (str > 0) {
+      for (var k in W.upkeep) {
+        var need = str * W.upkeep[k] * dt / (1 + 0.1 * E.sumEffect(s, 'fsupply'));
+        var got = Math.min(need, Math.max(0, s.res[k]));
+        s.res[k] -= got; if (d.ledf) d.ledf(k, '艦隊の補給', -got);
+        ratio = Math.min(ratio, need > 0 ? got / need : 1);
+      }
+    }
+    w.upkeepMul = (w.upkeepMul === undefined ? 1 : w.upkeepMul) + (ratio - (w.upkeepMul === undefined ? 1 : w.upkeepMul)) * Math.min(1, dt / 20);
+    var fm = fleetMul(s, d);
+    w.fm = fm;
+    /* 移動 */
+    for (var i = w.moves.length - 1; i >= 0; i--) {
+      var mv = w.moves[i];
+      mv.t += dt;
+      if (mv.t >= mv.dur) { w.moves.splice(i, 1); arrive(s, w, mv); }
+    }
+    /* 戦闘（ランチェスター：互いの強さに比例して減る） */
+    var K = W.battleK;
+    for (var id in w.sys) {
+      var X = w.sys[id], B = X.battle; if (!B) continue;
+      var atkUs = B.side === 'us';
+      var a = B.att, def = atkUs ? X.def : X.str + X.def;
+      var aEff = atkUs ? a * fm : a, dEff = atkUs ? def : def * fm;
+      var da = K * dEff * dt, dd = K * aEff * dt;
+      B.att = Math.max(0, a - da);
+      B.t = (B.t || 0) + dt;
+      if (atkUs) X.def = Math.max(0, X.def - dd);
+      else {
+        /* 守り：先に駐留艦隊が減り、次に星系の守り */
+        var hit = dd; var s1 = Math.min(X.str, hit); X.str -= s1; hit -= s1; X.def = Math.max(0, X.def - hit);
+      }
+      var defLeft = atkUs ? X.def : X.str + X.def;
+      if (B.att <= 1e-6 || defLeft <= 1e-6) endBattle(s, w, id, X, B);
+    }
+    /* 敵の守りの回復 */
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id];
+      if (X.owner === 'enemy' && !X.battle && X.def < X.base) X.def = Math.min(X.base, X.def + X.base * W.regen * dt);
+      if (X.owner === 'us' && !x.home && !X.battle) X.def = Math.min(10 * (x.reward || 1), X.def + 0.01 * dt);
+    });
+    /* 敵の反撃 */
+    w.raidT -= dt;
+    if (w.raidT <= 0) { w.raidT = W.raidSec * (0.8 + 0.4 * Math.random()); raid(s, w); }
+  }
+  function shipDef(id) { for (var i = 0; i < W.ships.length; i++) if (W.ships[i].id === id) return W.ships[i]; return null; }
+
+  function arrive(s, w, mv) {
+    var X = w.sys[mv.to], nm = sysDef(mv.to).name;
+    if (mv.side === 'us') {
+      if (X.owner === 'us') { X.str += mv.str; return; }
+      if (X.owner === 'free') { X.owner = 'us'; X.str += mv.str; X.def = 0; capture(s, w, mv.to); return; }
+      if (X.battle && X.battle.side === 'us') { X.battle.att += mv.str; return; }
+      X.battle = { side: 'us', att: mv.str, t: 0, start: X.def };
+      wlog(s, nm + 'で交戦。', 'warn');
+    } else {
+      if (X.owner !== 'us') { X.def += mv.str; return; }
+      if (X.battle && X.battle.side === 'enemy') { X.battle.att += mv.str; return; }
+      X.battle = { side: 'enemy', att: mv.str, t: 0, start: X.str + X.def };
+      wlog(s, '敵が' + nm + 'に来た。', 'bad');
+    }
+  }
+  function endBattle(s, w, id, X, B) {
+    var nm = sysDef(id).name;
+    X.battle = null;
+    if (B.side === 'us') {
+      if (X.def <= 1e-6) { X.owner = 'us'; X.str += B.att; X.def = 0; capture(s, w, id); }
+      else { wlog(s, nm + 'の攻撃は失敗した。', 'bad'); }
+    } else {
+      if (X.str + X.def <= 1e-6) {
+        X.owner = 'enemy'; X.def = B.att; X.base = Math.max(X.base, sysDef(id).def || B.att); X.str = 0;
+        wlog(s, nm + 'を奪われた。', 'bad');
+      } else wlog(s, nm + 'を守りきった。', 'good');
+    }
+  }
+  function capture(s, w, id) {
+    var sd = sysDef(id);
+    w.bonus += 0.04 * (sd.reward || 1);
+    s.flags.sys_captured = true;
+    wlog(s, sd.name + 'を取った。', 'good');
+    if (sd.capital) {
+      wlog(s, '敵の母星が落ちた。', 'good');
+      if (s.era < 11) { s.era = 11; s.stats.at.era11 = s.t; onEra(s); }
+    }
+  }
+  function raid(s, w) {
+    var A = adj(), cands = [];
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id]; if (X.owner !== 'us' || x.home || X.battle) return;
+      A[x.id].forEach(function (y) { if (w.sys[y].owner === 'enemy' && !w.sys[y].battle) cands.push([y, x.id]); });
+    });
+    if (!cands.length) return;
+    var c = cands[Math.floor(Math.random() * cands.length)];
+    var src = w.sys[c[0]], str = Math.max(5, src.base * W.raidStr);
+    w.moves.push({ id: ++w.seq, side: 'enemy', from: c[0], to: c[1], str: str, t: 0, dur: laneTime(c[0], c[1]) });
+    wlog(s, sysDef(c[0]).name + 'から敵の艦隊が出た。行き先は' + sysDef(c[1]).name + '。', 'bad');
+  }
+
+  /* ================= 操作 ================= */
+  function setPrio(s, fid, v) { var w = ensure(s); if (w.fronts[fid]) w.fronts[fid].prio = Math.max(1, Math.min(3, v)); }
+  function canBuild(s, type) { var sh = shipDef(type); return sh && s.era >= 10 && E.sumEffect(s, 'dock') > 0 && s.war.queue.length < 30 && E.canPay(s, sh.cost); }
+  function buildShip(s, type) {
+    var w = ensure(s), sh = shipDef(type);
+    if (!canBuild(s, type)) return false;
+    for (var k in sh.cost) s.res[k] -= sh.cost[k];
+    w.queue.push({ type: type, left: sh.sec });
+    return true;
+  }
+  /* 艦隊を送る。frac：送る割合 */
+  function send(s, from, to, frac) {
+    var w = ensure(s), A = adj();
+    if (!w.sys[from] || w.sys[from].owner !== 'us' || A[from].indexOf(to) < 0) return false;
+    var X = w.sys[from], amt = X.str * (frac || 1);
+    if (amt < 0.5) return false;
+    X.str -= amt;
+    w.moves.push({ id: ++w.seq, side: 'us', from: from, to: to, str: amt, t: 0, dur: laneTime(from, to) });
+    return true;
+  }
+
+  return {
+    init: init, step: step, onEra: onEra, frontsWon: frontsWon, frontNeed: frontNeed, ensure: ensure,
+    setPrio: setPrio, buildShip: buildShip, canBuild: canBuild, send: send, adj: adj, sysDef: sysDef, supplied: supplied,
+    totalStr: totalStr, laneTime: laneTime, shipDef: shipDef, RES4: RES4
   };
 })();
 
@@ -2465,7 +3106,13 @@ TM.Sim = (function () {
     ['decopper', 1], ['i_cond', 1], ['pwplant', 2], ['i_aa', 1], ['i_uv', 1], ['i_ic', 1], ['cooler', 1], ['hypoline', 1], ['i_visc', 1], ['pacline', 1], ['psiline', 1],
     ['ureabuy', 1], ['ureadis', 1], ['upwplant', 1], ['i_icp', 1], ['bibline', 1], ['office', 1], ['canline', 1], ['i_ftir', 1], ['lorry', 4], ['depot', 1], ['lorry20', 2], ['rnd', 4],
     ['newplant', 1], ['autowh', 1], ['h2rec', 3], ['msscrub', 2], ['wreuse', 5], ['curefine', 4], ['farm', 3], ['megareactor', 2], ['ureasyn', 1], ['rnd2', 2], ['upwplant2', 1], ['hpline', 1], ['port', 1], ['canline', 3],
-    ['fuelplant', 2], ['electrolysis', 2], ['launch', 2], ['fusionpower', 1], ['spacelab', 1], ['moonplant', 2], ['orbtank', 1], ['spacewater', 3], ['venus', 2], ['orbreactor', 2], ['spacewater', 6], ['moonplant', 4], ['orbreactor', 4], ['venus', 4], ['asteroid', 1], ['asteroidreactor', 1], ['spacewater', 10],
+    ['heatpump', 2], ['solarfarm', 4], ['charger', 1], ['evlorry', 2], ['dronehub', 2],
+    ['battery', 2], ['ctower', 1], ['dc', 2], ['fusion', 1], ['dc', 4], ['ctower', 2], ['ailab', 1], ['aiplant', 1], ['dc', 8],
+    ['electrolysis', 2], ['fuelplant', 2], ['launch', 2], ['orbtank', 1], ['sat', 2], ['station', 1], ['orbdc', 2], ['spacelab', 1],
+    ['lift', 2], ['moonplant', 2], ['venus', 2], ['orbreactor', 2], ['colonywater', 3], ['marsbase', 1], ['marsplant', 2], ['mirror', 2], ['airfac', 2], ['comet', 2], ['algae', 2],
+    ['asteroid', 2], ['asteroidreactor', 2], ['jupscoop', 2], ['fusion2', 1], ['europa', 2], ['titan', 2], ['ch4fuel', 2], ['outercity', 2], ['coldc', 1], ['kuiper', 1],
+    ['wfuel', 2], ['wcool', 2], ['warmor', 2], ['wwater', 2], ['wterminal', 2], ['convoy', 3], ['fdepot', 1],
+    ['dock', 2], ['fleetdepot', 1], ['shipyard2', 1],
     ['starfurnace', 2], ['starlab', 1], ['ismnet', 1], ['alien', 1], ['galwater', 1], ['starlorry', 1]];
 
   function botIntro(s) {
@@ -2572,7 +3219,51 @@ TM.Sim = (function () {
     });
     /* 受託 */
     while (s.contracts.offers.length && s.contracts.active.filter(function (c) { return c.step < TM.DATA.contracts.steps.length; }).length < (s.jobs.sales || 0) + 1) E.acceptOffer(s, s.contracts.offers[0].id);
+    if (s.era === 9 && TM.War) {
+      /* 前線：いちばん押し返している前線に重点を置いて、一つずつ片づける */
+      var w9 = TM.War.ensure(s), top = null;
+      for (var fk in w9.fronts) { var F = w9.fronts[fk]; if (!F.won && (!top || F.pos > w9.fronts[top].pos)) top = fk; }
+      for (var fk2 in w9.fronts) TM.War.setPrio(s, fk2, fk2 === top ? 3 : 1);
+    }
+    if (s.era >= 10 && TM.War) warBot(s, E.derive(s));
     assignJobs(s, E.derive(s));
+  }
+
+  /* 戦略：造船して、いちばん守りの薄い敵の星系を、隣の味方の星系から攻める */
+  function warBot(s, d) {
+    var W = TM.DATA.war, w = TM.War.ensure(s), A = TM.War.adj();
+    var docks = E.sumEffect(s, 'dock');
+    for (var g = 0; g < 10 && w.queue.length < docks * 2; g++) {
+      var built = false;
+      for (var i = W.ships.length - 1; i >= 0 && !built; i--) {
+        var sh = W.ships[i], rich = true;
+        for (var k in sh.cost) if ((s.res[k] || 0) < sh.cost[k] * 3) rich = false;
+        if (rich) built = TM.War.buildShip(s, sh.id);
+      }
+      if (!built) break;
+    }
+    var fm = w.fm || 1, best = null;
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id]; if (X.owner === 'us' || X.battle) return;
+      var nb = A[x.id].filter(function (y) { return w.sys[y].owner === 'us'; });
+      if (!nb.length) return;
+      var sc = X.owner === 'free' ? -1 : X.def;
+      if (!best || sc < best.sc) best = { id: x.id, sc: sc, nb: nb, X: X };
+    });
+    if (!best) return;
+    var avail = 0; best.nb.forEach(function (y) { avail += w.sys[y].str; });
+    var incoming = 0; w.moves.forEach(function (mv) { if (mv.side === 'us' && mv.to === best.id) incoming += mv.str; });
+    if (best.X.owner === 'free') { if (!incoming) best.nb.some(function (y) { return TM.War.send(s, y, best.id, 0.2); }); }
+    else if ((avail + incoming) * fm > best.sc * 1.5 && avail > 0) best.nb.forEach(function (y) { TM.War.send(s, y, best.id, w.sys[y].str > 0 ? (y === 'sol' ? 0.9 : 0.85) : 0); });
+    /* 後ろの艦を前へ寄せる */
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id]; if (X.owner !== 'us' || X.str < 2 || best.nb.indexOf(x.id) >= 0) return;
+      var prev = {}, q = [x.id], seen = {}; seen[x.id] = 1; var hit = null;
+      while (q.length && !hit) { var c = q.shift(); A[c].forEach(function (y) { if (seen[y] || w.sys[y].owner !== 'us') return; seen[y] = 1; prev[y] = c; if (best.nb.indexOf(y) >= 0) hit = y; q.push(y); }); }
+      if (!hit) return;
+      var stepTo = hit; while (prev[stepTo] !== x.id) stepTo = prev[stepTo];
+      TM.War.send(s, x.id, stepTo, 0.8);
+    });
   }
 
   function fixBottlenecks(s, d) {
@@ -2636,7 +3327,12 @@ TM.Sim = (function () {
       case 'boiler': return n < 1 + (s.bld.conc.n + s.bld.ureadis.n) / 2;
       case 'fork': return n < 6 + s.era * 2;
       case 'h2tank': return nearCap(s, d, ['h2']);
-      case 'orbtank': case 'starstore': return true;
+      case 'orbtank': return nearCap(s, d, ['orbit', 'fuel'], 0.8) || n < 1;
+      case 'ctower': return n * 4 < (s.bld.dc.n || 0) + 1;
+      case 'battery': case 'solarfarm': case 'fusion': case 'fusion2': return d.powerDem > d.powerSup * 0.8;
+      case 'charger': return n < 1;
+      case 'ailab': case 'spacelab': case 'aiplant': return ((d.rate || {}).compute || 0) > 0.5 * (n + 1) || (s.res.compute || 0) > 1000;
+      case 'marsbase': case 'outercity': case 'station': return true;
       case 'farm': return n < 3;
       case 'newplant': return d.used > d.land * 0.7 || s.pop >= d.popCap - 2;
       default: return true;
@@ -2777,6 +3473,7 @@ TM.UI = (function () {
     /* クリックはまとめて受ける（描き直しでボタンが入れ替わっても取りこぼさない） */
     document.body.addEventListener('click', onClick);
     $('gear').addEventListener('click', openSettings);
+    $('boost').addEventListener('click', openBoost);
     initTip();
     try { tab = localStorage.getItem('taiki-minigame-tab') || 'site'; } catch (e) { /* 無視 */ }
   }
@@ -2801,6 +3498,8 @@ TM.UI = (function () {
       case 'event': E.claimEvent(s); break;
       case 'fix': doFix(s, id); break;
       case 'goto': goto(t.getAttribute('data-tab'), id); break;
+      case 'siteph': sitePh = id; lastSig.panel = null; break;
+      case 'rgrp': { var hh = refs.res['g_' + id]; resFold[id] = !(hh && hh.c); if (hh) hh.c = null; break; }
       case 'close': closeModal(); break;
       default: if (TM.UIActions && TM.UIActions[a]) TM.UIActions[a](t, id, v);
     }
@@ -2811,6 +3510,7 @@ TM.UI = (function () {
   function render(force) {
     var s = S(); if (!s) return;
     var d = s._d || E.derive(s);
+    U.setMode(s.settings.jpUnits ? 'jp' : 'eng');
     document.body.setAttribute('data-era', s.era);
     document.body.classList.toggle('intro', s.era === 0);
     document.body.classList.toggle('noanim', !s.settings.anim);
@@ -2848,6 +3548,9 @@ TM.UI = (function () {
     }
     setHTML($('memo'), memo);
     var year = E.calYear(s), season = D.seasons[E.seasonIdx(s)];
+    var bs = E.boostState(s), now = Date.now();
+    setText($('boost'), s.era < 1 ? '' : now < bs.to ? '×2 あと' + U.fmtTime((bs.to - now) / 1000) + '（チケット' + bs.n + '）' : '休憩チケット ' + bs.n + '枚');
+    $('boost').classList.toggle('on', now < bs.to);
     setHTML($('cal'), s.era >= 1 ? year + '年（' + wareki(year) + '）　' + season : '');
   }
 
@@ -2874,7 +3577,7 @@ TM.UI = (function () {
   }
 
   /* ============ 資源 ============ */
-  var resAt = 0, resSnap = 0;
+  var resAt = 0, resSnap = 0, resFold = {}, GROUND_GRP = { raw: 1, liq: 1, can: 1, prod: 1, water: 1 };
   function renderResources(s, d) {
     var rows = [];
     D.resources.forEach(function (r) {
@@ -2898,10 +3601,10 @@ TM.UI = (function () {
       rows.forEach(function (id) { var g = E.RES[id].grp || 'raw'; (byG[g] = byG[g] || []).push(id); });
       (D.resGroups || [{ id: 'raw', name: '' }]).forEach(function (G) {
         var ids = byG[G.id]; if (!ids) return;
-        if (G.name) box.appendChild(el('div', { class: 'resgroup g-' + G.id, text: G.name }));
+        if (G.name) { var gh = el('div', { class: 'resgroup g-' + G.id, 'data-a': 'rgrp', 'data-id': G.id, text: G.name }); box.appendChild(gh); refs.res['g_' + G.id] = { h: gh, name: G.name, n: ids.length }; }
         ids.forEach(function (id) {
           var nm = el('span', { class: 'nm' }), v = el('span', { class: 'v' }), r = el('span', { class: 'r' });
-          var row = el('div', { class: 'res fade g-' + G.id, 'data-tip': 'res:' + id }, [nm, v, r]);
+          var row = el('div', { class: 'res fade g-' + G.id + ' rg-' + G.id, 'data-tip': 'res:' + id }, [nm, v, r]);
           refs.res[id] = { row: row, nm: nm, v: v, r: r };
           box.appendChild(row);
         });
@@ -2914,6 +3617,15 @@ TM.UI = (function () {
         box.appendChild(row);
       });
     }
+    /* 宇宙に出たら、地上の資源の見出しはたたんでおく（押せば開く） */
+    (D.resGroups || []).forEach(function (G) {
+      var h = refs.res['g_' + G.id]; if (!h) return;
+      var c = resFold[G.id] !== undefined ? resFold[G.id] : (s.era >= 6 && GROUND_GRP[G.id]);
+      if (h.c === c) return; h.c = c;
+      h.h.textContent = (c ? '▸ ' : '') + h.name + (c ? '（' + h.n + '）' : '');
+      h.h.classList.toggle('fold', c);
+      [].forEach.call(box.querySelectorAll('.rg-' + G.id), function (e) { e.style.display = c ? 'none' : ''; });
+    });
     /* 数字の書き換えは1秒に5回まで（毎フレームだと末尾の桁がちらつく）。操作の直後はすぐ書き換える */
     var now = Date.now();
     if (sig === lastSig.resN && now - resAt < 200 && resSnap === E.snapCount()) return;
@@ -3020,7 +3732,7 @@ TM.UI = (function () {
   }
   function fixLabel(s, d, fx) {
     var kind = fx[0], id = fx[1];
-    if (kind === 'job') return E.JOB[id].name + 'の人手 ＋1';
+    if (kind === 'job') return '提案：' + E.JOB[id].name + 'の人手を増やす';
     if (kind === 'bld') { var b = E.BLD[id]; return b.name + '　' + costText(s, E.cost(s, b), true); }
     if (kind === 'upg') { var u = E.UPG[id]; return u.name + '　' + costText(s, u.cost, true); }
     if (kind === 'tech') { var t2 = E.TECH[id]; return '研究：' + t2.name; }
@@ -3030,7 +3742,7 @@ TM.UI = (function () {
   }
   function fixReady(s, d, fx) {
     var kind = fx[0], id = fx[1];
-    if (kind === 'job') return s.pop > 0;
+    if (kind === 'job') return true;
     if (kind === 'bld') return !E.whyNot(s, E.BLD[id]);
     if (kind === 'upg') return E.canPay(s, E.UPG[id].cost);
     if (kind === 'tech') return E.canPay(s, E.TECH[id].cost);
@@ -3077,7 +3789,7 @@ TM.UI = (function () {
       adv.appendChild(el('span', { class: 'ttl', text: M.stage === 'ok' ? okTtl : (nm ? '詰まり：' + nm + '　' : '') + M.title }));
       refs.flow.fix = [];
       M.fixes.forEach(function (x) {
-        var b = el('button', { class: 'mini fix', 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] === 'off' ? 'bld:' + x[1] : x[0] + ':' + x[1] });
+        var b = el('button', { class: 'mini fix' + (x[0] === 'job' ? ' sugg' : ''), 'data-a': 'fix', 'data-id': x[0] + ':' + x[1], 'data-tip': x[0] === 'off' ? 'bld:' + x[1] : x[0] + ':' + x[1] });
         adv.appendChild(b); refs.flow.fix.push([b, x]);
       });
       refs.flow.detail = el('span', { class: 'det' }); adv.appendChild(refs.flow.detail);
@@ -3097,7 +3809,8 @@ TM.UI = (function () {
   }
   function doFix(s, key) {
     var i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1);
-    if (kind === 'job') { if (!E.moveJob(s, id)) goto('staff', 'job:' + id); return; }
+    /* 人の配置は、他の持ち場から引き抜くことになるので自動では動かさない。人手タブの該当の行へ案内するだけ */
+    if (kind === 'job') { goto('staff', 'job:' + id); return; }
     if (kind === 'bld') { if (!E.build(s, id)) goto('site', 'bld:' + id); return; }
     if (kind === 'upg') { if (!E.buyUpg(s, id)) goto('upg', 'upg:' + id); return; }
     if (kind === 'tech') { if (!E.research(s, id)) goto('tech', 'tech:' + id); return; }
@@ -3129,13 +3842,15 @@ TM.UI = (function () {
     if (s.flags.research_known) t.push(['tech', '技術']);
     if (s.flags.cans_known || s.techs.bookkeeping) t.push(['market', '取引']);
     if (s.flags.hook) t.push(['stats', '記録']);
+    /* 戦時（時代9〜10）は作戦図のタブが加わる */
+    if (s.era === 9 || s.era === 10) t.splice(1, 0, ['war', s.era === 9 ? '前線' : '星図']);
     return t;
   }
   function renderTabs(s) {
     var t = tabsVisible(s);
     var ids = t.map(function (x) { return x[0]; });
     if (ids.length && ids.indexOf(tab) < 0) tab = 'site';
-    var sig = ids.join(',') + '|' + tab;
+    var sig = t.map(function (x) { return x.join(':'); }).join(',') + '|' + tab;
     if (sig === lastSig.tabs) return;
     lastSig.tabs = sig;
     var box = $('tabs'); box.innerHTML = '';
@@ -3178,6 +3893,19 @@ TM.UI = (function () {
     }
     return worst;
   }
+  /* 買えるまでの時間（ツールチップ用）。与信枠で買えるときは、借りずに買えるまでの時間も出す */
+  function buyLine(s, d, c) {
+    var cash = true, k;
+    for (k in c) if ((s.res[k] || 0) < c[k]) cash = false;
+    if (cash) return '<div class="tw good">いま買える</div>';
+    if (E.canPay(s, c)) {
+      var t0 = timeTo(s, d, c);
+      return '<div class="tw warn">与信枠で買える（利息がつく）' + (t0 > 0 && t0 !== Infinity ? '。借りずに買えるのは あと ' + U.fmtTime(t0) : '') + '</div>';
+    }
+    var cl = {}; for (k in c) cl[k] = k === 'money' && s.era >= 1 ? c[k] - (d.creditLimit || 0) : c[k];
+    var tt = timeTo(s, d, cl);
+    return '<div class="tw">' + (tt === -1 ? '置き場が足りない（この量はためられない）' : tt === Infinity ? 'このままでは貯まらない（足りないものが増えていない）' : 'あと ' + U.fmtTime(tt) + ' で買える') + '</div>';
+  }
   function setText(e, t) { if (e && e.textContent !== t) e.textContent = t; }
   function setHTML(e, h) { if (e && e.innerHTML !== h) e.innerHTML = h; }
 
@@ -3194,10 +3922,20 @@ TM.UI = (function () {
   /* ============ 各タブ ============ */
   var PANELS = {};
 
+  /* 現場は「場面」ごとに分ける（地上の工場・電気と計算・空…）。古い場面は見出しを押すと見られる */
+  var sitePh = null, sitePhSeen = null;
+  function phOf(b) { return !b.ph || b.ph === 'auto' ? 'ground' : b.ph; }
   PANELS.site = function (s, d, box) {
     var groups = {}, order = [];
+    var phs = {}, phList = [];
+    D.buildings.forEach(function (b) { if (E.bldShown(s, b) && !(b.stages && s.bld[b.id].n >= b.stages)) phs[phOf(b)] = 1; });
+    (D.phases || []).forEach(function (p) { if (phs[p.id]) phList.push(p); });
+    var latest = phList.length ? phList[phList.length - 1].id : 'ground';
+    if (sitePhSeen !== latest) { sitePhSeen = latest; sitePh = latest; }
+    if (!phs[sitePh]) sitePh = latest;
     D.buildings.forEach(function (b) {
       if (!E.bldShown(s, b)) return;
+      if (phList.length > 1 && phOf(b) !== sitePh) return;
       if (b.stages && s.bld[b.id].n >= b.stages) return;
       if (b.max && s.bld[b.id].n >= b.max && !(b.proc && b.proc.toggle)) { (groups['済'] = groups['済'] || []).push(b); return; }
       if (!groups[b.group]) { groups[b.group] = []; order.push(b.group); }
@@ -3209,8 +3947,13 @@ TM.UI = (function () {
       var names = {}; D.buildings.forEach(function (b) { if (E.bldShown(s, b)) names[b.name] = 1; });
       D.teasers.forEach(function (n) { if (!teaser && !names[n]) teaser = n; });
     }
-    var sig = 'site|' + order.map(function (g) { return g + ':' + groups[g].map(function (b) { return b.id; }).join(','); }).join('|') + '|' + teaser + '|' + (groups['済'] || []).length;
+    var sig = 'site|' + sitePh + '|' + phList.map(function (p) { return p.id; }).join(',') + '|' + order.map(function (g) { return g + ':' + groups[g].map(function (b) { return b.id; }).join(','); }).join('|') + '|' + teaser + '|' + (groups['済'] || []).length;
     keyed(box, sig, function (R) {
+      if (phList.length > 1) {
+        var bar = el('div', { class: 'subtabs phtabs' });
+        phList.forEach(function (p) { bar.appendChild(el('button', { class: 'mini' + (p.id === sitePh ? ' on' : ''), 'data-a': 'siteph', 'data-id': p.id, text: p.name })); });
+        box.appendChild(bar);
+      }
       order.forEach(function (g) {
         var gbox = el('div', { class: 'group' }, [el('h3', { text: g })]);
         groups[g].forEach(function (b) {
@@ -3228,7 +3971,7 @@ TM.UI = (function () {
           }
           if (!b.stages) ctl.appendChild(el('button', { class: 'mini', 'data-a': 'sell', 'data-id': b.id, title: '解体', text: '×' }));
           var isNew = !s.bld[b.id].n;
-          gbox.appendChild(el('div', { class: 'row fade' + (isNew ? ' isnew' : ''), 'data-hl': 'bld:' + b.id }, [btn, info, ctl]));
+          gbox.appendChild(el('div', { class: 'row fade' + (isNew ? ' isnew' : ''), 'data-hl': 'bld:' + b.id, 'data-tip': 'bld:' + b.id }, [btn, info, ctl]));
           R[b.id] = { btn: btn, nm: nm, cs: cs, st: st, ctl: ctl, line: lineBox };
         });
         box.appendChild(gbox);
@@ -3277,6 +4020,11 @@ TM.UI = (function () {
     h += lc.det.map(function (x) { return '<span class="' + (x.id === lc.worst ? 'bad' : 'dim') + '">' + x.name + '（' + x.label + '）' + f(x.rate) + '</span>'; }).join(' → ');
     return h;
   }
+
+  PANELS.war = function (s, d, box) {
+    if (!TM.WarUI || s.era < 9) return PANELS.site(s, d, box);
+    TM.WarUI.panel(s, d, box, { keyed: keyed, setText: setText, setHTML: setHTML, costText: costText });
+  };
 
   PANELS.staff = function (s, d, box) {
     var jobs = D.jobs.filter(function (j) { return E.jobVisible(s, j); });
@@ -3350,7 +4098,7 @@ TM.UI = (function () {
         var cs = el('small', { class: 'cost' });
         b.appendChild(el('span', { text: t.name })); b.appendChild(cs);
         var st = el('div', { class: 'st' });
-        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'tech:' + t.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: t.desc })])]));
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'tech:' + t.id, 'data-tip': 'tech:' + t.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: t.desc })])]));
         R[t.id] = { b: b, cs: cs, st: st, t: t };
       });
       box.appendChild(g);
@@ -3379,7 +4127,7 @@ TM.UI = (function () {
         var cs = el('small', { class: 'cost' });
         b.appendChild(el('span', { text: u.name })); b.appendChild(cs);
         var st = el('div', { class: 'st' });
-        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'upg:' + u.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: u.desc })])]));
+        g.appendChild(el('div', { class: 'row fade', 'data-hl': 'upg:' + u.id, 'data-tip': 'upg:' + u.id }, [b, el('div', { class: 'info' }, [st, el('div', { text: u.desc })])]));
         R[u.id] = { b: b, cs: cs, st: st };
       });
       box.appendChild(g);
@@ -3746,7 +4494,7 @@ TM.UI = (function () {
       h += bldDetail(s, d, b);
       var why = E.whyNot(s, b);
       if (why && why !== 'お金・資材が足りない') h += '<div class="tw warn">' + why + '</div>';
-      else if (why) { var tt = timeTo(s, d, c); h += '<div class="tw">' + (tt === -1 ? '置き場が足りない（この値段はためられない）' : tt === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(tt) + ' で買える') + '</div>'; }
+      if (!why || why === 'お金・資材が足りない') h += buyLine(s, d, c);
       var pi = procOf(d, 'bld.' + id);
       if (pi && o.n && pi.reason) h += '<div class="tw bad">いま：' + pi.reason + '</div>';
       return h;
@@ -3773,7 +4521,7 @@ TM.UI = (function () {
     if (kind === 'tech' || kind === 'upg') {
       var x = kind === 'tech' ? E.TECH[id] : E.UPG[id];
       h += '<div class="tt">' + x.name + '</div><div class="tw">' + x.desc + '</div>';
-      if (!E.canPay(s, x.cost)) { var t3 = timeTo(s, d, x.cost); h += '<div class="tw">' + (t3 === -1 ? 'ためておける量が足りない' : t3 === Infinity ? 'このままでは貯まらない' : 'あと ' + U.fmtTime(t3) + ' で手が届く') + '</div>'; }
+      h += buyLine(s, d, x.cost);
       return h;
     }
     if (kind === 'flowdet') return flowDet ? '<div class="tw">' + flowDet + '</div>' : '';
@@ -3849,7 +4597,7 @@ TM.UI = (function () {
   function openSettings() {
     var s = S();
     openModal('<h2>設定</h2>' +
-      '<div class="sect"><label><input type="checkbox" id="o_expo" ' + (s.settings.expo ? 'checked' : '') + '> 大きな数を指数で表示（1.2e45）</label>' +
+      '<div class="sect"><label><input type="checkbox" id="o_expo" ' + (s.settings.jpUnits ? 'checked' : '') + '> 大きな数を万・億・兆…で表示（ふだんは 12.3e9 のような指数）</label>' +
       '<label><input type="checkbox" id="o_anim" ' + (s.settings.anim ? 'checked' : '') + '> 表示のふわっとした動き</label>' +
       '<label><input type="checkbox" id="o_gag" ' + (s.settings.gag !== false ? 'checked' : '') + '> タイトルの小ネタ</label></div>' +
       '<div class="sect"><b style="font-weight:normal">セーブの書き出し（別のPC・ブラウザへ引っ越すとき）</b><textarea id="o_exp" readonly></textarea>' +
@@ -3859,7 +4607,7 @@ TM.UI = (function () {
       '<div class="sect" style="text-align:right"><button class="btn" data-a="close">閉じる</button></div>',
     function (b) {
       b.querySelector('#o_exp').value = E.exportText(s);
-      b.querySelector('#o_expo').onchange = function (e) { s.settings.expo = e.target.checked; lastSig = {}; };
+      b.querySelector('#o_expo').onchange = function (e) { s.settings.jpUnits = e.target.checked; U.setMode(s.settings.jpUnits ? 'jp' : 'eng'); lastSig = {}; };
       b.querySelector('#o_anim').onchange = function (e) { s.settings.anim = e.target.checked; };
       b.querySelector('#o_gag').onchange = function (e) { s.settings.gag = e.target.checked; };
       b.querySelector('#o_copy').onclick = function () { var t = b.querySelector('#o_exp'); t.select(); try { document.execCommand('copy'); } catch (e) { /* 無視 */ } };
@@ -3876,9 +4624,276 @@ TM.UI = (function () {
     });
   }
 
+  function openBoost() {
+    var s = S(), b = E.boostState(s), now = Date.now(), B = E.BOOST;
+    var next = Math.max(0, (b.last + B.grant * 1000 - now) / 1000);
+    openModal('<h2>休憩チケット</h2><p>使うと、それから<b>4時間</b>は工場が<b>倍の速さ</b>で動きます。画面を閉じて休憩している間も倍速です。</p>' +
+      '<p class="note">持っている枚数：' + b.n + '枚（' + B.max + '枚まで）。' + (b.n < B.max ? '次の1枚まで あと ' + U.fmtTime(next) + '（20時間ごとに1枚）' : '') +
+      (now < b.to ? '<br>いま倍速中：あと ' + U.fmtTime((b.to - now) / 1000) + '（続けて使うと4時間延びる）' : '') + '</p>' +
+      '<div class="sect" style="text-align:right"><button class="btn" id="bo_use"' + (b.n > 0 ? '' : ' disabled') + '>1枚使う</button> <button class="btn" data-a="close">閉じる</button></div>',
+    function (box) { box.querySelector('#bo_use').onclick = function () { if (E.useBoost(S(), Date.now())) { E.save(S()); closeModal(); } }; });
+  }
+
   function resetSig() { lastSig = {}; }
 
   return { init: init, render: render, openModal: openModal, closeModal: closeModal, resetSig: resetSig, f: f };
+})();
+
+</script>
+<script>
+/* 戦争の画面（時代9〜10）。作戦図をキャンバスに描く。
+   時代9：太陽系の前線図（補給の船団が流れていく）。時代10：星図（艦隊が航路を動き、交戦が光る）。 */
+var TM = window.TM = window.TM || {};
+
+TM.WarUI = (function () {
+  var E = TM.Engine, U = TM.util, el = U.el;
+  var sel = null, frac = 1, cv = null, raf = 0, hover = null;
+  var C = { bg: '#0a0f0c', grid: 'rgba(120,170,120,0.08)', grid2: 'rgba(120,170,120,0.16)', us: '#7fc7ff', enemy: '#ff6a55', free: '#8c8c7a', text: '#cfe3c8', dim: '#6f8a72', amber: '#ffb347', good: '#8fe08a' };
+
+  function S() { return TM.state; }
+  function f(n) { return U.fmt(n, S().settings.expo); }
+
+  /* ---------------- 画面 ---------------- */
+  function panel(s, d, box, H) {
+    var W = TM.DATA.war, w = TM.War.ensure(s);
+    var mode = s.era >= 10 ? 'map' : 'front';
+    H.keyed(box, 'war|' + mode, function (R) {
+      box.appendChild(el('h3', { class: 'sect wartitle', text: mode === 'front' ? '作戦図：前線と補給' : '作戦図：星図' }));
+      cv = el('canvas', { class: 'warmap', width: 900, height: 420 });
+      box.appendChild(cv);
+      cv.addEventListener('click', onCanvasClick);
+      cv.addEventListener('mousemove', function (e) { hover = pick(e); });
+      cv.addEventListener('mouseleave', function () { hover = null; });
+      R.info = el('div', { class: 'warinfo' }); box.appendChild(R.info);
+      if (mode === 'front') {
+        var tb = el('table', { class: 't wart' });
+        tb.appendChild(el('tr', {}, ['前線', '押し返し', '補給', '推進剤', '冷却材', '装甲材', '浄水剤', '重点'].map(function (h) { return el('th', { text: h }); })));
+        R.rows = {};
+        W.fronts.forEach(function (fr) {
+          var cells = []; for (var i = 0; i < 6; i++) cells.push(el('td'));
+          var pr = el('td');
+          [1, 2, 3].forEach(function (v) { pr.appendChild(el('button', { class: 'mini', 'data-a': 'wprio', 'data-id': fr.id, 'data-v': v, text: ['', '並', '重', '最重'][v] })); });
+          tb.appendChild(el('tr', {}, [el('td', { text: fr.name })].concat(cells).concat([pr])));
+          R.rows[fr.id] = { cells: cells, pr: pr };
+        });
+        box.appendChild(tb);
+        box.appendChild(el('p', { class: 'note', text: '船団に積める量（輸送船団）と、宇宙港で積み込める量（ターミナル）の小さいほうが、1秒に前線へ送れる量。重点を上げた前線に多く配る。補給が7割を下回ると押し込まれる。押し返すほど、前線は多くの物資を欲しがる。' }));
+      } else {
+        var bar = el('div', { class: 'warbar' });
+        bar.appendChild(el('span', { class: 'dim', text: '送る艦：' }));
+        [[1, '全部'], [0.5, '半分'], [0.25, '4分の1']].forEach(function (x) { bar.appendChild(el('button', { class: 'mini wfrac', 'data-a': 'wfrac', 'data-v': x[0], text: x[1] })); });
+        bar.appendChild(el('span', { class: 'dim', style: 'margin-left:10px', text: '味方の星系を押して選び、となりの星系を押すと艦隊が向かう。' }));
+        box.appendChild(bar);
+        var ships = el('div', { class: 'group' }, [el('h3', { text: '造船（宇宙ドック）' })]);
+        R.ships = {};
+        W.ships.forEach(function (sh) {
+          var b = el('button', { class: 'btn', 'data-a': 'wship', 'data-id': sh.id });
+          var nm = el('span', { text: sh.name + '（強さ ' + sh.str + '）' }), cs = el('small', { class: 'cost' });
+          b.appendChild(nm); b.appendChild(cs);
+          ships.appendChild(el('div', { class: 'row' }, [b, el('div', { class: 'info', text: '造るのに ' + U.fmtTime(sh.sec) + '（ドック1つで1隻ずつ）' })]));
+          R.ships[sh.id] = { b: b, cs: cs };
+        });
+        R.queue = el('div', { class: 'note' }); ships.appendChild(R.queue);
+        box.appendChild(ships);
+      }
+      R.log = el('div', { class: 'warlog' }); box.appendChild(R.log);
+      startLoop();
+    }, function (R) {
+      if (mode === 'front') {
+        var depot = Math.min(0.5, 0.1 * E.sumEffect(s, 'wbuf'));
+        H.setHTML(R.info, '1秒に送れる量 <b>' + f(w.cap || 0) + ' t</b>（船団 ' + f(w.lift || 0) + ' t・積み込み ' + f(w.load || 0) + ' t）' + (depot ? '　前線補給基地 +' + Math.round(depot * 100) + '%' : '') + (w.fall ? '　<span class="bad">押し込まれた前線がある：工場の生産 −20%</span>' : ''));
+        W.fronts.forEach(function (fr) {
+          var st = w.fronts[fr.id], r = R.rows[fr.id], nd = TM.War.frontNeed(s, fr, st);
+          H.setText(r.cells[0], st.won ? '押し返した' : Math.floor(st.pos) + '%');
+          r.cells[0].className = st.won ? 'good' : st.pos < 10 ? 'bad' : '';
+          H.setText(r.cells[1], st.won ? '—' : Math.round(st.r * 100) + '%');
+          r.cells[1].className = st.won ? '' : st.r < W.frontHold ? 'bad' : st.r >= 1 ? 'good' : 'warn';
+          TM.War.RES4.forEach(function (k, i) { H.setText(r.cells[2 + i], st.won ? '—' : f(nd[k]) + '/秒'); });
+          [].forEach.call(r.pr.children, function (b, i) { b.classList.toggle('on', st.prio === i + 1); b.disabled = st.won; });
+        });
+      } else {
+        var sup = TM.War.supplied(s), own = 0, tot = TM.War.totalStr(s);
+        for (var k in w.sys) if (w.sys[k].owner === 'us') own++;
+        H.setHTML(R.info, '艦隊の強さ 合計 <b>' + f(tot) + '</b>（強さの倍率 ×' + (w.fm || 1).toFixed(2) + (w.upkeepMul < 0.95 ? '　<span class="bad">補給が足りない（推進剤・冷却材）</span>' : '') + '）　取った星系 ' + own + '/' + TM.DATA.war.systems.length +
+          '　敵の次の反撃まで ' + U.fmtTime(Math.max(0, w.raidT)) + (sel ? '　選んでいる星系：<b>' + TM.War.sysDef(sel).name + '</b>（' + f(w.sys[sel].str) + '）' : ''));
+        [].forEach.call(document.querySelectorAll('.wfrac'), function (b) { b.classList.toggle('on', +b.getAttribute('data-v') === frac); });
+        W.ships.forEach(function (sh) { var r = R.ships[sh.id]; H.setHTML(r.cs, H.costText(s, sh.cost)); r.b.classList.toggle('na', !TM.War.canBuild(s, sh.id)); });
+        var docks = E.sumEffect(s, 'dock');
+        H.setHTML(R.queue, 'ドック ' + docks + '　造船中 ' + w.queue.length + '隻' + (w.queue.length ? '：' + w.queue.slice(0, 8).map(function (q, i) { var sh = TM.War.shipDef(q.type); return sh.name + (i < docks ? '（' + Math.round(100 - q.left / sh.sec * 100) + '%）' : '（待ち）'); }).join('、') : '') + '　これまでに造った艦 ' + (w.built || 0) + '隻');
+        void sup;
+      }
+      H.setHTML(R.log, w.log.slice(0, 8).map(function (x) { return '<div class="' + x.cls + '"><span class="dim">' + stamp(s, x.t) + '</span>　' + x.text + '</div>'; }).join(''));
+    });
+  }
+  function stamp(s, t) {
+    var dt = Math.max(0, s.t - t);
+    return dt < 60 ? 'いま' : U.fmtTime(dt) + '前';
+  }
+
+  /* ---------------- 操作 ---------------- */
+  TM.UIActions = TM.UIActions || {};
+  TM.UIActions.wprio = function (t, id, v) { TM.War.setPrio(S(), id, v); };
+  TM.UIActions.wship = function (t, id) { TM.War.buildShip(S(), id); };
+  TM.UIActions.wfrac = function (t, id, v) { frac = v || 1; };
+
+  function toXY(x, y) { return [30 + x / 100 * (cv.width - 60), 20 + y / 100 * (cv.height - 40)]; }
+  function pick(e) {
+    if (!cv || S().era < 10) return null;
+    var r = cv.getBoundingClientRect(), mx = (e.clientX - r.left) * cv.width / r.width, my = (e.clientY - r.top) * cv.height / r.height;
+    var best = null, bd = 22 * 22;
+    TM.DATA.war.systems.forEach(function (x) { var p = toXY(x.x, x.y), dd = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my); if (dd < bd) { bd = dd; best = x.id; } });
+    return best;
+  }
+  function onCanvasClick(e) {
+    var s = S(), id = pick(e); if (!id) { sel = null; return; }
+    var w = s.war;
+    if (sel && sel !== id && TM.War.adj()[sel].indexOf(id) >= 0) {
+      if (TM.War.send(s, sel, id, frac)) { if (w.sys[sel].str < 0.5) sel = null; }
+      return;
+    }
+    sel = w.sys[id].owner === 'us' ? id : null;
+  }
+
+  /* ---------------- 描画 ---------------- */
+  function startLoop() {
+    if (raf) return;
+    var tick = function () {
+      raf = 0;
+      if (!cv || !document.body.contains(cv)) { cv = null; return; }
+      draw();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  function grid(g) {
+    g.fillStyle = C.bg; g.fillRect(0, 0, cv.width, cv.height);
+    for (var x = 0; x < cv.width; x += 30) { g.strokeStyle = x % 150 === 0 ? C.grid2 : C.grid; g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, cv.height); g.stroke(); }
+    for (var y = 0; y < cv.height; y += 30) { g.strokeStyle = y % 150 === 0 ? C.grid2 : C.grid; g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(cv.width, y + 0.5); g.stroke(); }
+    g.font = '10px monospace'; g.fillStyle = C.dim;
+    for (var i = 0; i * 150 < cv.width; i++) g.fillText(String.fromCharCode(65 + i), i * 150 + 4, 12);
+    for (var j = 1; j * 150 < cv.height; j++) g.fillText(String(j), 4, j * 150 - 4);
+  }
+  function draw() {
+    var s = S(), g = cv.getContext('2d'), now = performance.now() / 1000;
+    grid(g);
+    if (s.era >= 10) drawMap(s, g, now); else drawFronts(s, g, now);
+    /* 走査線と時刻 */
+    var sy = (now * 60) % cv.height;
+    g.fillStyle = 'rgba(140,255,140,0.04)'; g.fillRect(0, sy, cv.width, 3);
+    g.fillStyle = C.dim; g.font = '10px monospace';
+    g.fillText('T+' + Math.floor(s.t - ((s.war && s.war.started) || 0)) + 's  ' + (s.era >= 10 ? 'STRATEGIC MAP' : 'LOGISTICS / FRONT'), cv.width - 230, cv.height - 8);
+  }
+
+  /* 時代9：太陽を中心に、外側に4つの前線。補給の船団が地球から流れていく */
+  function drawFronts(s, g, now) {
+    var W = TM.DATA.war, w = s.war, cx = cv.width * 0.42, cy = cv.height / 2, R0 = Math.min(cx, cy) - 30;
+    g.fillStyle = C.amber; g.beginPath(); g.arc(cx, cy, 7, 0, Math.PI * 2); g.fill();
+    [0.18, 0.28, 0.45, 0.62, 0.78, 0.92].forEach(function (r) { g.strokeStyle = 'rgba(160,200,160,0.12)'; g.beginPath(); g.arc(cx, cy, R0 * r, 0, Math.PI * 2); g.stroke(); });
+    var ea = now * 0.05, ex = cx + Math.cos(ea) * R0 * 0.28, ey = cy + Math.sin(ea) * R0 * 0.28;
+    g.fillStyle = C.us; g.beginPath(); g.arc(ex, ey, 4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = C.text; g.font = '11px monospace'; g.fillText('EARTH', ex + 6, ey - 6);
+    var lift = w.cap || 0, tot = 0; W.fronts.forEach(function (fr) { if (!w.fronts[fr.id].won) tot += w.fronts[fr.id].prio; });
+    W.fronts.forEach(function (fr, i) {
+      var st = w.fronts[fr.id], a = fr.ang * Math.PI / 180;
+      var rLine = R0 * (0.62 + 0.36 * st.pos / 100);
+      /* 前線（弧） */
+      g.lineWidth = 3; g.strokeStyle = st.won ? C.good : st.r < W.frontHold ? C.enemy : C.us;
+      g.beginPath(); g.arc(cx, cy, rLine, a - 0.33, a + 0.33); g.stroke();
+      /* 敵の圧力（外側の赤い三角） */
+      if (!st.won) {
+        for (var k = -2; k <= 2; k++) {
+          var aa = a + k * 0.13, rr = rLine + 14 + Math.sin(now * 2 + k + i) * 3;
+          var px = cx + Math.cos(aa) * rr, py = cy + Math.sin(aa) * rr;
+          g.fillStyle = C.enemy; g.beginPath(); g.moveTo(px + Math.cos(aa + Math.PI) * 6, py + Math.sin(aa + Math.PI) * 6);
+          g.lineTo(px + Math.cos(aa + 2.2) * 5, py + Math.sin(aa + 2.2) * 5); g.lineTo(px + Math.cos(aa - 2.2) * 5, py + Math.sin(aa - 2.2) * 5); g.fill();
+        }
+        /* 押し合いの火花 */
+        if (Math.random() < 0.5) { var fa = a + (Math.random() - 0.5) * 0.6, fx = cx + Math.cos(fa) * rLine, fy = cy + Math.sin(fa) * rLine; g.fillStyle = C.amber; g.fillRect(fx - 1, fy - 1, 2 + Math.random() * 2, 2 + Math.random() * 2); }
+      }
+      g.lineWidth = 1;
+      /* 船団：地球から前線へ */
+      var share = st.won || !tot ? 0 : st.prio / tot, nShips = Math.min(14, Math.ceil(share * Math.log(1 + lift) * 2));
+      var tx = cx + Math.cos(a) * (rLine - 6), ty = cy + Math.sin(a) * (rLine - 6);
+      for (var j = 0; j < nShips; j++) {
+        var p = ((now * 0.12 + j / nShips + i * 0.13) % 1);
+        var qx = ex + (tx - ex) * p, qy = ey + (ty - ey) * p;
+        g.fillStyle = C.amber; g.fillRect(qx - 1.5, qy - 1.5, 3, 3);
+      }
+      g.strokeStyle = 'rgba(255,179,71,0.18)'; g.setLineDash([3, 5]); g.beginPath(); g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke(); g.setLineDash([]);
+      /* ラベル */
+      var lx = cx + Math.cos(a) * (R0 * 1.0 + 6), ly = cy + Math.sin(a) * (R0 * 1.0 + 6);
+      g.fillStyle = C.text; g.font = '12px sans-serif';
+      var txt = fr.name + '  ' + (st.won ? '押し返した' : Math.floor(st.pos) + '%  補給' + Math.round(st.r * 100) + '%');
+      g.fillText(txt, Math.max(4, Math.min(cv.width - 200, lx - 40)), Math.max(14, Math.min(cv.height - 6, ly)));
+    });
+  }
+
+  /* 時代10：星図 */
+  function drawMap(s, g, now) {
+    var W = TM.DATA.war, w = s.war, A = TM.War.adj();
+    var col = function (o) { return o === 'us' ? C.us : o === 'enemy' ? C.enemy : C.free; };
+    /* 勢力の色を薄く塗る */
+    W.systems.forEach(function (x) {
+      var p = toXY(x.x, x.y), o = w.sys[x.id].owner; if (o === 'free') return;
+      var gr = g.createRadialGradient(p[0], p[1], 0, p[0], p[1], 90);
+      gr.addColorStop(0, o === 'us' ? 'rgba(127,199,255,0.16)' : 'rgba(255,106,85,0.14)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(p[0] - 90, p[1] - 90, 180, 180);
+    });
+    /* 航路 */
+    W.lanes.forEach(function (l) {
+      var a = toXY(W.systems.filter(function (x) { return x.id === l[0]; })[0].x, W.systems.filter(function (x) { return x.id === l[0]; })[0].y);
+      var b = toXY(TM.War.sysDef(l[1]).x, TM.War.sysDef(l[1]).y);
+      var hl = sel && ((l[0] === sel) || (l[1] === sel));
+      g.strokeStyle = hl ? 'rgba(255,179,71,0.7)' : 'rgba(160,200,160,0.25)'; g.lineWidth = hl ? 1.5 : 1;
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+    });
+    g.lineWidth = 1;
+    /* 移動中の艦隊 */
+    w.moves.forEach(function (mv) {
+      var a = TM.War.sysDef(mv.from), b = TM.War.sysDef(mv.to), pa = toXY(a.x, a.y), pb = toXY(b.x, b.y), p = Math.min(1, mv.t / mv.dur);
+      var x = pa[0] + (pb[0] - pa[0]) * p, y = pa[1] + (pb[1] - pa[1]) * p;
+      var c = mv.side === 'us' ? C.us : C.enemy;
+      g.strokeStyle = c; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(pa[0], pa[1]); g.lineTo(x, y); g.stroke(); g.setLineDash([]);
+      /* 矢印 */
+      var ang = Math.atan2(pb[1] - pa[1], pb[0] - pa[0]);
+      g.fillStyle = c; g.beginPath(); g.moveTo(x + Math.cos(ang) * 9, y + Math.sin(ang) * 9); g.lineTo(x + Math.cos(ang + 2.5) * 7, y + Math.sin(ang + 2.5) * 7); g.lineTo(x + Math.cos(ang - 2.5) * 7, y + Math.sin(ang - 2.5) * 7); g.fill();
+      unit(g, x + 10, y - 18, c, mv.str);
+    });
+    /* 星系 */
+    W.systems.forEach(function (x) {
+      var X = w.sys[x.id], p = toXY(x.x, x.y), c = col(X.owner);
+      if (sel === x.id) { g.strokeStyle = C.amber; g.lineWidth = 2; g.beginPath(); g.arc(p[0], p[1], 14 + Math.sin(now * 5) * 2, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1; }
+      if (sel && A[sel].indexOf(x.id) >= 0 && X.owner !== 'us') { g.strokeStyle = 'rgba(255,179,71,0.5)'; g.setLineDash([2, 3]); g.beginPath(); g.arc(p[0], p[1], 16, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); }
+      if (hover === x.id) { g.strokeStyle = C.text; g.beginPath(); g.arc(p[0], p[1], 12, 0, Math.PI * 2); g.stroke(); }
+      g.fillStyle = c; g.beginPath();
+      if (x.capital) { for (var k = 0; k < 10; k++) { var rr = k % 2 ? 4 : 10, aa = -Math.PI / 2 + k * Math.PI / 5; g.lineTo(p[0] + Math.cos(aa) * rr, p[1] + Math.sin(aa) * rr); } }
+      else g.arc(p[0], p[1], x.home ? 9 : 6, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = C.text; g.font = '11px sans-serif'; g.fillText(x.name, p[0] + 10, p[1] + 16);
+      if (X.owner === 'enemy') { g.fillStyle = C.enemy; g.font = '10px monospace'; g.fillText('DEF ' + f(X.def), p[0] + 10, p[1] + 28); }
+      if (X.owner === 'us' && X.str >= 0.5) unit(g, p[0] - 30, p[1] - 26, C.us, X.str);
+      /* 交戦 */
+      if (X.battle) {
+        var B = X.battle;
+        for (var j = 0; j < 6; j++) {
+          var a1 = Math.random() * Math.PI * 2, r1 = 6 + Math.random() * 18;
+          g.strokeStyle = Math.random() < 0.5 ? C.amber : (B.side === 'us' ? C.us : C.enemy);
+          g.beginPath(); g.moveTo(p[0] + Math.cos(a1) * r1, p[1] + Math.sin(a1) * r1); g.lineTo(p[0] + Math.cos(a1 + 0.4) * (r1 + 10), p[1] + Math.sin(a1 + 0.4) * (r1 + 10)); g.stroke();
+        }
+        g.strokeStyle = C.amber; g.globalAlpha = 0.5 + 0.5 * Math.sin(now * 10); g.beginPath(); g.arc(p[0], p[1], 20, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+        g.fillStyle = C.amber; g.font = 'bold 11px monospace';
+        g.fillText('交戦  ' + (B.side === 'us' ? '攻' : '守') + ' ' + f(B.att) + ' / ' + f(B.side === 'us' ? X.def : X.str + X.def), p[0] - 40, p[1] - 30);
+      }
+    });
+  }
+  /* 部隊の記号（四角に×）と強さ */
+  function unit(g, x, y, c, str) {
+    g.strokeStyle = c; g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(x, y, 22, 14); g.strokeRect(x + 0.5, y + 0.5, 22, 14);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + 22, y + 14); g.moveTo(x + 22, y); g.lineTo(x, y + 14); g.stroke();
+    g.fillStyle = c; g.font = '10px monospace'; g.fillText(f(str), x + 25, y + 11);
+  }
+
+  return { panel: panel };
 })();
 
 </script>
@@ -3958,10 +4973,13 @@ TM.Dev = (function () {
             /* 大型設備を完成させたことにする（条件は無視） */
             s.bld[mega.id].n = mega.stages;
             var oc = mega.onComplete || {};
-            if (oc.era !== undefined && s.era < oc.era) { s.era = oc.era; s.stats.at['era' + oc.era] = s.t; }
+            if (oc.era !== undefined && s.era < oc.era) { s.era = oc.era; s.stats.at['era' + oc.era] = s.t; if (TM.War) TM.War.onEra(s); }
             if (oc.ending) { s.ending = 1; s.stats.ended = 1; }
             s.res.money = Math.max(s.res.money, 10 * (E.cost(s, mega).money || 0));
             E.addLog(s, '（開発者モード）' + mega.name + 'を完成させた。', 'dim');
+          } else if (s.era === 10 && TM.War) {
+            /* 星図：敵の母星を落としたことにする */
+            var w = TM.War.ensure(s); w.sys.cap.owner = 'us'; s.era = 11; s.stats.at.era11 = s.t; TM.War.onEra(s);
           }
         }
         TM.UI.resetSig(); break;
@@ -4006,7 +5024,7 @@ TM.Dev = (function () {
 /* 起動・ループ・保存・留守中の進行・エンディング */
 (function () {
   var TM = window.TM, E = TM.Engine, U = TM.util;
-  E.init();
+  E.init(); TM.War.init();
   TM.UI.init();
   TM.Dev.init();
 
@@ -4016,10 +5034,12 @@ TM.Dev = (function () {
   var s = E.load();
   var report = null;
   if (s) {
-    var away = (Date.now() - (s.saved || Date.now())) / 1000;
+    /* 経過時間はこのPCの時計で数える。進んでいればそのまま、戻っていれば何もしない */
+    var nowMs = Date.now(), away = Math.max(0, (nowMs - (s.saved || nowMs)) / 1000);
+    E.boostGrant(s, nowMs);
     if (away > 60 && s.era >= 1 && !s.ending) {
       var before = U.deepCopy(s.res);
-      var r = E.simulateAway(s, away);
+      var r = E.simulateAway(s, away, E.boostOverlap(s, s.saved, nowMs));
       report = { away: away, sim: r.simulated, before: before };
     }
   } else {
@@ -4048,16 +5068,17 @@ TM.Dev = (function () {
   var last = Date.now(), saveTimer = 0;
   function loop() {
     var now = Date.now();
-    var real = (now - last) / 1000; last = now;
+    var real = Math.max(0, (now - last) / 1000), last0 = last; last = now;
     var st = TM.state;
+    E.boostGrant(st, now);
     if (st.ending === 1 || st.ending === 2) { TM.UI.render(); return; }
     if (real > 120 && st.era >= 1) {
       /* スリープ復帰など：留守扱い */
       var before = U.deepCopy(st.res);
-      var r = E.simulateAway(st, real);
+      var r = E.simulateAway(st, real, E.boostOverlap(st, last0, now));
       showReport({ away: real, sim: r.simulated, before: before });
     } else {
-      var dt = real * TM.speed;
+      var dt = real * TM.speed * (now < E.boostState(st).to ? 2 : 1);
       var stepSec = TM.speed >= 1000 ? 5 : TM.speed > 1 ? 1 : real > 2 ? 1 : 0.2;
       var n = Math.min(2000, Math.ceil(dt / stepSec));
       for (var i = 0; i < n; i++) { TM.Dev.tick(st); E.step(st, dt / n); }

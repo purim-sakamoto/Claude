@@ -38,15 +38,6 @@ TM.DATA = {
     { id: 'uw', name: '尿素水（AUS32）', unit: 'kg', cap: 0, grp: 'liq' },
     { id: 'hp', name: '高純度薬品', unit: 'kg', cap: 0, grp: 'liq' },
     { id: 'h2', name: '水素', unit: 'kg', cap: 0, grp: 'liq' },
-    { id: 'fuel', name: 'ロケット燃料', unit: 't', cap: 0, grp: 'space' },
-    { id: 'orbit', name: '軌道資材', unit: 't', cap: null, grp: 'space' },
-    { id: 'moonfe', name: '月の砂鉄', unit: 't', cap: null, grp: 'space' },
-    { id: 'vhcl', name: '金星の塩化水素', unit: 't', cap: null, grp: 'space' },
-    { id: 'aster', name: '小惑星の鉄', unit: 't', cap: null, grp: 'space' },
-    { id: 'sfecl3', name: '宇宙製 塩化第二鉄', unit: 't', cap: null, grp: 'space' },
-    { id: 'star', name: '恒星エネルギー', unit: '', cap: null, grp: 'space' },
-    { id: 'ism', name: '星間物質', unit: '', cap: null, grp: 'space' },
-    { id: 'gfe', name: '星の鉄', unit: '', cap: null, grp: 'space' },
     { id: 'research', name: '技術', unit: 'pt', cap: 100, grp: 'lab' },
     { id: 'credit', name: '信用', unit: '', cap: null, grp: 'money' }
   ],
@@ -60,7 +51,6 @@ TM.DATA = {
     { id: 'prod', name: '売り物（缶・箱）' },
     { id: 'water', name: '水・排水' },
     { id: 'lab', name: '研究' },
-    { id: 'space', name: '宇宙' }
   ],
 
   /* ロット：検査待ち → 合格 */
@@ -295,58 +285,12 @@ TM.DATA = {
     { id: 'rnd2', name: '研究都市', group: '研究', desc: '大学と企業が集まる研究の街。', unlock: { era: 4 },
       cost: { money: 2e8 }, ratio: 1.32, space: 0, proc: { in: { money: 1500 }, out: { research: 1500 }, power: 50, toggle: true } },
     { id: 'mega4', name: '閉じた系', group: '大型', desc: '水素・酸・銅・水・缶・汚泥。捨てるものをなくす。循環率90%以上で建設できる。8段階。', unlock: { tech: 'closedloop' },
-      cost: { money: 2e9 }, ratio: 1.5, space: 0, stages: 8, buildCond: { circ: 0.9 }, onComplete: { era: 5 } },
-
-    /* ---- 時代5：空 ---- */
-    { id: 'electrolysis', name: '水電解装置', group: '宇宙', desc: '純水を電気で分けて、水素をつくる。', unlock: { tech: 'propellant' },
-      cost: { money: 2e10 }, ratio: 1.3, space: 0, effects: { cap: { h2: 5000 } }, proc: { in: { pw: 20 }, out: { h2: 2 }, power: 40, toggle: true } },
-    { id: 'fusionpower', name: '核融合発電所', group: '宇宙', desc: '重水素の火で、電気を。', unlock: { tech: 'moon' },
-      cost: { money: 1e11 }, ratio: 1.35, space: 0, effects: { power: 3000 } },
-    { id: 'fuelplant', name: '液化水素プラント', group: '宇宙', desc: '集めた水素を冷やして液体に。ロケット燃料になる。', unlock: { era: 5 },
-      cost: { money: 5e9 }, ratio: 1.3, space: 0, effects: { cap: { fuel: 200 } }, proc: { in: { h2: 2 }, out: { fuel: 0.5 }, power: 50, toggle: true } },
-    { id: 'launch', name: '打ち上げ場', group: '宇宙', desc: '燃料を燃やして、資材を軌道へ上げる。', unlock: { era: 5 },
-      cost: { money: 1e10 }, ratio: 1.35, space: 0, effects: { cap: { orbit: 500 } }, proc: { in: { fuel: 0.5, money: 2e5 }, out: { orbit: 0.2 }, toggle: true } },
-    { id: 'moonplant', name: '月面溶解プラント', group: '宇宙', desc: '月の砂には鉄が混じっている。地球の塩酸で溶かす。', unlock: { tech: 'moon' },
-      cost: { orbit: 60, money: 5e9 }, ratio: 1.3, space: 0, effects: { cap: { moonfe: 2000 } }, proc: { in: { orbit: 0.01, money: 1e5 }, out: { moonfe: 2 }, toggle: true } },
-    { id: 'venus', name: '金星浮遊プラント', group: '宇宙', desc: '金星の雲は硫酸と塩化水素でできている。浮かんで、集める。', unlock: { tech: 'venus' },
-      cost: { orbit: 150, money: 2e10 }, ratio: 1.3, space: 0, effects: { cap: { vhcl: 3000 } }, proc: { out: { vhcl: 5 }, in: {}, toggle: true } },
-    { id: 'asteroid', name: '小惑星溶解船', group: '宇宙', desc: '鉄とニッケルの塊を、まるごと酸に沈める。', unlock: { tech: 'asteroid' },
-      cost: { orbit: 500, money: 5e11 }, ratio: 1.3, space: 0, effects: { cap: { aster: 10000 } }, proc: { in: { vhcl: 1 }, out: { aster: 5 }, toggle: true } },
-    { id: 'orbreactor', name: '軌道上反応槽', group: '宇宙', desc: '無重力の反応槽。月の鉄と金星の塩化水素から、宇宙製の塩化第二鉄を。', unlock: { tech: 'venus' },
-      cost: { orbit: 200, money: 3e10 }, ratio: 1.3, space: 0, effects: { cap: { sfecl3: 5000 } }, proc: { in: { moonfe: 1, vhcl: 1.5 }, out: { sfecl3: 4 }, toggle: true } },
-    { id: 'asteroidreactor', name: '小惑星反応炉', group: '宇宙', desc: '小惑星の鉄を、宇宙製の塩化第二鉄に。', unlock: { tech: 'asteroid' },
-      cost: { orbit: 1500, money: 2e12 }, ratio: 1.3, space: 0, proc: { in: { aster: 4, vhcl: 2 }, out: { sfecl3: 8 }, toggle: true } },
-    { id: 'spacewater', name: '宇宙の水処理', group: '宇宙', desc: '月面基地と軌道ステーションの水を、宇宙製の凝集剤で澄ませる。', unlock: { tech: 'moon' },
-      cost: { orbit: 100, money: 1e10 }, ratio: 1.25, space: 0, effects: { gmul: 1.1 }, proc: { in: { sfecl3: 0.5 }, out: { money: 4e8 }, toggle: true } },
-    { id: 'orbtank', name: '軌道上タンク', group: '宇宙', desc: '宇宙で液をためる。', unlock: { tech: 'moon' },
-      cost: { orbit: 80, money: 3e10 }, ratio: 1.3, space: 0, effects: { cap: { orbit: 1000, moonfe: 3000, sfecl3: 5000, vhcl: 3000, fuel: 300 } } },
-    { id: 'spacelab', name: '軌道研究所', group: '宇宙', desc: '無重力で、地上ではできない実験を。', unlock: { era: 5 },
-      cost: { orbit: 50, money: 2e10 }, ratio: 1.3, space: 0, proc: { in: { money: 1e5 }, out: { research: 1e5 }, toggle: true } },
-    { id: 'mega5', name: '軌道エレベーター', group: '大型', desc: '地球と宇宙を一本の綱でつなぐ。10段階。', unlock: { tech: 'elevator' },
-      cost: { orbit: 400, money: 2e13 }, ratio: 1.5, space: 0, stages: 10, onComplete: { era: 6 } },
-
-    /* ---- 時代6：星 ---- */
-    { id: 'starfurnace', name: '恒星炉', group: '星', desc: '鉄は、星が最後につくる元素。星の芯を炉にする。', unlock: { era: 6 },
-      cost: { orbit: 5000, money: 5e13 }, ratio: 1.7, space: 0, effects: { gmul: 3, cap: { star: 1e6, gfe: 1e6 } }, proc: { out: { star: 10, gfe: 3 }, in: {}, toggle: true } },
-    { id: 'ismnet', name: '星間雲回収網', group: '星', desc: '星間雲には塩化水素も尿素も漂っている。網で集める。', unlock: { tech: 'ism' },
-      cost: { star: 5000, money: 1e17 }, ratio: 1.7, space: 0, effects: { gmul: 3, cap: { ism: 1e6 } }, proc: { in: { star: 0.5 }, out: { ism: 5 }, toggle: true } },
-    { id: 'galwater', name: '銀河水処理網', group: '星', desc: '銀河じゅうの水を澄ませる。', unlock: { tech: 'galaxy' },
-      cost: { gfe: 2e4, ism: 2e4, money: 1e20 }, ratio: 1.8, space: 0, effects: { gmul: 5 }, proc: { in: { gfe: 0.2, ism: 0.2 }, out: { money: 1e15 }, toggle: true } },
-    { id: 'starlorry', name: '恒星間ローリー', group: '星', desc: '光の速さの手前で、液を運ぶ。', unlock: { tech: 'galaxy' },
-      cost: { star: 1e5, money: 1e22 }, ratio: 1.8, space: 0, effects: { gmul: 5 } },
-    { id: 'alien', name: '異星の商会', group: '星', desc: 'ケイ素の体をもつ取引先。星間物質を高く買ってくれる。', unlock: { tech: 'ism' },
-      cost: { ism: 1e4, money: 1e18 }, ratio: 1.7, space: 0, effects: { gmul: 3 }, proc: { in: { ism: 0.3 }, out: { money: 1e13 }, toggle: true } },
-    { id: 'starlab', name: '恒星計算機', group: '星', desc: '星ひとつぶんの計算機。', unlock: { era: 6 },
-      cost: { star: 2000, money: 1e16 }, ratio: 1.4, space: 0, proc: { in: { star: 0.1 }, out: { research: 1e8 }, toggle: true } },
-    { id: 'starstore', name: '星間倉庫', group: '星', desc: '星の鉄と星間物質をためる。', unlock: { era: 6 },
-      cost: { money: 5e16 }, ratio: 1.6, space: 0, effects: { cap: { star: 1e7, gfe: 1e7, ism: 1e7 } } },
-    { id: 'final', name: '始まりの釜', group: '大型', desc: '宇宙そのものを、一つの釜に。10段階。', unlock: { tech: 'origin' },
-      cost: { money: 3e33, star: 1e6, ism: 1e6, gfe: 1e6 }, ratio: 1e3, ratioRes: { star: 2.5, ism: 2.5, gfe: 2.5 }, space: 0, stages: 10, onComplete: { ending: true } }
+      cost: { money: 2e9 }, ratio: 1.5, space: 0, stages: 8, buildCond: { circ: 0.9 }, onComplete: { era: 5 } }
   ],
 
   /* フック：まだ買えない先の設備・技術の名前だけを見せる */
   teasers: ['ベルトコンベア', '自動洗缶ライン', 'フォークリフト', '天井クレーン', 'タンクローリー', '分析室', '純水装置', 'ICP発光分光分析装置', '脱銅処理設備'],
-  teaserTechs: ['濃縮', '脱銅', '超純水', '尿素水', '推進剤', '大気化学', '恒星元素合成'],
+  teaserTechs: ['濃縮', '脱銅', '超純水', '尿素水', '核融合', 'データセンター', '推進剤'],
 
   /* ---------------- 技術 ---------------- */
   techs: [
@@ -399,16 +343,7 @@ TM.DATA = {
     { id: 'export', name: '海の向こう', desc: '船に積めば、海外の客にも届く。', cost: { research: 3e+07 }, era: 4, req: ['highpurity'], effects: [['zone', 1]] },
     { id: 'closedloop', name: '閉じた系', desc: 'すべてを回収すれば、工場は一つの生き物になる。', cost: { research: 6e+07 }, era: 4, req: ['loop', 'ureasyn', 'export'] },
 
-    { id: 'propellant', name: '推進剤', desc: '捨てていた泡が、空へ昇る燃料になる。', cost: { research: 5e8 }, era: 5, effects: [['bld.fuelplant', 1]] },
-    { id: 'moon', name: '月面冶金', desc: '月の砂には、鉄が混じっている。', cost: { research: 1e9 }, era: 5, req: ['propellant'] },
-    { id: 'venus', name: '大気化学', desc: '金星の雲は硫酸と塩化水素でできている。仕入れ先が一つ増えた。', cost: { research: 3e9 }, era: 5, req: ['moon'] },
-    { id: 'asteroid', name: '小惑星', desc: '鉄とニッケルの塊が、太陽のまわりを回っている。', cost: { research: 1e10 }, era: 5, req: ['venus'] },
-    { id: 'elevator', name: '軌道エレベーター', desc: '打ち上げずに、昇る。', cost: { research: 5e10 }, era: 5, req: ['asteroid'] },
 
-    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 5e12 }, era: 6, effects: [['global', 1]] },
-    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 3e13 }, era: 6, req: ['nucleo'] },
-    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 1e16 }, era: 6, req: ['ism'] },
-    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 5e18 }, era: 6, req: ['galaxy'] }
   ],
 
   /* ---------------- 改善（一度だけ買える強化） ---------------- */
@@ -462,12 +397,6 @@ TM.DATA = {
     { id: 'h2burner', name: '水素ボイラー', desc: '集めた水素を燃料に。濃縮・尿素溶解 +30%', cost: { money: 5e7 }, unlock: { bld: { h2rec: 1 } }, effects: [['bld.conc', 0.3], ['bld.ureadis', 0.3]] },
     { id: 'solar', name: '屋根の太陽光', desc: '使える電気 +30%', cost: { money: 3e7 }, unlock: { era: 4 }, effects: [['power', 0.3]] },
     { id: 'semigrade', name: '半導体グレード', desc: '高純度薬品の単価 +50%', cost: { money: 3e8 }, unlock: { bld: { hpline: 1 } }, effects: [['price.b_hp', 0.5]] },
-    { id: 'cryo', name: '断熱タンク', desc: 'ロケット燃料・軌道資材の置き場 ×3', cost: { money: 2e10 }, unlock: { era: 5 }, effects: [['cap.fuel', 2], ['cap.orbit', 2]] },
-    { id: 'reuse_rocket', name: '再使用ロケット', desc: '打ち上げ場 +100%', cost: { money: 1e11 }, unlock: { bld: { launch: 1 } }, effects: [['bld.launch', 1]] },
-    { id: 'zerog', name: '無重力の撹拌', desc: '宇宙の反応 +100%', cost: { money: 2e12 }, unlock: { bld: { orbreactor: 1 } }, effects: [['bld.orbreactor', 1], ['bld.asteroidreactor', 1]] },
-    { id: 'stargrade', name: '宇宙規格', desc: '宇宙の水処理 +100%', cost: { money: 5e12 }, unlock: { bld: { spacewater: 3 } }, effects: [['bld.spacewater', 1]] },
-    { id: 'dyson', name: '星を包む配管', desc: 'すべての生産 ×2', cost: { money: 1e19, star: 1e5 }, unlock: { bld: { starfurnace: 3 } }, effects: [['global', 1]] },
-    { id: 'lightcone', name: '光円錐の配車', desc: 'すべての生産 ×2', cost: { money: 1e24, ism: 1e5 }, unlock: { bld: { starlorry: 1 } }, effects: [['global', 1]] }
   ],
 
   /* 小分けラインのモジュール（能力：缶/秒） */
@@ -568,7 +497,7 @@ TM.DATA = {
       make: [['job', 'dissolve'], ['act', 'sink'], ['upg', 'gloves'], ['bld', 'kama'], ['upg', 'stirrer'], ['bld', 'reactor'], ['bld', 'bigreactor'], ['bld', 'megareactor']],
       slots: [['bld', 'kama'], ['upg', 'bigkama'], ['bld', 'reactor'], ['bld', 'bigreactor']],
       operator: [['job', 'operate']],
-      power: [['bld', 'powerc'], ['bld', 'substation'], ['upg', 'solar'], ['bld', 'fusionpower']],
+      power: [['bld', 'powerc'], ['bld', 'substation'], ['upg', 'solar'], ['bld', 'solarfarm'], ['bld', 'fusion']],
       handling: [['job', 'handle'], ['upg', 'handlift'], ['bld', 'fork'], ['bld', 'crane'], ['bld', 'autowh']],
       vent: [['bld', 'vent'], ['bld', 'scrubber'], ['bld', 'msscrub']],
       check: [['job', 'check'], ['upg', 'hydrometer'], ['bld', 'lab'], ['bld', 'i_refract'], ['bld', 'lab2'], ['upg', 'lotsize']],
@@ -685,10 +614,6 @@ TM.DATA = {
     { id: 'purewater_fight', cond: { all: [{ bld: { i_icp: 1 } }, { bld: { ureadis: 2 } }] }, text: '尿素水が売れるほど、分析室の水が細る。' },
     { id: 'era4', cond: { era: 4 }, text: '捨てていたものが、まだたくさんある。' },
     { id: 'circ', cond: { circ: 0.5 }, text: '水素も、酸も、水も、銅も。少しずつ、輪が閉じていく。' },
-    { id: 'era5', cond: { era: 5 }, text: 'あの泡を覚えているか。ぽんと鳴った、あの泡を。いま、それで空へ昇る。' },
-    { id: 'venus', cond: { bld: { venus: 1 } }, text: '金星の雲は硫酸と塩化水素でできている。仕入れ先が一つ増えた。' },
-    { id: 'era6', cond: { era: 6 }, text: '鉄は、星が最後につくるもの。' },
-    { id: 'ash', cond: { tech: 'nucleo' }, text: 'ずっと、星の灰を溶かしていた。' }
   ],
 
   /* ---------------- 作業メモ ---------------- */
@@ -720,12 +645,7 @@ TM.DATA = {
     { text: '受託案件を一つ製品化する', done: { stat: { contractsDone: 1 } } },
     { text: '貯蔵出荷基地を完成させる', done: { era: 4 } },
     { text: '循環率を90%にする', done: { circ: 0.9 } },
-    { text: '閉じた系を完成させる', done: { era: 5 } },
-    { text: '月で鉄を溶かす', done: { bld: { moonplant: 1 } } },
-    { text: '金星の雲から酸を集める', done: { bld: { venus: 1 } } },
-    { text: '軌道エレベーターを完成させる', done: { era: 6 } },
-    { text: '恒星炉に火を入れる', done: { bld: { starfurnace: 1 } } },
-    { text: '始まりの釜を完成させる', done: { stat: { ended: 1 } } }
+    { text: '閉じた系を完成させる', done: { era: 5 } }
   ],
 
   /* ランダムな良い出来事 */
