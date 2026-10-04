@@ -50,6 +50,9 @@ TM.WarUI = (function () {
           ships.appendChild(el('div', { class: 'row' }, [b, el('div', { class: 'info', text: '造るのに ' + U.fmtTime(sh.sec) + '（ドック1つで1隻ずつ）' })]));
           R.ships[sh.id] = { b: b, cs: cs };
         });
+        var ab = el('div', { class: 'warbar' }, [el('span', { class: 'dim', text: '空いたドックで造り続ける：' })]);
+        [['', '止める']].concat(W.ships.map(function (sh) { return [sh.id, sh.name]; })).forEach(function (x) { ab.appendChild(el('button', { class: 'mini wauto', 'data-a': 'wauto', 'data-id': x[0], text: x[1] })); });
+        ships.appendChild(ab);
         R.queue = el('div', { class: 'note' }); ships.appendChild(R.queue);
         box.appendChild(ships);
       }
@@ -75,6 +78,7 @@ TM.WarUI = (function () {
           '　敵の次の反撃まで ' + U.fmtTime(Math.max(0, w.raidT)) + (sel ? '　選んでいる星系：<b>' + TM.War.sysDef(sel).name + '</b>（' + f(w.sys[sel].str) + '）' : ''));
         [].forEach.call(document.querySelectorAll('.wfrac'), function (b) { b.classList.toggle('on', +b.getAttribute('data-v') === frac); });
         W.ships.forEach(function (sh) { var r = R.ships[sh.id]; H.setHTML(r.cs, H.costText(s, sh.cost)); r.b.classList.toggle('na', !TM.War.canBuild(s, sh.id)); });
+        [].forEach.call(document.querySelectorAll('.wauto'), function (b) { b.classList.toggle('on', (b.getAttribute('data-id') || null) === (w.auto || null)); });
         var docks = E.sumEffect(s, 'dock');
         H.setHTML(R.queue, 'ドック ' + docks + '　造船中 ' + w.queue.length + '隻' + (w.queue.length ? '：' + w.queue.slice(0, 8).map(function (q, i) { var sh = TM.War.shipDef(q.type); return sh.name + (i < docks ? '（' + Math.round(100 - q.left / sh.sec * 100) + '%）' : '（待ち）'); }).join('、') : '') + '　これまでに造った艦 ' + (w.built || 0) + '隻');
         void sup;
@@ -91,6 +95,7 @@ TM.WarUI = (function () {
   TM.UIActions = TM.UIActions || {};
   TM.UIActions.wprio = function (t, id, v) { TM.War.setPrio(S(), id, v); };
   TM.UIActions.wship = function (t, id) { TM.War.buildShip(S(), id); };
+  TM.UIActions.wauto = function (t, id) { TM.War.setAuto(S(), id); };
   TM.UIActions.wfrac = function (t, id, v) { frac = v || 1; };
 
   function toXY(x, y) { return [30 + x / 100 * (cv.width - 60), 20 + y / 100 * (cv.height - 40)]; }

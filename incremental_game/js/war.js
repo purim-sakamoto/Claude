@@ -133,7 +133,7 @@ TM.War = (function () {
   function stepStrategy(s, d, w, dt, m) {
     var glob = d.glob || 1;
     /* 造船 */
-    var docks = E.sumEffect(s, 'dock'), sp = (1 + E.sumEffect(s, 'dockSpeed')) * Math.sqrt(glob);
+    var docks = E.sumEffect(s, 'dock'), sp = 1 + E.sumEffect(s, 'dockSpeed');
     for (var qi = 0; qi < w.queue.length && qi < docks; qi++) w.queue[qi].left -= dt * sp;
     for (var qj = w.queue.length - 1; qj >= 0; qj--) {
       if (w.queue[qj].left <= 0) {
@@ -142,6 +142,8 @@ TM.War = (function () {
         w.queue.splice(qj, 1);
       }
     }
+    /* 自動建造：空いたドックに、選んだ艦を入れ続ける（物資が足りる間） */
+    if (w.auto) for (var ai = 0; ai < docks && w.queue.length < docks; ai++) if (!buildShip(s, w.auto)) break;
     /* 補給（艦の維持） */
     var str = totalStr(s), ratio = 1;
     if (str > 0) {
@@ -183,7 +185,8 @@ TM.War = (function () {
     W.systems.forEach(function (x) {
       var X = w.sys[x.id];
       if (X.owner === 'enemy' && !X.battle && X.def < X.base) X.def = Math.min(X.base, X.def + X.base * W.regen * dt);
-      if (X.owner === 'us' && !x.home && !X.battle) X.def = Math.min(10 * (x.reward || 1), X.def + 0.01 * dt);
+      /* 取った星系には砦が育つ（もとの守りの4割まで） */
+      if (X.owner === 'us' && !x.home && !X.battle) { var fort = Math.max(10 * (x.reward || 1), 0.4 * (x.def || 0)); X.def = Math.min(fort, X.def + fort * 0.002 * dt); }
     });
     /* 敵の反撃 */
     w.raidT -= dt;
@@ -237,12 +240,14 @@ TM.War = (function () {
     });
     if (!cands.length) return;
     var c = cands[Math.floor(Math.random() * cands.length)];
-    var src = w.sys[c[0]], str = Math.max(5, src.base * W.raidStr);
+    /* 反撃の強さは、取り返したい星系のもとの守りが目安 */
+    var str = Math.max(5, (sysDef(c[1]).def || 10) * W.raidStr * (0.8 + 0.4 * Math.random()));
     w.moves.push({ id: ++w.seq, side: 'enemy', from: c[0], to: c[1], str: str, t: 0, dur: laneTime(c[0], c[1]) });
     wlog(s, sysDef(c[0]).name + 'から敵の艦隊が出た。行き先は' + sysDef(c[1]).name + '。', 'bad');
   }
 
   /* ================= 操作 ================= */
+  function setAuto(s, type) { var w = ensure(s); w.auto = type && shipDef(type) ? type : null; }
   function setPrio(s, fid, v) { var w = ensure(s); if (w.fronts[fid]) w.fronts[fid].prio = Math.max(1, Math.min(3, v)); }
   function canBuild(s, type) { var sh = shipDef(type); return sh && s.era >= 10 && E.sumEffect(s, 'dock') > 0 && s.war.queue.length < 30 && E.canPay(s, sh.cost); }
   function buildShip(s, type) {
@@ -264,7 +269,7 @@ TM.War = (function () {
   }
 
   return {
-    init: init, step: step, onEra: onEra, frontsWon: frontsWon, frontNeed: frontNeed, ensure: ensure,
+    init: init, step: step, setAuto: setAuto, onEra: onEra, frontsWon: frontsWon, frontNeed: frontNeed, ensure: ensure,
     setPrio: setPrio, buildShip: buildShip, canBuild: canBuild, send: send, adj: adj, sysDef: sysDef, supplied: supplied,
     totalStr: totalStr, laneTime: laneTime, shipDef: shipDef, RES4: RES4
   };

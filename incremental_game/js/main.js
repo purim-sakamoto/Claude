@@ -82,10 +82,13 @@
     if (st.ending === 2 && box.getAttribute('data-st') !== '2') {
       box.setAttribute('data-st', '2'); box.classList.remove('hidden');
       var days = (Date.now() - st.started) / 86400000;
-      var lines = ['泡が立つ。', '星が、細くなっていく。', '液が、うすい緑に染まった。', '', '―――', '',
+      var w = st.war || {}, own = 0; for (var k in (w.sys || {})) if (w.sys[k].owner === 'us') own++;
+      var lines = ['泡が立つ。', '星が、細くなっていく。', '液が、うすい緑に染まった。', '',
+        '最初の釜は、鉄くずと塩酸だった。', '最後の釜は、宇宙そのものだった。', '', '―――', '',
         'タイキ薬品工業　ミニゲーム', '', '遊んでくれて、ありがとうございました。', '',
         '遊び始めてから　' + days.toFixed(1) + '日', '稼いだお金　' + U.fmt(st.stats.earned) + '円', '売った缶　' + U.fmt(st.stats.cansSold) + '缶',
         '洗った缶　' + U.fmt(st.stats.washed) + '缶', '逃がした水素　' + U.fmt(st.stats.h2) + 'kg'];
+      if (w.built) lines.push('造った艦　' + U.fmt(w.built) + '隻', '取った星系　' + own + '/' + TM.DATA.war.systems.length);
       box.innerHTML = '<div class="credits">' + lines.map(function (l) { return '<div class="fade">' + (l || '&nbsp;') + '</div>'; }).join('') + '</div>' +
         '<div style="margin-top:20px"><button class="btn" id="end_cont">このまま眺める</button> <button class="btn" id="end_new">はじめから</button></div>';
       document.getElementById('end_cont').onclick = function () { st.ending = 3; box.classList.add('hidden'); E.save(st); };

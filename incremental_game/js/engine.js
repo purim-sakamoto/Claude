@@ -282,7 +282,7 @@ TM.Engine = (function () {
       if (want <= 0) { d.procs.push({ key: key, name: name, inp: inp, out: out, rate: 0, want: units, eff: 0, reason: reason || '停止', wt: 'other' }); return 0; }
       for (k in inp) {
         var need = inp[k] * want;
-        var avail = k === 'money' ? s.res.money + d.creditLimit * 0.95 : s.res[k];
+        var avail = k === 'money' ? s.res.money + d.creditLimit * 0.95 : s.res[k] - (warHold && warHold[k] || 0);
         if (need > 0 && avail < need) { var rr = Math.max(0, avail) / need; if (rr < ratio) { ratio = rr; reason = '入力不足：' + resName(s, k); wk = k; wt = 'in'; } }
       }
       for (k in out) {
@@ -347,7 +347,21 @@ TM.Engine = (function () {
     }
 
     /* 設備のプロセス（製造が先、洗缶が後：排水の余裕は製造に回す） */
-    D.buildings.forEach(function (b) { if (!IN_PROCS['bld.' + b.id] && !TREAT[b.id] && b.group !== '容器') runBld(b); });
+    /* 戦時統制：軍需工場が原料を先に取る */
+    var warHold = null;
+    /* 戦争が終われば、軍需工場は止まる */
+    d.warIdle = {};
+    if (s.era >= 9 && s.era <= 10) {
+      D.buildings.forEach(function (b) { if (b.ph === 'war') runBld(b); });
+      /* 次のティックに軍需工場が使う分は、ほかの設備が手を付けない */
+      warHold = {};
+      D.buildings.forEach(function (b) {
+        var p = b.proc; if (b.ph !== 'war' || !p || !p.in || !s.bld[b.id].n || d.warIdle[b.id]) return;
+        var u = (p.toggle ? s.bld[b.id].on : s.bld[b.id].n) * mul(m, 'bld.' + b.id) * glob * 2 * dt;
+        for (var k in p.in) if (k !== 'money') warHold[k] = (warHold[k] || 0) + p.in[k] * u;
+      });
+    }
+    D.buildings.forEach(function (b) { if (b.ph !== 'war' && !IN_PROCS['bld.' + b.id] && !TREAT[b.id] && b.group !== '容器') runBld(b); });
     runJob(JOB.wash);
     D.buildings.forEach(function (b) { if (b.group === '容器') runBld(b); });
     function runBld(b) {
@@ -359,6 +373,8 @@ TM.Engine = (function () {
       if (b.id === 'canbuy' && s.res.can >= d.cap.can * 0.3) { on = 0; reason = '缶は足りている'; }
       if (p.operator === 'operate') { if (opActive[b.id] < on) reason = '運転の人手が足りない'; on = opActive[b.id]; }
       if (p.needs && !hasBld(s, p.needs)) { on = 0; reason = '必要な設備がない'; }
+      /* 軍需工場は、1時間分の在庫があれば休む（原料をほかに回す） */
+      if (b.ph === 'war' && on > 0) { var full = true; for (var ok in p.out) if (s.res[ok] < p.out[ok] * on * glob * 3600) full = false; if (full) { on = 0; reason = '在庫は十分'; d.warIdle[b.id] = true; } }
       /* データセンターは冷却塔で冷やせる分だけ動く */
       if (p.cooled) { var cl = Math.floor((d.coolCap || 0) - (d.coolUsed || 0) + 1e-9); if (cl < on) { on = Math.max(0, cl); reason = reason || '冷やしきれない（冷却塔が足りない）'; } d.coolUsed = (d.coolUsed || 0) + on; }
       var eff = mul(m, 'bld.' + b.id) * glob;
@@ -431,7 +447,7 @@ TM.Engine = (function () {
     doContracts(s, d, m, dt, glob);
 
     /* 戦争（時代9から） */
-    if (s.era >= 9 && TM.War) TM.War.step(s, d, dt);
+    if (s.era >= 9 && s.era <= 10 && TM.War) TM.War.step(s, d, dt);
 
     /* 給与と人の増加 */
     /* 給料はいつも払う（足りなければ与信枠から借りる） */

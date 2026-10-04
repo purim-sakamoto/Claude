@@ -129,8 +129,8 @@
       cost: { money: 2e14, tf_heat: 40, tf_air: 40, tf_water: 40, tf_life: 40 }, ratio: 1.4, ratioRes: { tf_heat: 1.3, tf_air: 1.3, tf_water: 1.3, tf_life: 1.3 }, space: 0, stages: 10, onComplete: { era: 8 } },
 
     /* ---- 時代8：外太陽系 ---- */
-    { id: 'asteroid', ph: 'outer', name: '小惑星溶解船', group: '小惑星帯', desc: '鉄とニッケルの塊を、まるごと酸に沈める。', unlock: { era: 8 },
-      cost: { money: 3e15, orbit: 3000 }, ratio: 1.28, space: 0, proc: { in: { vhcl: 2 }, out: { aster: 6 }, toggle: true } },
+    { id: 'asteroid', ph: 'outer', name: '小惑星溶解船', group: '小惑星帯', desc: '鉄とニッケルの塊を、核融合の熱でまるごと溶かす。', unlock: { era: 8 },
+      cost: { money: 3e15, orbit: 3000 }, ratio: 1.28, space: 0, proc: { out: { aster: 6 }, power: 3e4, toggle: true } },
     { id: 'asteroidreactor', ph: 'outer', name: '小惑星反応炉', group: '小惑星帯', desc: '小惑星の鉄を、宇宙製の塩化第二鉄に。', unlock: { era: 8 },
       cost: { money: 4e15, orbit: 3000 }, ratio: 1.28, space: 0, proc: { in: { aster: 4, vhcl: 3 }, out: { sfecl3: 16 }, toggle: true } },
     { id: 'jupscoop', ph: 'outer', name: '木星の大気採取船', group: '木星と土星', desc: '木星の雲をすくって、ヘリウム3を集める。', unlock: { tech: 'jupiter' },
@@ -154,43 +154,43 @@
 
     /* ---- 時代9〜10：戦時 ---- */
     { id: 'wfuel', ph: 'war', name: '推進剤工場', group: '軍需工場', desc: 'ロケット燃料を、艦の推進剤に仕立てる。', unlock: { era: 9 },
-      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { fuel: 6 }, out: { w_fuel: 3 }, toggle: true } },
+      cost: { money: 1e17 }, ratio: 1.25, space: 0, proc: { in: { fuel: 6 }, out: { w_fuel: 3 }, toggle: true } },
     { id: 'wcool', ph: 'war', name: '冷却材工場', group: '軍需工場', desc: '氷を溶かし、純度を上げて、艦の冷却材に。', unlock: { era: 9 },
-      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { ice: 6 }, out: { w_cool: 3 }, power: 1e5, toggle: true } },
+      cost: { money: 1e17 }, ratio: 1.25, space: 0, proc: { in: { ice: 6 }, out: { w_cool: 3 }, power: 1e5, toggle: true } },
     { id: 'warmor', ph: 'war', name: '装甲材の圧延所', group: '軍需工場', desc: '小惑星の鉄を、装甲の板に。', unlock: { era: 9 },
-      cost: { money: 3e17 }, ratio: 1.25, space: 0, proc: { in: { aster: 6 }, out: { w_armor: 3 }, power: 2e5, toggle: true } },
+      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { aster: 6 }, out: { w_armor: 3 }, power: 2e5, toggle: true } },
     { id: 'wwater', ph: 'war', name: '浄水剤工場', group: '軍需工場', desc: '前線の水を澄ませるのは、うちの液だ。', unlock: { era: 9 },
-      cost: { money: 2e17 }, ratio: 1.25, space: 0, proc: { in: { sfecl3: 6 }, out: { w_water: 3 }, toggle: true } },
+      cost: { money: 1e17 }, ratio: 1.25, space: 0, proc: { in: { sfecl3: 6 }, out: { w_water: 3 }, toggle: true } },
     { id: 'wterminal', ph: 'war', name: '宇宙港ターミナル', group: '兵站', desc: '物資を仕分けて、船に積む。積める量が増える。', unlock: { era: 9 },
-      cost: { money: 3e17 }, ratio: 1.3, space: 0, effects: { wload: 4 } },
+      cost: { money: 2e17 }, ratio: 1.3, space: 0, effects: { wload: 4 } },
     { id: 'convoy', ph: 'war', name: '輸送船団', group: '兵站', desc: '前線へ物資を運ぶ船団。運べる量が増える。', unlock: { era: 9 },
-      cost: { money: 2.5e17 }, ratio: 1.26, space: 0, effects: { wlift: 3 } },
+      cost: { money: 1e17 }, ratio: 1.26, space: 0, effects: { wlift: 3 } },
     { id: 'fdepot', ph: 'war', name: '前線補給基地', group: '兵站', desc: '前線のそばに物資をためておく。補給が途切れても、しばらく持ちこたえる。', unlock: { tech: 'depotwar' },
       cost: { money: 5e17, w_armor: 50 }, ratio: 1.35, space: 0, effects: { wbuf: 1 } },
     { id: 'mega9', ph: 'war', name: '反攻艦隊の造船所', group: '大型', desc: '4つの前線をすべて押し返したら、こちらから打って出る。10段階で完成。', unlock: { tech: 'counter' },
-      cost: { money: 1e18, w_armor: 400 }, ratio: 1.42, ratioRes: { w_armor: 1.3 }, space: 0, stages: 10, buildCond: { war: 'fronts' }, onComplete: { era: 10 } },
+      cost: { money: 2e17, w_armor: 400 }, ratio: 1.3, ratioRes: { w_armor: 1.3 }, space: 0, stages: 10, buildCond: { war: 'fronts' }, onComplete: { era: 10 } },
     { id: 'dock', ph: 'war', name: '宇宙ドック', group: '造船', desc: '艦を造る船台。多いほど、同時にたくさん造れる。', unlock: { era: 10 },
-      cost: { money: 3e18, w_armor: 300 }, ratio: 1.35, space: 0, effects: { dock: 1 } },
+      cost: { money: 3e17, w_armor: 300 }, ratio: 1.5, space: 0, effects: { dock: 1 } },
     { id: 'shipyard2', ph: 'war', name: '自動造船ライン', group: '造船', desc: '艦の部品を、ラインで流して組む。造船が速くなる。', unlock: { tech: 'autoyard' },
-      cost: { money: 1e19, w_armor: 1000 }, ratio: 1.4, space: 0, effects: { dockSpeed: 0.5 } },
+      cost: { money: 1e18, w_armor: 1000 }, ratio: 1.4, space: 0, effects: { dockSpeed: 0.5 } },
     { id: 'fleetdepot', ph: 'war', name: '艦隊補給所', group: '造船', desc: '艦に物資を積む。遠くで戦う艦の補給が続く。', unlock: { era: 10 },
-      cost: { money: 4e18 }, ratio: 1.35, space: 0, effects: { fsupply: 1 } },
+      cost: { money: 4e17 }, ratio: 1.35, space: 0, effects: { fsupply: 1 } },
 
     /* ---- 時代11：果て ---- */
     { id: 'starfurnace', ph: 'end', name: '恒星炉', group: '星', desc: '鉄は、星が最後につくる元素。星の芯を炉にする。', unlock: { era: 11 },
-      cost: { money: 5e21 }, ratio: 1.35, space: 0, proc: { out: { star: 10, gfe: 3 }, in: {}, toggle: true } },
+      cost: { money: 2e18 }, ratio: 1.3, space: 0, proc: { out: { star: 10, gfe: 3 }, in: {}, toggle: true } },
     { id: 'ismnet', ph: 'end', name: '星間雲回収網', group: '星', desc: '星間雲には塩化水素も尿素も漂っている。網で集める。', unlock: { tech: 'ism' },
-      cost: { money: 1e22, star: 5000 }, ratio: 1.35, space: 0, proc: { in: { star: 1 }, out: { ism: 5 }, toggle: true } },
+      cost: { money: 5e18, star: 5000 }, ratio: 1.35, space: 0, proc: { in: { star: 1 }, out: { ism: 5 }, toggle: true } },
     { id: 'galwater', ph: 'end', name: '銀河水処理網', group: '星', desc: '銀河じゅうの水を澄ませる。', unlock: { tech: 'galaxy' },
-      cost: { money: 3e22, gfe: 2e4, ism: 2e4 }, ratio: 1.3, space: 0, proc: { in: { gfe: 2, ism: 2 }, out: { money: 1e19 }, toggle: true } },
+      cost: { money: 1e19, gfe: 2e4, ism: 2e4 }, ratio: 1.3, space: 0, proc: { in: { gfe: 2, ism: 2 }, out: { money: 5e14 }, toggle: true } },
     { id: 'starlorry', ph: 'end', name: '恒星間ローリー', group: '星', desc: '光の速さの手前で、液を運ぶ。すべての生産 +10%（1つごと）。', unlock: { tech: 'galaxy' },
-      cost: { money: 5e22, star: 1e5 }, ratio: 1.5, space: 0, effects: { global: 0.1 } },
+      cost: { money: 2e19, star: 1e5 }, ratio: 1.5, space: 0, effects: { global: 0.1 } },
     { id: 'alien', ph: 'end', name: '異星の商会', group: '星', desc: 'かつての敵。ケイ素の体の取引先。星間物質を高く買ってくれる。', unlock: { tech: 'ism' },
-      cost: { money: 2e22, ism: 1e4 }, ratio: 1.3, space: 0, proc: { in: { ism: 3 }, out: { money: 2e19 }, toggle: true } },
+      cost: { money: 8e18, ism: 1e4 }, ratio: 1.3, space: 0, proc: { in: { ism: 3 }, out: { money: 1e15 }, toggle: true } },
     { id: 'starlab', ph: 'end', name: '恒星計算機', group: '星', desc: '星ひとつぶんの計算機。', unlock: { era: 11 },
-      cost: { money: 1e22, star: 2000 }, ratio: 1.3, space: 0, proc: { in: { star: 0.5 }, out: { research: 1e15 }, toggle: true } },
+      cost: { money: 5e18, star: 2000 }, ratio: 1.3, space: 0, proc: { in: { star: 0.5 }, out: { research: 1e15 }, toggle: true } },
     { id: 'final', ph: 'end', name: '始まりの釜', group: '大型', desc: '宇宙そのものを、一つの釜に。10段階。', unlock: { tech: 'origin' },
-      cost: { money: 1e24, star: 2e5, ism: 2e5, gfe: 1e5 }, ratio: 1.6, ratioRes: { star: 1.4, ism: 1.4, gfe: 1.4 }, space: 0, stages: 10, onComplete: { ending: true } }
+      cost: { money: 5e18, star: 2e5, ism: 2e5, gfe: 1e5 }, ratio: 1.6, ratioRes: { star: 1.4, ism: 1.4, gfe: 1.4 }, space: 0, stages: 10, onComplete: { ending: true } }
   ]);
 
   /* ---------------- 技術 ---------------- */
@@ -231,11 +231,11 @@
     { id: 'tactics', name: '艦隊戦術', desc: '数より、並べ方。艦隊の強さ +30%。', cost: { research: 2e17 }, era: 10, effects: [['fleet', 0.3]] },
     { id: 'tactics2', name: '電子戦', desc: '相手の目をふさぐ。艦隊の強さ +30%。', cost: { research: 6e17 }, era: 10, req: ['tactics'], effects: [['fleet', 0.3]] },
     /* 時代11：果て */
-    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 1e20 }, era: 11 },
-    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 5e20 }, era: 11, req: ['nucleo'] },
-    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 3e21 }, era: 11, req: ['ism'] },
-    { id: 'entropy', name: 'エントロピー', desc: '星が冷えていく。宇宙が、暗くなっていく。', cost: { research: 2e22 }, era: 11, req: ['galaxy'] },
-    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 1e23 }, era: 11, req: ['entropy'] }
+    { id: 'nucleo', name: '恒星元素合成', desc: '鉄は、星が最後につくるもの。ずっと、星の灰を溶かしていた。', cost: { research: 1e19 }, era: 11 },
+    { id: 'ism', name: '星間化学', desc: '星と星のあいだにも、塩化水素と尿素がある。', cost: { research: 5e19 }, era: 11, req: ['nucleo'] },
+    { id: 'galaxy', name: '銀河規模の物流', desc: '一番遠い客にも、ローリーは行く。', cost: { research: 3e20 }, era: 11, req: ['ism'] },
+    { id: 'entropy', name: 'エントロピー', desc: '星が冷えていく。宇宙が、暗くなっていく。', cost: { research: 2e21 }, era: 11, req: ['galaxy'] },
+    { id: 'origin', name: '宇宙反応工学', desc: '宇宙そのものが、巨大な反応槽だった。', cost: { research: 5e21 }, era: 11, req: ['entropy'] }
   ]);
 
   /* ---------------- 改善 ---------------- */
@@ -253,8 +253,8 @@
     { id: 'he3boost', name: '磁場閉じ込めの改良', desc: 'ヘリウム3核融合炉の電気 ×2', cost: { money: 3e16 }, unlock: { bld: { fusion2: 1 } }, effects: [['power', 1]] },
     { id: 'ftl', name: '外惑星の配車網', desc: '外太陽系の採掘 +100%', cost: { money: 4e16 }, unlock: { bld: { europa: 2 } }, effects: [['bld.europa', 1], ['bld.titan', 1], ['bld.jupscoop', 1], ['bld.asteroid', 1]] },
     { id: 'warfac', name: '24時間の軍需工場', desc: '軍需工場 +100%', cost: { money: 2e18 }, unlock: { bld: { warmor: 2 } }, effects: [['bld.wfuel', 1], ['bld.wcool', 1], ['bld.warmor', 1], ['bld.wwater', 1]] },
-    { id: 'dyson', name: '星を包む配管', desc: 'すべての生産 ×2', cost: { money: 1e23, star: 1e5 }, unlock: { bld: { starfurnace: 3 } }, effects: [['global', 1]] },
-    { id: 'lightcone', name: '光円錐の配車', desc: 'すべての生産 ×2', cost: { money: 1e24, ism: 1e5 }, unlock: { bld: { starlorry: 1 } }, effects: [['global', 1]] }
+    { id: 'dyson', name: '星を包む配管', desc: 'すべての生産 ×2', cost: { money: 1e19, star: 1e5 }, unlock: { bld: { starfurnace: 3 } }, effects: [['global', 1]] },
+    { id: 'lightcone', name: '光円錐の配車', desc: 'すべての生産 ×2', cost: { money: 3e19, ism: 1e5 }, unlock: { bld: { starlorry: 1 } }, effects: [['global', 1]] }
   ]);
 
   /* ---------------- 売り物 ---------------- */
@@ -277,11 +277,11 @@
       { id: 'ura', name: '天王星前線', need: { w_fuel: 1.2, w_cool: 0.5, w_armor: 1.0, w_water: 0.5 }, ang: 120 },
       { id: 'nep', name: '海王星前線', need: { w_fuel: 1.0, w_cool: 1.0, w_armor: 1.2, w_water: 0.8 }, ang: 210 }
     ],
-    frontSpeed: 0.006, frontHold: 0.7, frontStart: 25, needScale: 12,
+    frontSpeed: 0.006, frontHold: 0.7, frontStart: 25, needScale: 8,
     ships: [
-      { id: 'frigate', name: '護衛艦', cost: { w_armor: 40, w_fuel: 20, w_cool: 10, compute: 2000 }, str: 1, sec: 120 },
-      { id: 'cruiser', name: '巡洋艦', cost: { w_armor: 200, w_fuel: 90, w_cool: 50, compute: 1e4 }, str: 6, sec: 420 },
-      { id: 'battleship', name: '戦艦', cost: { w_armor: 900, w_fuel: 400, w_cool: 250, compute: 5e4 }, str: 30, sec: 1200 }
+      { id: 'frigate', name: '護衛艦', cost: { w_armor: 40, w_fuel: 20, w_cool: 10, compute: 2000 }, str: 1, sec: 600 },
+      { id: 'cruiser', name: '巡洋艦', cost: { w_armor: 200, w_fuel: 90, w_cool: 50, compute: 1e4 }, str: 6, sec: 1800 },
+      { id: 'battleship', name: '戦艦', cost: { w_armor: 900, w_fuel: 400, w_cool: 250, compute: 5e4 }, str: 30, sec: 5400 }
     ],
     /* 艦1隻の強さ1あたり、1秒に使う物資（補給が切れると強さが半分） */
     upkeep: { w_fuel: 0.002, w_cool: 0.001 },
@@ -289,23 +289,23 @@
       { id: 'sol', name: '太陽系', x: 12, y: 55, owner: 'us', home: true },
       { id: 'cen', name: 'ケンタウルス', x: 26, y: 38, owner: 'free', def: 0, reward: 1 },
       { id: 'bar', name: 'バーナード', x: 27, y: 70, owner: 'free', def: 0, reward: 1 },
-      { id: 'wol', name: 'ウォルフ', x: 40, y: 22, owner: 'enemy', def: 40, reward: 2 },
-      { id: 'las', name: 'ラランド', x: 42, y: 52, owner: 'enemy', def: 60, reward: 2 },
-      { id: 'sir', name: 'シリウス', x: 41, y: 82, owner: 'enemy', def: 50, reward: 2 },
-      { id: 'eps', name: 'エリダヌス', x: 56, y: 35, owner: 'enemy', def: 140, reward: 3 },
-      { id: 'tau', name: 'くじら座タウ', x: 57, y: 68, owner: 'enemy', def: 160, reward: 3 },
-      { id: 'pro', name: 'プロキオン', x: 70, y: 18, owner: 'enemy', def: 300, reward: 4 },
-      { id: 'alt', name: 'アルタイル', x: 71, y: 50, owner: 'enemy', def: 420, reward: 4 },
-      { id: 'veg', name: 'ベガ', x: 72, y: 84, owner: 'enemy', def: 350, reward: 4 },
-      { id: 'arc', name: 'アークトゥルス', x: 85, y: 33, owner: 'enemy', def: 900, reward: 5 },
-      { id: 'den', name: 'デネブ', x: 86, y: 70, owner: 'enemy', def: 1000, reward: 5 },
-      { id: 'cap', name: '敵の母星', x: 95, y: 51, owner: 'enemy', def: 3000, reward: 10, capital: true }
+      { id: 'wol', name: 'ウォルフ', x: 40, y: 22, owner: 'enemy', def: 160, reward: 2 },
+      { id: 'las', name: 'ラランド', x: 42, y: 52, owner: 'enemy', def: 240, reward: 2 },
+      { id: 'sir', name: 'シリウス', x: 41, y: 82, owner: 'enemy', def: 200, reward: 2 },
+      { id: 'eps', name: 'エリダヌス', x: 56, y: 35, owner: 'enemy', def: 560, reward: 3 },
+      { id: 'tau', name: 'くじら座タウ', x: 57, y: 68, owner: 'enemy', def: 640, reward: 3 },
+      { id: 'pro', name: 'プロキオン', x: 70, y: 18, owner: 'enemy', def: 1200, reward: 4 },
+      { id: 'alt', name: 'アルタイル', x: 71, y: 50, owner: 'enemy', def: 1680, reward: 4 },
+      { id: 'veg', name: 'ベガ', x: 72, y: 84, owner: 'enemy', def: 1400, reward: 4 },
+      { id: 'arc', name: 'アークトゥルス', x: 85, y: 33, owner: 'enemy', def: 3600, reward: 5 },
+      { id: 'den', name: 'デネブ', x: 86, y: 70, owner: 'enemy', def: 4000, reward: 5 },
+      { id: 'cap', name: '敵の母星', x: 95, y: 51, owner: 'enemy', def: 12000, reward: 10, capital: true }
     ],
     lanes: [['sol', 'cen'], ['sol', 'bar'], ['cen', 'bar'], ['cen', 'wol'], ['cen', 'las'], ['bar', 'las'], ['bar', 'sir'], ['wol', 'eps'], ['las', 'eps'], ['las', 'tau'], ['sir', 'tau'],
       ['wol', 'pro'], ['eps', 'pro'], ['eps', 'alt'], ['tau', 'alt'], ['tau', 'veg'], ['sir', 'veg'], ['pro', 'arc'], ['alt', 'arc'], ['alt', 'den'], ['veg', 'den'], ['arc', 'cap'], ['den', 'cap'], ['alt', 'cap']],
     laneSec: 150,
     /* 敵の守りの回復（1秒あたり、もとの守りに対する割合）と、反撃の間隔(秒)・強さ（もとの守りに対する割合） */
-    regen: 0.0004, raidSec: 1800, raidStr: 0.35,
+    regen: 0.0004, raidSec: 1800, raidStr: 0.6,
     battleK: 0.004
   };
 
@@ -317,6 +317,8 @@
 
   /* ---------------- 物語（後半） ---------------- */
   add(D.story, [
+    { id: 'warfirst', cond: { bld: { warmor: 1 } }, text: '戦時統制。小惑星の鉄も、氷も、まず軍需工場が取る。在庫が1時間分たまれば、工場は休む。' },
+    { id: 'alienism', cond: { bld: { alien: 1 } }, text: '異星の商会は、星間物質をいくらでも買う。釜の分まで売ってしまわないように（設備は止められる）。' },
     { id: 'electric', cond: { tech: 'electrify' }, text: '最後のボイラーの火を落とした。工場が、静かになった。' },
     { id: 'drone', cond: { bld: { dronehub: 1 } }, text: '缶が、空を飛んでいく。昔、台車で押した道の上を。' },
     { id: 'era5', cond: { era: 5 }, text: '捨てるものがなくなった。あとは、電気さえあれば。' },

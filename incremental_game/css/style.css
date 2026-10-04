@@ -213,6 +213,10 @@ h3.sect:first-child { margin-top: 0; }
   #actions .btn { flex: 1 1 30%; max-width: none; }
   #flowbar .stages, #flowbar .advice { overflow-x: auto; }
   #flowbar .stage .v, #flowbar .stage:first-child .v { min-width: 0; }
+  #top { flex-wrap: wrap; gap: 4px 10px; }
+  #top #memo { flex-basis: 100%; order: 5; }
+  table.wart { display: block; max-width: 100%; overflow-x: auto; }
+  #center, #main { min-width: 0; }
 }
 
 /* 資源欄の見出し：種類ごとに色の帯 */

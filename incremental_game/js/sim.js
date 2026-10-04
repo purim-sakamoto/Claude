@@ -109,7 +109,9 @@ TM.Sim = (function () {
     /* 設備：役に立ちそうなものを安い順に */
     var cands = D.buildings.filter(function (b) { return !b.stages && E.bldShown(s, b) && useful(s, d, b); });
     /* 高いもの（効き目が大きいもの）から、手持ちの半分以内で */
-    cands.sort(function (a, b) { return (E.cost(s, a).money || 0) - (E.cost(s, b).money || 0); });
+    /* 戦時は、軍需と兵站を先に */
+    var warNow = (s.era === 9 && !TM.War.frontsWon(s)) || s.era === 10;
+    cands.sort(function (a, b) { var wa = warNow && a.ph === 'war' ? 0 : 1, wb = warNow && b.ph === 'war' ? 0 : 1; return wa - wb || (E.cost(s, a).money || 0) - (E.cost(s, b).money || 0); });
     for (var i = 0; i < 25; i++) {
       var bought = false;
       for (var j = 0; j < cands.length; j++) {
@@ -128,6 +130,14 @@ TM.Sim = (function () {
       if (b.proc.in && b.proc.in.money && s.res.money < b.proc.in.money * 60) on = Math.floor(on / 2);
       s.bld[b.id].on = on;
     });
+    /* 大型設備に要る物を食っている設備は、貯まるまで止める */
+    if (mega) {
+      var mcost = E.cost(s, mega);
+      D.buildings.forEach(function (b) {
+        if (!b.proc || !b.proc.toggle || !b.proc.in) return;
+        for (var k in b.proc.in) if (k !== 'money' && mcost[k] && s.res[k] < mcost[k] && !(b.proc.out && Object.keys(b.proc.out).some(function (o) { return mcost[o]; }))) { s.bld[b.id].on = 0; return; }
+      });
+    }
     /* 受託 */
     while (s.contracts.offers.length && s.contracts.active.filter(function (c) { return c.step < TM.DATA.contracts.steps.length; }).length < (s.jobs.sales || 0) + 1) E.acceptOffer(s, s.contracts.offers[0].id);
     if (s.era === 9 && TM.War) {
@@ -153,27 +163,35 @@ TM.Sim = (function () {
       }
       if (!built) break;
     }
-    var fm = w.fm || 1, best = null;
+    /* 寝ている間もドックを止めない */
+    var big = null; W.ships.forEach(function (sh) { var ok = true; for (var k in sh.cost) if ((s.res[k] || 0) < sh.cost[k] * 20) ok = false; if (ok) big = sh.id; });
+    TM.War.setAuto(s, big || 'frigate');
+    var fm = w.fm || 1, targets = [];
     W.systems.forEach(function (x) {
       var X = w.sys[x.id]; if (X.owner === 'us' || X.battle) return;
       var nb = A[x.id].filter(function (y) { return w.sys[y].owner === 'us'; });
-      if (!nb.length) return;
-      var sc = X.owner === 'free' ? -1 : X.def;
-      if (!best || sc < best.sc) best = { id: x.id, sc: sc, nb: nb, X: X };
+      if (nb.length) targets.push({ id: x.id, sc: X.owner === 'free' ? -1 : X.def, nb: nb, X: X });
     });
-    if (!best) return;
-    var avail = 0; best.nb.forEach(function (y) { avail += w.sys[y].str; });
-    var incoming = 0; w.moves.forEach(function (mv) { if (mv.side === 'us' && mv.to === best.id) incoming += mv.str; });
-    if (best.X.owner === 'free') { if (!incoming) best.nb.some(function (y) { return TM.War.send(s, y, best.id, 0.2); }); }
-    else if ((avail + incoming) * fm > best.sc * 1.5 && avail > 0) best.nb.forEach(function (y) { TM.War.send(s, y, best.id, w.sys[y].str > 0 ? (y === 'sol' ? 0.9 : 0.85) : 0); });
-    /* 後ろの艦を前へ寄せる */
+    if (!targets.length) return;
+    targets.sort(function (a, b) { return a.sc - b.sc; });
+    /* 国境の星系には、反撃を受け止められるだけ残す */
+    var keep = function (y) { var sd = TM.War.sysDef(y); return y === 'sol' ? 0 : 0.4 * (sd.def || 10); };
+    var front = {};
+    targets.forEach(function (T) {
+      T.nb.forEach(function (y) { front[y] = 1; });
+      var incoming = 0; w.moves.forEach(function (mv) { if (mv.side === 'us' && mv.to === T.id) incoming += mv.str; });
+      if (T.X.owner === 'free') { if (!incoming) T.nb.some(function (y) { return TM.War.send(s, y, T.id, 0.2); }); return; }
+      var avail = 0; T.nb.forEach(function (y) { avail += Math.max(0, w.sys[y].str - keep(y)); });
+      if ((avail + incoming) * fm > T.sc * 1.5 && avail > 0) T.nb.forEach(function (y) { var X = w.sys[y], a = X.str - keep(y); if (a > 0.5) TM.War.send(s, y, T.id, a / X.str); });
+    });
+    /* 後ろの艦を、いちばん近い前線の星系へ寄せる */
     W.systems.forEach(function (x) {
-      var X = w.sys[x.id]; if (X.owner !== 'us' || X.str < 2 || best.nb.indexOf(x.id) >= 0) return;
+      var X = w.sys[x.id]; if (X.owner !== 'us' || X.str < 2 || front[x.id]) return;
       var prev = {}, q = [x.id], seen = {}; seen[x.id] = 1; var hit = null;
-      while (q.length && !hit) { var c = q.shift(); A[c].forEach(function (y) { if (seen[y] || w.sys[y].owner !== 'us') return; seen[y] = 1; prev[y] = c; if (best.nb.indexOf(y) >= 0) hit = y; q.push(y); }); }
+      while (q.length && !hit) { var c = q.shift(); A[c].forEach(function (y) { if (hit || seen[y] || w.sys[y].owner !== 'us') return; seen[y] = 1; prev[y] = c; if (front[y]) hit = y; q.push(y); }); }
       if (!hit) return;
       var stepTo = hit; while (prev[stepTo] !== x.id) stepTo = prev[stepTo];
-      TM.War.send(s, x.id, stepTo, 0.8);
+      TM.War.send(s, x.id, stepTo, 0.9);
     });
   }
 
@@ -212,6 +230,9 @@ TM.Sim = (function () {
   function useful(s, d, b) {
     var n = s.bld[b.id].n, e = b.effects || {};
     if (b.max && n >= b.max) return false;
+    if (b.ph === 'war' && s.era >= 11) return false;
+    /* 前線を押し返したら、兵站はもう増やさない */
+    if (b.ph === 'war' && s.era >= 9 && TM.War.frontsWon(s) && !e.dock && !e.dockSpeed && !e.fsupply) return false;
     /* お金を食う設備は、収支に余裕があるときだけ増やす */
     if (b.proc && b.proc.in && b.proc.in.money && s.era >= 2) {
       var net = d.rate ? d.rate.money || 0 : 0;
