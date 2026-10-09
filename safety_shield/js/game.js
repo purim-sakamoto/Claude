@@ -53,7 +53,6 @@
   function openSelect() {
     game.screen = 'select';
     game.sim = null;
-    hud.hidden = true;
     loadStage(game.stageIdx);
     renderPanel();
   }
@@ -66,7 +65,6 @@
   function openPlan() {
     game.screen = 'plan';
     game.sim = null;
-    hud.hidden = true;
     const t = game.plan.teams.find(t => t.members.length) || game.plan.teams[0];
     game.team = t.id;
     game.selWp = t.wps.length - 1;
@@ -83,7 +81,6 @@
     game.paused = false;
     game.acc = 0;
     game.speed = game.tut.on ? 1 : game.speed;
-    hud.hidden = false;
     if (game.tut.on && TUT[game.tut.i] && TUT[game.tut.i].wait === 'run') { game.tut.i++; game.paused = true; }
     renderPanel();
   }
@@ -842,7 +839,7 @@
       } else if (e.state === 'alert') {
         markText(cx, cy - 14, '!', C.danger);
         if (e.radio !== null && !S.alarm) {
-          const f = e.ty.alarmT ? 1 - e.radio / (e.ty.alarmT * (game.st.def.radio || 1)) : 1;
+          const rt = S.radioTime(e); const f = rt ? 1 - e.radio / rt : 1;
           ctx.strokeStyle = C.danger; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(cx, cy, TS * 0.55, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke();
         }
@@ -891,6 +888,7 @@
         ctx.restore();
       }
     }
+    placedBubbles = [];
     for (const f of S.fx) if (f.type === 'bubble') drawBubble(f, (S.t - f.t0) / f.dur);
     // 暗所の帳
     if (game.st.def.dark) {
@@ -913,20 +911,38 @@
     ctx.save(); ctx.font = `bold 15px ${'sans-serif'}`; ctx.textAlign = 'center';
     ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText(t, x, y); ctx.fillStyle = col; ctx.fillText(t, x, y); ctx.restore();
   }
+  let placedBubbles = [];
   function drawBubble(f, age) {
-    const cx = f.x * TS, cy = f.y * TS - age * 10;
+    const cx = f.x * TS;
+    let cy = f.y * TS - age * 8;
     ctx.save();
     ctx.globalAlpha = age < 0.75 ? 1 : (1 - age) * 4;
-    ctx.font = '12px "BIZ UDPGothic", sans-serif';
-    const w = ctx.measureText(f.text).width + 10;
-    const W = game.st.w * TS;
+    ctx.font = 'bold 13px "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif';
+    const w = Math.ceil(ctx.measureText(f.text).width) + 12;
+    const hgt = 19;
+    const W = game.st.w * TS, H = game.st.h * TS;
     const x0 = Math.max(2, Math.min(W - w - 2, cx - w / 2));
-    const bg = { team: '#f4f7fa', enemy: '#ffe3cc', alarm: C.danger, down: C.cross, record: C.safety, out: '#8ba3b8', crit: C.safety }[f.kind] || '#fff';
+    // 上端で切れるときは頭の下に出す
+    let y0 = cy - hgt - 6;
+    if (y0 < 2) y0 = f.y * TS + 14;
+    y0 = Math.min(H - hgt - 2, y0);
+    // ほかの吹き出しと重なるならずらす
+    const hits = r => placedBubbles.some(o => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h);
+    for (let k = 0; k < 6 && hits({ x: x0, y: y0, w, h: hgt }); k++) {
+      const up = y0 - hgt - 2;
+      y0 = up >= 2 ? up : y0 + (hgt + 2) * (k + 1);
+    }
+    placedBubbles.push({ x: x0, y: y0, w, h: hgt });
+    const bg = { team: '#f4f7fa', enemy: '#ffe3cc', alarm: C.danger, down: C.cross, record: C.safety, out: '#8ba3b8', crit: C.safety, eye: '#ffb0a8' }[f.kind] || '#fff';
     ctx.fillStyle = bg;
-    ctx.fillRect(x0, cy - 22, w, 17);
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(x0, y0, w, hgt);
+    ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, hgt - 1);
     ctx.fillStyle = f.kind === 'alarm' ? '#fff' : '#111';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(f.text, x0 + 5, cy - 13);
+    ctx.fillText(f.text, x0 + 6, y0 + hgt / 2 + 1);
     ctx.restore();
   }
   function hexA(hex, a) {
@@ -957,6 +973,9 @@
     } else {
       drawTiles(game.st.tiles);
       drawPlanOverlay();
+      hudTime.textContent = `${game.st.def.sub}「${game.st.def.name}」 制限${fmtTime(game.st.def.limit)}`;
+      hudAlarm.hidden = true;
+      hudScore.textContent = '';
     }
     requestAnimationFrame(frame);
   }

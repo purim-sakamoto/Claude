@@ -174,7 +174,7 @@
       id: 3, name: '夜勤・包装ライン', sub: '第3面',
       brief: '夜勤帯の抜き打ちパトロール。照明が落ちていて互いに視界が狭い。安全ライトを投げ込めば暗がりの相手を確実に押さえられる。',
       tip: '暗所: 視界が6割に落ちる。安全ライト(行動)を活用しよう。',
-      limit: 270, dark: true, noise: 1, detect: 1.4, radio: 0.8, conceal: 0.4,
+      limit: 270, dark: true, noise: 1, detect: 1.4, radio: 0.8, conceal: 0.6,
       entries: ['更衣室(北西)', '出荷口(東)'],
       objectives: [{ type: 'record', ids: ['b'] }, { type: 'recordCount', n: 5 }],
       map: [

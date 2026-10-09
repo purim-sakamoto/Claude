@@ -23,13 +23,13 @@
   </header>
   <main class="layout">
     <section class="board">
+      <div class="hud" id="hud">
+        <span class="hud-time" id="hudTime">0:00</span>
+        <span class="hud-alarm" id="hudAlarm" hidden>全館通報中</span>
+        <span class="hud-score" id="hudScore"></span>
+      </div>
       <div class="canvasWrap" id="canvasWrap">
         <canvas id="map" width="792" height="528" aria-label="作戦マップ"></canvas>
-        <div class="hud" id="hud" hidden>
-          <span class="hud-time" id="hudTime">0:00</span>
-          <span class="hud-alarm" id="hudAlarm" hidden>全館通報中</span>
-          <span class="hud-score" id="hudScore">0</span>
-        </div>
       </div>
       <p class="hint" id="boardHint"></p>
       <ul class="legend-bar" aria-label="凡例">

@@ -39,9 +39,10 @@ button, select, input { font: inherit; color: inherit; }
 .canvasWrap { position: relative; border: 1px solid var(--line); background: var(--ink); }
 #map { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: manipulation; }
 .hint { margin: 0; color: var(--muted); font-size: 12px; min-height: 1.6em; }
-.hud { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; gap: 10px; align-items: center; pointer-events: none; font-family: var(--font-display); }
-.hud > span { background: rgba(11, 22, 34, 0.82); border: 1px solid var(--line); padding: 2px 8px; }
-.hud-time { font-size: 18px; font-variant-numeric: tabular-nums; }
+.hud { display: flex; gap: 10px; align-items: center; font-family: var(--font-display); min-height: 28px; }
+.hud > span { border: 1px solid var(--line); padding: 1px 8px; }
+.hud > span:empty { display: none; }
+.hud-time { font-size: 16px; font-variant-numeric: tabular-nums; }
 .hud-score { margin-left: auto; color: var(--safety); font-variant-numeric: tabular-nums; }
 .hud-alarm { color: #fff; background: var(--danger) !important; border-color: var(--danger) !important; animation: blink 0.9s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0.55; } }
@@ -178,3 +179,22 @@ select { background: var(--ink); border: 1px solid var(--line); padding: 3px 6px
 .modal-card ol, .modal-card ul:not(.legend-list) { padding-left: 1.3em; }
 .help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .top .row { gap: 10px; }
+
+/* 横長の画面では1画面に収める(768pでも見切れない) */
+@media (min-width: 981px) {
+  html, body { height: 100%; overflow: hidden; }
+  .app { height: 100%; min-height: 0; padding-block: 8px; gap: 8px; }
+  .layout { flex: 1; min-height: 0; height: 100%; align-items: stretch; }
+  .board { min-height: 0; overflow: hidden; }
+  /* 作戦図は縦横どちらにも収まる大きさにする(36×24マス = 3:2) */
+  .board { --mapw: min(100%, calc((100dvh - 172px) * 1.5)); }
+  .canvasWrap, .board .hud, .board .hint, .board .legend-bar { width: var(--mapw); }
+  .panel { min-height: 0; overflow-y: auto; }
+}
+@media (min-width: 981px) and (max-height: 820px) {
+  .logo { font-size: 20px; }
+  .top { padding-bottom: 4px; }
+  .hint, .legend-bar { font-size: 11px; }
+  .panel { padding: 10px; gap: 10px; }
+  .board { --mapw: min(100%, calc((100dvh - 150px) * 1.5)); }
+}

@@ -13,7 +13,7 @@
   SS.SPEED_LABEL = { sneak: '忍び足', walk: '通常', run: '小走り' };
   SS.ROE_LABEL = { recon: 'こっそり', infil: '慎重', assault: '強気' };
   SS.ROE_TEXT = {
-    recon: '指摘はしない。見つかっても立ち止まらずに進む',
+    recon: '自分からは指摘しない。目が合ったら応戦するが、立ち止まらずに進む',
     infil: '気づかれた相手と、すぐそばの相手にだけ静かに指摘する(おすすめ)',
     assault: '見つけた相手に大声で指摘する。強いが周りにも聞こえる',
   };
@@ -437,6 +437,12 @@
       }
     }
 
+    // 無線通報までの猶予(部長は即時、ほかは最低2秒)
+    function radioTime(e) {
+      return e.ty.boss ? 0 : Math.max(2, e.ty.alarmT * (def.radio || 1));
+    }
+    S.radioTime = radioTime;
+
     function becomeAlert(e, member, pos) {
       const was = e.state;
       e.state = 'alert';
@@ -451,7 +457,7 @@
         e.path = null;
         e.task = null;
         if (!S.alarm && e.radio === null) {
-          e.radio = e.ty.alarmT * (def.radio || 1);
+          e.radio = radioTime(e);
           bubble(e.x, e.y - 0.6, e.ty.boss ? '一旦止めて片付けろ!' : pick(SS.LINES.spot), 'alarm');
           say(`${e.name}がパトロールに気づいた${e.ty.boss ? '' : '(無線で通報中…)'}`, 'warn');
         }
@@ -870,10 +876,22 @@
           if (best) {
             e.seeing = best;
             if (!e.aware) { e.aware = best; }
-            if (!S.alarm && e.radio === null) e.radio = e.ty.alarmT * (def.radio || 1);
+            if (!S.alarm && e.radio === null) e.radio = radioTime(e);
           }
           if (e.ty.boss && best && !S.alarm) raiseAlarm(e);
           continue;
+        }
+        // 目が合ったら(互いに視界に入ったら)その場で交戦になる
+        if (best) {
+          const eye = S.members.find(m => !m.out && enemySees(e, m, range) && memberSees(m, e.x, e.y, range));
+          if (eye) {
+            e.meter = 1;
+            becomeAlert(e, eye);
+            e.seeing = eye;
+            bubble(eye.x, eye.y - 0.6, '目が合った!', 'eye');
+            if (e.ty.boss) raiseAlarm(e);
+            continue;
+          }
         }
         if (best) {
           e.meter = Math.min(1, e.meter + bestGain * DT);
@@ -904,14 +922,14 @@
         m.target = null;
         if (m.out) continue;
         const roe = curRoe(m.team);
-        if (roe === 'recon') continue;
         let tgt = null, td = 1e9;
         for (const e of S.enemies) {
           if (e.state === 'down') continue;
           const d = dist(m, e);
           if (!memberSees(m, e.x, e.y, range)) continue;
           const aware = e.state === 'alert';
-          const ok = roe === 'assault' || aware || d <= 2.2;
+          // こっそり: 自分からは仕掛けないが、気づかれたら応戦する
+          const ok = roe === 'recon' ? aware : roe === 'assault' || aware || d <= 2.2;
           if (ok && d < td) { td = d; tgt = e; }
         }
         if (!tgt) continue;
