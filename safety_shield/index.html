@@ -16,7 +16,10 @@
       <span class="logo">SAFETY SHIELD</span>
       <span class="org">タイキ薬品工業 安全衛生委員会 特別パトロール班</span>
     </div>
-    <div class="status" id="topStatus"></div>
+    <div class="row">
+      <div class="status" id="topStatus"></div>
+      <button class="btn small" id="helpBtn" type="button">遊び方</button>
+    </div>
   </header>
   <main class="layout">
     <section class="board">
@@ -29,10 +32,18 @@
         </div>
       </div>
       <p class="hint" id="boardHint"></p>
+      <ul class="legend-bar" aria-label="凡例">
+        <li><span class="lg hz">▲</span>不安全箇所</li>
+        <li><span class="lg en">●</span>工場員と見張り範囲</li>
+        <li><span class="lg ent">■</span>進入口</li>
+        <li><span class="lg lock">▦</span>施錠扉</li>
+        <li class="muted">左クリック: 地点を置く / 右クリック: 取り消す</li>
+      </ul>
     </section>
     <aside class="panel" id="panel"></aside>
   </main>
 </div>
+<div class="modal" id="help" hidden></div>
 <script src="js/data.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/game.js"></script>

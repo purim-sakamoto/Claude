@@ -18,7 +18,7 @@
     enemy: '#ff8a3d', fg: '#dce8f2', muted: '#8ba3b8',
   };
   const TEAM_COLOR = Object.fromEntries(SS.TEAM_DEFS.map(t => [t.id, t.color]));
-  const GO_LABEL = { A: 'アルファ', B: 'ブラボー', C: 'チャーリー' };
+  const GO_LABEL = { A: '合図A', B: '合図B', C: '合図C' };
 
   // ---------- 保存(失敗しても遊べる) ----------
   const store = {
@@ -33,32 +33,14 @@
   };
 
   // ---------- 既定プラン ----------
-  function defaultPlan(def) {
-    const st = SS.parseStage(def);
-    const last = st.entries.length - 1;
-    const plan = {
-      kits: {},
-      teams: [
-        { id: 'red', members: ['onizuka', 'ishizaki', 'hanashiro', 'sorachi'], entry: 0, speed: 'walk', roe: 'infil', wps: [] },
-        { id: 'green', members: ['kageyama', 'takahashi', 'yanami', 'miura'], entry: last, speed: 'sneak', roe: 'infil', wps: [] },
-        { id: 'gold', members: [], entry: 0, speed: 'walk', roe: 'infil', wps: [] },
-      ],
-    };
-    if (def.id === 1) {
-      // 第1面だけ、委員長の叩き台(例)を入れておく
-      const w = (x, y, o) => Object.assign({ x, y, speed: '', roe: '', go: '', action: '' }, o || {});
-      plan.teams[0].wps = [w(3, 7), w(4, 3), w(4, 11), w(5, 16), w(7, 18, { speed: 'walk' }), w(20, 15)];
-      plan.teams[1].wps = [w(17, 19), w(28, 18), w(30, 16), w(31, 20), w(19, 12, { speed: 'sneak' }), w(12, 7), w(31, 3)];
-    }
-    return plan;
-  }
+  const defaultPlan = def => SS.defaultPlan(def);
 
   function loadPlan(def) {
-    const saved = store.get('plan_' + def.id, null);
+    const saved = store.get('plan2_' + def.id, null);
     if (saved && saved.teams && saved.teams.length === 3) return saved;
     return defaultPlan(def);
   }
-  function savePlan() { store.set('plan_' + game.st.def.id, game.plan); }
+  function savePlan() { store.set('plan2_' + game.st.def.id, game.plan); }
 
   function unlocked(i) {
     if (i === 0) return true;
@@ -89,6 +71,7 @@
     game.team = t.id;
     game.selWp = t.wps.length - 1;
     renderPanel();
+    tutEvent('plan');
   }
   function startRun(seed) {
     savePlan();
@@ -99,7 +82,9 @@
     game.screen = 'run';
     game.paused = false;
     game.acc = 0;
+    game.speed = game.tut.on ? 1 : game.speed;
     hud.hidden = false;
+    if (game.tut.on && TUT[game.tut.i] && TUT[game.tut.i].wait === 'run') { game.tut.i++; game.paused = true; }
     renderPanel();
   }
   function finishRun() {
@@ -139,9 +124,12 @@
     else if (game.screen === 'plan') panel.append(...planView());
     else if (game.screen === 'run') panel.append(...runView());
     else if (game.screen === 'result') panel.append(...resultView());
+    const card = coachCard();
+    if (card) panel.prepend(card);
     const w = panel.querySelector('.wps');
     if (w) w.scrollTop = keepScroll;
     updateHint();
+    applyHighlight();
   }
 
   function updateHint() {
@@ -189,7 +177,7 @@
       list,
       h('div', null, h('h3', null, `${def.sub}「${def.name}」ブリーフィング`), h('p', null, def.brief)),
       h('div', null, h('h3', null, '目標'), objectiveList(staticObjectives(def))),
-      h('div', { class: 'row end' }, h('button', { class: 'btn primary', onclick: openPlan }, '作戦立案へ')),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: startTutorial }, 'チュートリアル'), h('span', { class: 'grow' }), h('button', { class: 'btn primary', 'data-tut': 'toPlan', onclick: openPlan }, '作戦立案へ')),
     ];
   }
 
@@ -204,7 +192,6 @@
     const active = game.plan.teams.filter(t => t.members.length);
     if (!active.length) out.push('隊員が誰も配属されていません');
     for (const t of active) {
-      if (!t.wps.length) out.push(`${teamName(t.id)}: 地点がありません(進入口で待機します)`);
       const legs = SS.planPaths(game.st, t, game.plan.kits);
       legs.forEach((l, i) => { if (!l) out.push(`${teamName(t.id)}: 地点${i + 1}へ行けません(施錠扉には合鍵が必要)`); });
       for (const kind of ['light', 'camera']) {
@@ -214,7 +201,7 @@
       }
       const codes = new Set(t.wps.map(w => w.go).filter(Boolean));
       for (const c of codes) {
-        if (!active.some(o => o !== t && o.wps.some(w => w.go === c))) out.push(`${teamName(t.id)}: Goコード${GO_LABEL[c]}は自チームだけ(すぐ発令されます)`);
+        if (!active.some(o => o !== t && o.wps.some(w => w.go === c))) out.push(`${teamName(t.id)}: ${GO_LABEL[c]}で待つのは自チームだけです(すぐ動き出します)`);
       }
     }
     return out;
@@ -238,7 +225,7 @@
         h('button', { class: 'btn', onclick: openSelect }, '面選択'),
         h('button', { class: 'btn', onclick: () => { game.plan = defaultPlan(def); game.selWp = -1; savePlan(); renderPanel(); } }, 'プラン初期化'),
         h('span', { class: 'grow' }),
-        h('button', { class: 'btn primary', disabled: !canRun, onclick: () => startRun() }, '作戦実行')),
+        h('button', { class: 'btn primary big', 'data-tut': 'run', disabled: !canRun, onclick: () => startRun() }, '作戦実行 ▶')),
     ];
     return [...head, ...body, ...foot];
   }
@@ -304,9 +291,9 @@
       h('div', { class: 'field' }, h('label', { for: 'entrySel' }, '進入口'),
         h('select', { id: 'entrySel', onchange: e => { team.entry = +e.target.value; savePlan(); renderPanel(); } },
           st.entries.map((en, i) => h('option', { value: i, selected: team.entry === i }, en.name)))),
-      h('div', { class: 'field' }, h('label', { for: 'spdSel' }, '初期速度'),
+      h('div', { class: 'field' }, h('label', { for: 'spdSel' }, '歩き方'),
         h('select', { id: 'spdSel', onchange: e => { team.speed = e.target.value; savePlan(); renderPanel(); } }, opt(null, SS.SPEED_LABEL, team.speed))),
-      h('div', { class: 'field' }, h('label', { for: 'roeSel' }, '初期交戦規定'),
+      h('div', { class: 'field' }, h('label', { for: 'roeSel' }, '指摘の仕方'),
         h('select', { id: 'roeSel', onchange: e => { team.roe = e.target.value; savePlan(); renderPanel(); } }, opt(null, SS.ROE_LABEL, team.roe))),
       h('div', { class: 'small muted' }, `${SS.ROE_LABEL[team.roe]}: ${SS.ROE_TEXT[team.roe]}`));
 
@@ -322,21 +309,23 @@
           h('button', { class: 'x', title: 'この地点を削除', 'aria-label': `地点${i + 1}を削除`, onclick: () => { team.wps.splice(i, 1); game.selWp = Math.min(game.selWp, team.wps.length - 1); savePlan(); renderPanel(); } }, '✕')),
         legs[i] ? null : h('div', { class: 'bad' }, 'ここへ行く経路がありません'),
         sel ? h('div', { class: 'edit' },
-          h('label', null, 'ここからの速度', h('select', { onchange: e => set('speed', e.target.value) }, opt(null, SS.SPEED_LABEL, w.speed, true))),
-          h('label', null, 'ここからの交戦規定', h('select', { onchange: e => set('roe', e.target.value) }, opt(null, SS.ROE_LABEL, w.roe, true))),
-          h('label', null, '到着後に待機', h('select', { onchange: e => set('go', e.target.value) },
-            h('option', { value: '', selected: !w.go }, 'しない'), ...Object.entries(GO_LABEL).map(([k, v]) => h('option', { value: k, selected: w.go === k }, `Goコード ${v}`)))),
-          h('label', null, '行動(待機明けに実行)', h('select', { onchange: e => set('action', e.target.value) },
+          h('label', null, 'ここからの歩き方', h('select', { onchange: e => set('speed', e.target.value) }, opt(null, SS.SPEED_LABEL, w.speed, true))),
+          h('label', null, 'ここからの指摘の仕方', h('select', { onchange: e => set('roe', e.target.value) }, opt(null, SS.ROE_LABEL, w.roe, true))),
+          h('label', null, '着いたら待つ', h('select', { onchange: e => set('go', e.target.value) },
+            h('option', { value: '', selected: !w.go }, 'しない'), ...Object.entries(GO_LABEL).map(([k, v]) => h('option', { value: k, selected: w.go === k }, `${v}まで待つ`)))),
+          h('label', null, '出発するときに', h('select', { onchange: e => set('action', e.target.value) },
             h('option', { value: '', selected: !w.action }, 'なし'),
-            h('option', { value: 'light', selected: w.action === 'light' }, '安全ライトを次の地点へ'),
+            h('option', { value: 'light', selected: w.action === 'light' }, '安全ライトを投げ込む'),
             h('option', { value: 'camera', selected: w.action === 'camera' }, 'デジカメで一括撮影')))) : null);
     }));
 
     return [
       teamsBar, settings,
-      h('div', null, h('h3', null, '経路の地点'),
-        team.wps.length ? wpList : h('p', { class: 'small muted' }, '地図の床をクリックして最初の地点を置いてください。'),
-        h('p', { class: 'small muted', style: 'margin-top:6px' }, 'Goコード: 同じコードで待機する全チームが揃った瞬間に一斉に動き出します。')),
+      h('div', { class: 'wplist-area' }, h('div', { class: 'row' }, h('h3', { class: 'grow', style: 'margin:0' }, '経路の地点'),
+          h('button', { class: 'btn small', disabled: !team.wps.length, onclick: () => undoWp(null) }, '1つ戻す'),
+          h('button', { class: 'btn small', disabled: !team.wps.length, onclick: () => { team.wps = []; game.selWp = -1; savePlan(); renderPanel(); } }, '全部消す')),
+        team.wps.length ? wpList : h('p', { class: 'small muted' }, '地点なし: このチームは最初からおまかせで巡回します。地図の床を左クリックすると地点を置けます。'),
+        h('p', { class: 'small muted', style: 'margin-top:6px' }, '最後の地点に着いたら、残りはおまかせで巡回します。地点をクリックすると細かい指示を設定できます。合図: 同じ合図を待つ全チームが揃うと、一斉に動き出します。')),
     ];
   }
 
@@ -379,7 +368,9 @@
     if (t.engaged) return '交戦中';
     if (t.state === 'hold') return `${GO_LABEL[t.holdCode]}待機`;
     if (t.state === 'unlock') return '解錠中';
-    if (t.state === 'done') return '計画完了';
+    if (t.state === 'done') return '完了・待機';
+    if (t.state === 'watch') return '記録中';
+    if (t.auto) return `おまかせ巡回中(${SS.ROE_LABEL[game.sim.curRoe(t)]})`;
     return `地点${Math.min(t.wi + 1, t.wps.length)}へ移動(${SS.SPEED_LABEL[game.sim.curSpeed(t)]}・${SS.ROE_LABEL[game.sim.curRoe(t)]})`;
   }
   function fmtTime(t) { const s = Math.floor(t); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
@@ -416,30 +407,175 @@
     ];
   }
 
+
+  // ---------- チュートリアル ----------
+  const LEGEND_HTML = `<ul class="legend-list">
+    <li><span class="lg hz">▲</span>不安全箇所(記録すると緑の✓)。「?」付きは事前情報</li>
+    <li><span class="lg en">●</span>工場員。うすい扇形が見張り範囲、点線が巡回ルート</li>
+    <li><span class="lg ent">■</span>進入口(番号つき)</li>
+    <li><span class="lg wall">■</span>壁・棚(通れない、見通せない)</li>
+    <li><span class="lg lock">▦</span>施錠扉(合鍵を持つチームだけ通れる)</li>
+  </ul>`;
+  const TUT = [
+    { screen: 'select', title: 'ようこそ、委員長', body: 'あなたはタイキ薬品工業の安全衛生委員長です。8人のパトロール員に作戦を描いて「作戦実行」を押せば、あとは自動で進みます。<br>現場の<b>不安全箇所を記録する</b>のが仕事です。工場員に見つかると片付けられてしまうので、見つかる前に記録しましょう。' },
+    { screen: 'select', title: '作戦図の見方', body: '左の図が現場です。' + LEGEND_HTML, hl: '#canvasWrap' },
+    { screen: 'select', title: '作戦立案へ', body: '第1面「原料倉庫」が選ばれています。下の<b>「作戦立案へ」</b>を押してください。', hl: '[data-tut=toPlan]', wait: 'plan' },
+    { screen: 'plan', title: 'チームは編成ずみ', body: '<b>レッド</b>と<b>グリーン</b>に4人ずつ入っています。このボタンで、どのチームの経路を描くかを切り替えます。今はレッドが選ばれています。', hl: '.teams' },
+    { screen: 'plan', title: '左クリックで地点を置く', body: '作戦図の<b>床(紺色のマス)を左クリック</b>すると、レッドの地点が置かれ、進入口から線でつながります。左上の部屋あたりをクリックしてみましょう。', hl: '#canvasWrap', wait: 'addWp' },
+    { screen: 'plan', title: 'もう1か所', body: '続けてクリックすると経路が延びます。黄色の▲の近くを通ると記録できます。もう1か所置いてみましょう。', hl: '#canvasWrap', wait: 'addWp' },
+    { screen: 'plan', title: '右クリックで取り消し', body: '間違えたら<b>右クリック</b>。地点の上なら、その地点を消します。何もない所なら最後の地点を消します。試しに右クリックしてみましょう。<br><span class="muted">スマホでは「1つ戻す」ボタンを使います。</span>', hl: '#canvasWrap', wait: 'removeWp' },
+    { screen: 'plan', title: '残りはおまかせ', body: '地点を使い切ったチームは、残った▲を<b>自動で回ります</b>。地点ゼロでも大丈夫です。迷ったら、そのまま実行してかまいません。グリーンは地点なしのままにしておきましょう。' },
+    { screen: 'plan', title: '細かい指示は後でOK', body: '地点をクリックすると、そこからの歩き方や、<b>合図を待つ</b>・<b>安全ライトを投げ込む</b>といった指示を出せます。第3面あたりから役に立ちます。今は気にしなくて大丈夫です。', hl: '.wplist-area' },
+    { screen: 'plan', title: '作戦実行', body: '準備ができたら<b>「作戦実行 ▶」</b>を押しましょう。', hl: '[data-tut=run]', wait: 'run' },
+    { screen: 'run', title: '見守るだけ(一時停止中)', body: '始まりました。いったん止めて説明します。<br>▲が緑の✓になれば記録成功。工場員の頭上の<b>「?」</b>は怪しんでいる、<b>「!」</b>は気づいた合図です。「!」の周りの<b>赤い輪が一周すると全館に通報</b>され、片付け(証拠隠し)が始まります。輪が回り切る前に指摘で黙らせれば通報されません。', hl: '#canvasWrap' },
+    { screen: 'run', title: '早送り', body: '「次へ」で再開します。右の<b>2x / 4x</b>で早送りできます。一時停止はスペースキーでもできます。', hl: '.speed' },
+    { screen: 'result', title: '結果', body: 'ランクと指摘票が出ます。通報されずに全部記録すれば<b>S</b>。目標を達成すれば次の面が解放されます。<br>チュートリアルはこれで終わりです。困ったら右上の<b>「遊び方」</b>をどうぞ。', hl: '.result', last: true },
+  ];
+  const STAGE_INTRO = {
+    2: { title: '第2面の新要素: 騒音とフォークリフト', body: '打錠機の騒音で足音が聞こえにくい面です。<b>フォークリフト</b>は点線のルートを速く回り、見つけるとすぐ通報します。必須目標は<b>打錠機のインターロック無効化</b>の記録。おまかせでも十分戦えます。' },
+    3: { title: '第3面の新要素: 暗所と安全ライト', body: '夜勤で暗く、お互いの視界が狭い面です。おまかせでもクリアできますが、ランクを上げたいなら<b>安全ライト</b>を試しましょう。<br>地点をクリックして「出発するときに → 安全ライトを投げ込む」を選ぶと、近くの工場員を5秒くらませます。くらんだ相手は静かに指摘できます。' },
+    4: { title: '第4面の新要素: 施錠扉と合図', body: '保管庫は<b>施錠扉</b>(黄黒)で閉ざされています。開けるには<b>合鍵</b>が必要です(レッドは石崎、グリーンは三浦が所持)。<br>扉の手前の地点で「着いたら待つ → 合図Aまで待つ」と「安全ライトを投げ込む」を2チームに設定すると、<b>同時に突入</b>できます。扉を開けた瞬間にライトが飛び込みます。' },
+    5: { title: '最終面: 製造部長', body: '<b>製造部長</b>は気づいた瞬間に全館へ通報します。部長室は3方向とも施錠扉です。<br>扉の外で合図を待ち、ライトを投げ込んでから突入するのが確実です。報告箱(黄色の箱)の回収も忘れずに。' },
+  };
+  game.tut = { on: false, i: 0 };
+  game.introSeen = store.get('intro', {});
+
+  function startTutorial() {
+    game.tut = { on: true, i: 0 };
+    loadStage(0);
+    game.plan = SS.defaultPlan(game.st.def);
+    savePlan();
+    openSelect();
+  }
+  function endTutorial() {
+    if (game.tut.on && TUT[game.tut.i] && TUT[game.tut.i].screen === 'run') game.paused = false;
+    game.tut.on = false;
+    store.set('tutDone', true);
+    renderPanel();
+  }
+  function tutAdvance() {
+    const prev = TUT[game.tut.i];
+    game.tut.i++;
+    const cur = TUT[game.tut.i];
+    if (!cur) { endTutorial(); return; }
+    if (cur.screen === 'run' && game.screen === 'run') game.paused = true;
+    else if (prev && prev.screen === 'run') game.paused = false;
+    renderPanel();
+  }
+  function tutEvent(name) {
+    if (!game.tut.on) return;
+    const cur = TUT[game.tut.i];
+    if (cur && cur.wait === name) tutAdvance();
+  }
+  function coachCard() {
+    if (game.tut.on) {
+      const step = TUT[game.tut.i];
+      if (!step || step.screen !== game.screen) return null;
+      const n = game.tut.i + 1;
+      return h('div', { class: 'coach', role: 'status' },
+        h('div', { class: 'coach-head' }, h('span', { class: 'eyebrow' }, `チュートリアル ${n}/${TUT.length}`), h('button', { class: 'x', onclick: endTutorial, title: 'チュートリアルをやめる' }, 'やめる')),
+        h('h3', { class: 'coach-title' }, step.title),
+        h('div', { class: 'coach-body', html: step.body }),
+        step.wait
+          ? h('div', { class: 'coach-wait' }, '▶ 操作してみてください', h('button', { class: 'x', onclick: tutAdvance }, '飛ばす'))
+          : h('div', { class: 'row end' }, h('button', { class: 'btn primary', onclick: step.last ? endTutorial : tutAdvance }, step.last ? '終わる' : '次へ')));
+    }
+    const intro = STAGE_INTRO[game.st.def.id];
+    if (game.screen === 'plan' && intro && !game.introSeen[game.st.def.id]) {
+      return h('div', { class: 'coach' },
+        h('h3', { class: 'coach-title' }, intro.title),
+        h('div', { class: 'coach-body', html: intro.body }),
+        h('div', { class: 'row end' }, h('button', { class: 'btn primary', onclick: () => { game.introSeen[game.st.def.id] = true; store.set('intro', game.introSeen); renderPanel(); } }, 'わかった')));
+    }
+    return null;
+  }
+  function applyHighlight() {
+    document.querySelectorAll('.tut-hl').forEach(el => el.classList.remove('tut-hl'));
+    if (!game.tut.on) return;
+    const step = TUT[game.tut.i];
+    if (!step || !step.hl || step.screen !== game.screen) return;
+    const el = document.querySelector(step.hl);
+    if (el) el.classList.add('tut-hl');
+  }
+
+  // ---------- 遊び方 ----------
+  const helpEl = document.getElementById('help');
+  function openHelp() {
+    helpEl.replaceChildren(h('div', { class: 'modal-card', role: 'dialog', 'aria-modal': 'true', 'aria-label': '遊び方' },
+      h('div', { class: 'row' }, h('h2', { class: 'grow' }, '遊び方'), h('button', { class: 'btn', onclick: closeHelp }, '閉じる')),
+      h('div', { class: 'help-grid' },
+        h('section', null, h('h3', null, '基本の流れ'), h('ol', { html: '<li>面を選んで「作戦立案へ」</li><li>作戦図を<b>左クリック</b>で地点を置く/<b>右クリック</b>で取り消す</li><li>「作戦実行 ▶」。あとは見守るだけ(一時停止・早送りのみ)</li><li>結果を見て、プランを直して再挑戦</li>' })),
+        h('section', null, h('h3', null, '作戦図の見方'), h('div', { html: LEGEND_HTML })),
+        h('section', null, h('h3', null, 'おまかせ巡回'), h('p', null, '地点を使い切ったチーム(地点ゼロのチームも)は、残りの不安全箇所や目標を自動で回ります。第1・2面はおまかせだけでもクリアできます。')),
+        h('section', null, h('h3', null, '見つかると'), h('p', { html: '工場員の頭上の「?」は怪しんでいる、「!」は気づいた合図。「!」の赤い輪が一周すると<b>全館通報</b>され、近くの不安全箇所が片付けられます。通報前に記録すると<b>得点2倍</b>。' })),
+        h('section', null, h('h3', null, '細かい指示(地点をクリック)'), h('ul', { html: '<li><b>歩き方</b>: 忍び足は遅いが見つかりにくい</li><li><b>指摘の仕方</b>: こっそり/慎重(おすすめ)/強気</li><li><b>合図まで待つ</b>: 同じ合図を待つ全チームが揃うと一斉に動く</li><li><b>安全ライト</b>: 近くの工場員を5秒くらませる。くらんだ相手は静かに指摘できる</li><li><b>デジカメ</b>: 見えている不安全箇所をまとめて記録</li>' })),
+        h('section', null, h('h3', null, 'ランク'), h('p', null, 'S: 全部記録・通報なし・離脱なし / A: 8割以上記録・離脱1人まで / B: 目標達成 / D: 失敗')),
+      ),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { closeHelp(); startTutorial(); } }, 'チュートリアルをもう一度'))));
+    helpEl.hidden = false;
+  }
+  function closeHelp() { helpEl.hidden = true; }
+  document.getElementById('helpBtn').addEventListener('click', openHelp);
+  helpEl.addEventListener('click', e => { if (e.target === helpEl) closeHelp(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !helpEl.hidden) closeHelp(); });
+
   // ---------- 入力(作戦図クリック) ----------
+  function mapPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) / rect.width * game.st.w,
+      y: (e.clientY - rect.top) / rect.height * game.st.h,
+    };
+  }
+  function planTeamForClick() {
+    let team = curTeam();
+    if (!team.members.length) {
+      team = game.plan.teams.find(t => t.members.length);
+      if (!team) { game.tab = 'squad'; renderPanel(); flash('先に「編成」で隊員をチームに入れてください'); return null; }
+      game.team = team.id;
+    }
+    return team;
+  }
   canvas.addEventListener('click', e => {
     if (game.screen !== 'plan') return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width * canvas.width / TS;
-    const y = (e.clientY - rect.top) / rect.height * canvas.height / TS;
-    const team = curTeam();
-    if (!team.members.length) { game.tab = 'squad'; renderPanel(); return; }
-    // 既存地点の選択
+    const { x, y } = mapPos(e);
+    const team = planTeamForClick();
+    if (!team) return;
+    // 既存地点のクリックは選択
     const hit = team.wps.findIndex(w => Math.hypot(w.x + 0.5 - x, w.y + 0.5 - y) < 0.7);
     if (hit >= 0) { game.selWp = hit; game.tab = 'route'; renderPanel(); return; }
     const tx = Math.floor(x), ty = Math.floor(y);
-    if (SS.tileAt(game.st, game.st.tiles, tx, ty) !== SS.TILE.FLOOR) { flash('そこは床ではありません'); return; }
-    const at = Math.min(game.selWp + 1, team.wps.length);
-    const prevPt = at === 0 ? game.st.entries[team.entry] : team.wps[at - 1];
+    if (SS.tileAt(game.st, game.st.tiles, tx, ty) !== SS.TILE.FLOOR) { flash('そこには置けません。床(紺色のマス)をクリックしてください'); return; }
+    const prevPt = team.wps.length ? team.wps[team.wps.length - 1] : game.st.entries[team.entry];
     if (!SS.findPath(game.st, game.st.tiles, prevPt.x, prevPt.y, tx, ty, SS.teamCanUnlock(team.members, game.plan.kits))) {
-      flash('前の地点から行けません(施錠扉には合鍵が必要)');
+      flash('前の地点からそこへ行けません(黄黒の施錠扉は、合鍵を持つ隊員がいるチームだけ通れます)');
       return;
     }
-    team.wps.splice(at, 0, { x: tx, y: ty, speed: '', roe: '', go: '', action: '' });
-    game.selWp = at;
+    team.wps.push({ x: tx, y: ty, speed: '', roe: '', go: '', action: '' });
+    game.selWp = team.wps.length - 1;
     game.tab = 'route';
     savePlan();
     renderPanel();
+    tutEvent('addWp');
+  });
+  function undoWp(atIndex) {
+    const team = curTeam();
+    if (!team.wps.length) { flash('取り消す地点がありません'); return; }
+    const i = atIndex != null ? atIndex : team.wps.length - 1;
+    team.wps.splice(i, 1);
+    game.selWp = team.wps.length - 1;
+    savePlan();
+    renderPanel();
+    tutEvent('removeWp');
+  }
+  canvas.addEventListener('contextmenu', e => {
+    if (game.screen !== 'plan') return;
+    e.preventDefault();
+    const team = planTeamForClick();
+    if (!team) return;
+    const { x, y } = mapPos(e);
+    const hit = team.wps.findIndex(w => Math.hypot(w.x + 0.5 - x, w.y + 0.5 - y) < 0.7);
+    undoWp(hit >= 0 ? hit : null);
   });
   let flashTimer = null;
   function flash(msg) {
@@ -616,7 +752,7 @@
         ctx.stroke(); ctx.restore();
       } else {
         // 持ち場の見張り範囲(首振り込み)
-        drawCone(e.x + 0.5, e.y + 0.5, e.facing, vis, 0.8 + (55 * Math.PI) / 180, 'rgba(255,138,61,0.09)', st.tiles);
+        drawCone(e.x + 0.5, e.y + 0.5, e.facing, vis, 0.5 + (55 * Math.PI) / 180, 'rgba(255,138,61,0.09)', st.tiles);
       }
     }
     for (const e of st.enemies) {
@@ -706,7 +842,7 @@
       } else if (e.state === 'alert') {
         markText(cx, cy - 14, '!', C.danger);
         if (e.radio !== null && !S.alarm) {
-          const f = e.ty.alarmT ? 1 - e.radio / e.ty.alarmT : 1;
+          const f = e.ty.alarmT ? 1 - e.radio / (e.ty.alarmT * (game.st.def.radio || 1)) : 1;
           ctx.strokeStyle = C.danger; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(cx, cy, TS * 0.55, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke();
         }
@@ -835,6 +971,7 @@
   let start = 0;
   for (let i = 0; i < SS.STAGES.length; i++) if (unlocked(i)) start = i;
   loadStage(start);
+  if (!store.get('tutDone', false) && start === 0) game.tut = { on: true, i: 0 };
   openSelect();
   requestAnimationFrame(frame);
 })();

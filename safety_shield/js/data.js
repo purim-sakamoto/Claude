@@ -39,7 +39,7 @@
   ];
 
   SS.KITS = {
-    light: { name: '安全ライト', uses: 2, text: '次の地点へ投げ込み、半径2.8マスの工場員を5秒間くらませる' },
+    light: { name: '安全ライト', uses: 2, text: '近くの工場員(いなければ次の地点)へ投げ込み、半径3マスを5秒間くらませる。くらんだ相手は指摘しやすい' },
     camera: { name: 'デジカメ', uses: 2, text: 'その場から見える半径5マスの不安全箇所を一括記録' },
     key: { name: '合鍵', uses: 99, text: '施錠扉を解錠できる(3秒)' },
   };
@@ -73,7 +73,7 @@
       id: 1, name: '原料倉庫', sub: '第1面',
       brief: '入社式前の定例パトロール。原料倉庫は棚が多く死角だらけだが、相手は油断している。まずは見つかる前に記録する感覚をつかめ。',
       tip: '地図をクリックして経路を引く。忍び足+潜入なら気づかれにくい。',
-      limit: 240, dark: false, noise: 1,
+      limit: 240, dark: false, noise: 1, detect: 0.8, radio: 1.6, conceal: 1.5,
       entries: ['搬入口(西)', '通用口(南)'],
       objectives: [{ type: 'recordCount', n: 5 }],
       map: [
@@ -122,7 +122,7 @@
       id: 2, name: '打錠室', sub: '第2面',
       brief: '錠剤の打錠ラインで「インターロック無効化」の密告があった。打錠機の騒音で足音は聞こえにくいが、指摘の声も通りにくい。フォークリフトの巡回に注意。',
       tip: '必須目標: 打錠機のインターロック無効化を記録する。',
-      limit: 270, dark: false, noise: 0.7,
+      limit: 270, dark: false, noise: 0.7, detect: 0.9, radio: 1.4, conceal: 1.3,
       entries: ['更衣室(西)', '資材搬入口(東)'],
       objectives: [{ type: 'record', ids: ['a'] }, { type: 'recordCount', n: 5 }],
       map: [
@@ -174,9 +174,9 @@
       id: 3, name: '夜勤・包装ライン', sub: '第3面',
       brief: '夜勤帯の抜き打ちパトロール。照明が落ちていて互いに視界が狭い。安全ライトを投げ込めば暗がりの相手を確実に押さえられる。',
       tip: '暗所: 視界が6割に落ちる。安全ライト(行動)を活用しよう。',
-      limit: 270, dark: true, noise: 1,
+      limit: 270, dark: true, noise: 1, detect: 1.4, radio: 0.8, conceal: 0.4,
       entries: ['更衣室(北西)', '出荷口(東)'],
-      objectives: [{ type: 'record', ids: ['b'] }, { type: 'recordCount', n: 6 }],
+      objectives: [{ type: 'record', ids: ['b'] }, { type: 'recordCount', n: 5 }],
       map: [
         '####################################',
         '#S.......#.........................#',
@@ -225,9 +225,9 @@
       id: 4, name: '危険物倉庫', sub: '第4面',
       brief: '溶媒を扱う危険物倉庫。各保管庫は施錠されている。合鍵がなければ入れない部屋があるので、ブリーチャーか合鍵持ちを分散させること。SDS関係の3件は必ず押さえる。',
       tip: '施錠扉(L): 合鍵を持つ隊員がいるチームだけが通れる。',
-      limit: 300, dark: false, noise: 1,
+      limit: 300, dark: false, noise: 1, detect: 1.1, radio: 1, conceal: 0.9,
       entries: ['西通用口', '東搬入口'],
-      objectives: [{ type: 'record', ids: ['a', 'b', 'c'] }, { type: 'recordCount', n: 6 }],
+      objectives: [{ type: 'record', ids: ['a', 'b', 'c'] }, { type: 'recordCount', n: 5 }],
       map: [
         '####################################',
         '#..........#.........#.............#',
@@ -269,7 +269,7 @@
         0: { type: 'veteran', facing: 0 },
         1: { type: 'worker', facing: 180 },
         2: { type: 'worker', facing: 270 },
-        3: { type: 'worker', facing: 0 },
+        3: { type: 'worker', facing: 90 },
         4: { type: 'rookie', facing: 90 },
         5: { type: 'leader', facing: 180 },
         6: { type: 'forklift', route: 'CD' },
@@ -280,9 +280,9 @@
       id: 5, name: '本社工場 製造管理棟', sub: '最終面',
       brief: '本社工場の製造管理棟。製造部長が「未提出のヒヤリハット報告箱」を部長室に抱え込んでいる。部長に気づかれると全館に「一旦止めて片付け」が飛ぶ。報告箱を回収し、部長に改善を約束させろ。',
       tip: '必須: 報告箱(c)の回収と製造部長の制圧。部長は気づいた瞬間に全館通報する。',
-      limit: 300, dark: false, noise: 1,
+      limit: 300, dark: false, noise: 1, detect: 1.1, radio: 1, conceal: 0.8,
       entries: ['正面玄関(西)', '搬入口(東)'],
-      objectives: [{ type: 'record', ids: ['c'] }, { type: 'neutralize', id: '9' }, { type: 'recordCount', n: 6 }],
+      objectives: [{ type: 'record', ids: ['c'] }, { type: 'neutralize', id: '9' }, { type: 'recordCount', n: 5 }],
       map: [
         '####################################',
         '#.........#..........#.............#',

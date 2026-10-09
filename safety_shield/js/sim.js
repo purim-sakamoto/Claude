@@ -9,13 +9,13 @@
 
   const SPEED = { sneak: 1.2, walk: 2.2, run: 3.6 };
   const MOVE_NOISE = { sneak: 0.6, walk: 2.0, run: 4.5 };
-  const MOVE_VIS = { sneak: 0.55, walk: 1.0, run: 1.6, still: 0.35 };
+  const MOVE_VIS = { sneak: 0.55, walk: 1.0, run: 1.6, still: 0.35, hold: 0.15 };
   SS.SPEED_LABEL = { sneak: '忍び足', walk: '通常', run: '小走り' };
-  SS.ROE_LABEL = { recon: '偵察', infil: '潜入', assault: '突入' };
+  SS.ROE_LABEL = { recon: 'こっそり', infil: '慎重', assault: '強気' };
   SS.ROE_TEXT = {
-    recon: '交戦しない。見つかっても止まらず進む',
-    infil: '気づいた相手と至近の相手だけ静かに指摘',
-    assault: '見えた相手に即座に大声で指摘',
+    recon: '指摘はしない。見つかっても立ち止まらずに進む',
+    infil: '気づかれた相手と、すぐそばの相手にだけ静かに指摘する(おすすめ)',
+    assault: '見つけた相手に大声で指摘する。強いが周りにも聞こえる',
   };
   SS.TEAM_DEFS = [
     { id: 'red', name: 'レッド', color: '#ff5a4e' },
@@ -209,6 +209,19 @@
     return legs;
   };
 
+  // 既定プラン: 2チーム編成・地点なし(=全員おまかせ巡回)
+  SS.defaultPlan = function (def) {
+    const n = def.entries.length;
+    return {
+      kits: { miura: 'key', yanami: 'light' },
+      teams: [
+        { id: 'red', members: ['onizuka', 'ishizaki', 'hanashiro', 'sorachi'], entry: 0, speed: 'walk', roe: 'infil', wps: [] },
+        { id: 'green', members: ['kageyama', 'takahashi', 'yanami', 'miura'], entry: n - 1, speed: 'walk', roe: 'infil', wps: [] },
+        { id: 'gold', members: [], entry: 0, speed: 'walk', roe: 'infil', wps: [] },
+      ],
+    };
+  };
+
   // ---------- シミュレーション ----------
   SS.createSim = function (st, plan, seed) {
     const R = rng(seed);
@@ -280,8 +293,12 @@
 
     function startLeg(team) {
       if (team.wi >= team.wps.length) {
-        team.state = 'done';
-        team.path = null;
+        // 地点を使い切ったら、残りはおまかせ巡回
+        if (!team.auto) {
+          team.auto = true;
+          if (team.wps.length) say(`${team.name}、計画完了。ここからおまかせ巡回`, 'team');
+        }
+        autoNext(team);
         return;
       }
       const lead = leader(team) || team.trail[team.trail.length - 1];
@@ -296,6 +313,84 @@
       team.path = p.map(c => ({ x: c.x + 0.5, y: c.y + 0.5 }));
       team.pi = 1;
       team.state = 'move';
+    }
+
+    // ---------- おまかせ巡回 ----------
+    // リーダー位置からの移動コスト(ダイクストラ)
+    function costMap(team, from) {
+      const N = st.w * st.h, W = st.w;
+      const d = new Float32Array(N).fill(Infinity);
+      const s0 = Math.floor(from.y) * W + Math.floor(from.x);
+      d[s0] = 0;
+      const q = [s0];
+      while (q.length) {
+        // 小さな盤面なので単純な選択で十分
+        let bi = 0;
+        for (let i = 1; i < q.length; i++) if (d[q[i]] < d[q[bi]]) bi = i;
+        const i = q[bi];
+        q[bi] = q[q.length - 1]; q.pop();
+        const x = i % W, y = (i / W) | 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = x + dx, ny = y + dy;
+          if (!passable(tileAt(st, tiles, nx, ny), team.canUnlock)) continue;
+          if (dx && dy && (!passable(tileAt(st, tiles, x + dx, y), false) || !passable(tileAt(st, tiles, x, y + dy), false))) continue;
+          const j = ny * W + nx, nd = d[i] + (dx && dy ? 1.4142 : 1);
+          if (nd < d[j]) { if (d[j] === Infinity) q.push(j); d[j] = nd; }
+        }
+      }
+      return d;
+    }
+
+    function autoCandidates() {
+      const out = [];
+      for (const h of S.hazards) if (h.status === 'open') out.push({ kind: 'hazard', ref: h, x: h.x, y: h.y });
+      for (const o of def.objectives) {
+        if (o.type !== 'neutralize') continue;
+        const e = S.enemies.find(x => x.id === o.id);
+        if (e && e.state !== 'down') out.push({ kind: 'enemy', ref: e, x: Math.floor(e.x), y: Math.floor(e.y) });
+      }
+      return out;
+    }
+
+    function autoNext(team) {
+      const lead = leader(team);
+      team.path = null;
+      team.autoTarget = null;
+      if (!lead) { team.state = 'dead'; return; }
+      const claimed = new Set(S.teams.filter(t => t !== team && t.autoTarget && teamAlive(t)).map(t => t.autoTarget.ref));
+      const cands = autoCandidates().filter(c => !(team.skip && team.skip.has(c.ref)));
+      if (!cands.length) { team.state = 'done'; return; }
+      const d = costMap(team, lead);
+      let best = null, bestCost = Infinity;
+      for (const c of cands) {
+        // 見通せる距離まで近づけばよい(設備の中の箇所にも対応)
+        const reach = c.kind !== 'hazard' || c.ref.item ? 0 : c.ref.hidden && !c.ref.known ? 1 : 2;
+        for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+          const x = c.x + dx, y = c.y + dy;
+          if (!passable(tileAt(st, tiles, x, y), team.canUnlock)) continue;
+          const cost = d[y * st.w + x];
+          if (cost === Infinity) continue;
+          if ((dx || dy) && !los(st, tiles, x + 0.5, y + 0.5, c.x + 0.5, c.y + 0.5)) continue;
+          // 他チームが向かっている先は後回し
+          const total = cost + (claimed.has(c.ref) ? 40 : 0);
+          if (total < bestCost) { bestCost = total; best = { c, x, y }; }
+        }
+      }
+      if (!best) { team.state = 'done'; return; }
+      const p = SS.findPath(st, tiles, Math.floor(lead.x), Math.floor(lead.y), best.x, best.y, team.canUnlock);
+      if (!p) { (team.skip || (team.skip = new Set())).add(best.c.ref); autoNext(team); return; }
+      team.autoTarget = best.c;
+      team.autoT = 0;
+      team.path = p.map(c => ({ x: c.x + 0.5, y: c.y + 0.5 }));
+      team.pi = 1;
+      team.state = 'move';
+    }
+
+    function autoResolved(t) {
+      if (!t) return true;
+      if (t.kind === 'hazard') return t.ref.status !== 'open';
+      return t.ref.state === 'down';
     }
 
     function leader(team) {
@@ -356,7 +451,7 @@
         e.path = null;
         e.task = null;
         if (!S.alarm && e.radio === null) {
-          e.radio = e.ty.alarmT;
+          e.radio = e.ty.alarmT * (def.radio || 1);
           bubble(e.x, e.y - 0.6, e.ty.boss ? '一旦止めて片付けろ!' : pick(SS.LINES.spot), 'alarm');
           say(`${e.name}がパトロールに気づいた${e.ty.boss ? '' : '(無線で通報中…)'}`, 'warn');
         }
@@ -446,8 +541,8 @@
         if (!involved.length) continue;
         const holding = involved.filter(t => t.state === 'hold' && t.holdCode === code);
         if (holding.length === involved.length) {
-          const label = { A: 'アルファ', B: 'ブラボー', C: 'チャーリー' }[code];
-          say(`Goコード「${label}」発令。${holding.map(t => t.name).join('・')}前進`, 'go');
+          const label = { A: '合図A', B: '合図B', C: '合図C' }[code];
+          say(`${label}!${holding.map(t => t.name).join('・')}前進`, 'go');
           for (const t of holding) {
             t.holdCode = null;
             afterArrive(t, true);
@@ -461,7 +556,7 @@
       if (!released && wp.go) {
         team.state = 'hold';
         team.holdCode = wp.go;
-        say(`${team.name}、地点${team.wi}到達。${{ A: 'アルファ', B: 'ブラボー', C: 'チャーリー' }[wp.go]}で待機`, 'team');
+        say(`${team.name}、地点${team.wi}で合図${wp.go}を待つ`, 'team');
         return;
       }
       team.pendingLight = false;
@@ -484,11 +579,17 @@
       }
       user.uses--;
       if (kind === 'light') {
+        // 投げ込み先: 見えている一番近い工場員 → 次の地点 → 正面
         const nxt = team.wps[team.wi];
-        let tx, ty;
-        if (nxt && Math.hypot(nxt.x + 0.5 - lead.x, nxt.y + 0.5 - lead.y) <= 7 && los(st, tiles, lead.x, lead.y, nxt.x + 0.5, nxt.y + 0.5)) {
+        let tx, ty, bd = 7.5;
+        for (const e of S.enemies) {
+          if (e.state === 'down') continue;
+          const d = Math.hypot(e.x - lead.x, e.y - lead.y);
+          if (d < bd && los(st, tiles, lead.x, lead.y, e.x, e.y)) { bd = d; tx = e.x; ty = e.y; }
+        }
+        if (tx === undefined && nxt && Math.hypot(nxt.x + 0.5 - lead.x, nxt.y + 0.5 - lead.y) <= 7 && los(st, tiles, lead.x, lead.y, nxt.x + 0.5, nxt.y + 0.5)) {
           tx = nxt.x + 0.5; ty = nxt.y + 0.5;
-        } else {
+        } else if (tx === undefined) {
           tx = lead.x + Math.cos(lead.facing) * 3; ty = lead.y + Math.sin(lead.facing) * 3;
         }
         team.fuse = { t: 0.6, x: tx, y: ty };
@@ -523,12 +624,12 @@
           let n = 0;
           for (const e of S.enemies) {
             if (e.state === 'down') continue;
-            if (Math.hypot(e.x - x, e.y - y) <= 2.8 && los(st, tiles, x, y, e.x, e.y)) {
+            if (Math.hypot(e.x - x, e.y - y) <= 3.2 && los(st, tiles, x, y, e.x, e.y)) {
               e.stun = 5; n++;
               if (e.radio !== null) e.radio = null;
             }
           }
-          S.fx.push({ type: 'flash', x, y, r: 2.8, t0: S.t, dur: 0.6, kind: 'light' });
+          S.fx.push({ type: 'flash', x, y, r: 3.2, t0: S.t, dur: 0.6, kind: 'light' });
           noise(x, y, 4);
           if (n) say(`安全ライト命中: ${n}人がまぶしさで動けない`, 'good');
         }
@@ -567,11 +668,24 @@
           const v = sp === 'sneak' && shadow ? 2.0 : SPEED[sp];
           const arrived = stepAlong(lead, team.path, team, 'pi', v);
           moving = true;
-          if (arrived) {
+          if (team.auto) {
+            team.autoT += DT;
+            const tgt = team.autoTarget;
+            if (autoResolved(tgt)) autoNext(team);
+            else if (arrived) { team.state = 'watch'; team.watchT = 0; }
+            else if (team.autoT > 40) { (team.skip || (team.skip = new Set())).add(tgt.ref); autoNext(team); }
+          } else if (arrived) {
             team.wi++;
             afterArrive(team, false);
           }
         }
+      } else if (team.state === 'watch') {
+        // おまかせ: 目標を見つめて記録が終わるのを待つ
+        const tgt = team.autoTarget;
+        team.watchT += DT;
+        if (tgt) lead.facing = turnToward(lead.facing, Math.atan2(tgt.y + 0.5 - lead.y, tgt.x + 0.5 - lead.x), 0.5);
+        if (autoResolved(tgt)) autoNext(team);
+        else if (team.watchT > 8) { (team.skip || (team.skip = new Set())).add(tgt.ref); autoNext(team); }
       } else if (team.state === 'unlock') {
         team.unlockT -= DT;
         if (team.unlockT <= 0) {
@@ -589,7 +703,7 @@
         if (team.trail.length > 80) team.trail.shift();
       }
       const alive = team.members.filter(m => !m.out);
-      const sp = moving ? curSpeed(team) : 'still';
+      const sp = moving ? curSpeed(team) : team.state === 'hold' ? 'hold' : 'still';
       alive.forEach((m, k) => {
         m.moving = sp;
         if (k === 0) return;
@@ -655,7 +769,7 @@
           enemyGo(e, e.route[0].x, e.route[0].y, ty.speed * 0.8);
         } else {
           // 持ち場でゆっくり首を振る
-          e.facing = e.baseFacing + Math.sin(S.t * 0.35 + e.phase) * 0.8;
+          e.facing = e.baseFacing + Math.sin(S.t * 0.35 + e.phase) * 0.5;
         }
       } else if (e.state === 'suspicious') {
         if (e.investigate) {
@@ -696,7 +810,7 @@
             for (const h of S.hazards) {
               if (h.status !== 'open' || h.concealer || h.item) continue;
               const d = Math.hypot(h.x + 0.5 - e.x, h.y + 0.5 - e.y);
-              if (d < bd && d < 10) { bd = d; best = h; }
+              if (d < bd && d < 6.5) { bd = d; best = h; }
             }
             if (best) { e.task = best; best.concealer = e; e.path = null; }
           }
@@ -704,7 +818,7 @@
             const h = e.task;
             if (h.status !== 'open') { releaseTask(e); return; }
             if (Math.hypot(h.x + 0.5 - e.x, h.y + 0.5 - e.y) <= 1.1) {
-              h.conceal += DT / (ty.conceal * (h.mandatory ? 2.5 : 1));
+              h.conceal += DT / (ty.conceal * (def.conceal || 1) * (h.mandatory ? 4 : 1));
               e.facing = angTo(e, { x: h.x + 0.5, y: h.y + 0.5 });
               if (h.conceal >= 1) {
                 h.status = 'lost';
@@ -749,14 +863,14 @@
             if (d < bestD) { bestD = d; best = m; }
             continue;
           }
-          const gain = 2.6 * (1.4 - m.stealth / 100) * (1 - (d / range) * 0.6) * MOVE_VIS[m.moving] * (e.state === 'suspicious' ? 1.5 : 1) * (d < 1.5 ? 3 : 1);
+          const gain = 2.0 * (def.detect || 1) * (1.4 - m.stealth / 100) * (1 - (d / range) * 0.6) * MOVE_VIS[m.moving] * (e.state === 'suspicious' ? 1.5 : 1) * (d < 1.5 ? 3 : 1);
           if (gain > bestGain) { bestGain = gain; best = m; }
         }
         if (e.state === 'alert') {
           if (best) {
             e.seeing = best;
             if (!e.aware) { e.aware = best; }
-            if (!S.alarm && e.radio === null) e.radio = e.ty.alarmT;
+            if (!S.alarm && e.radio === null) e.radio = e.ty.alarmT * (def.radio || 1);
           }
           if (e.ty.boss && best && !S.alarm) raiseAlarm(e);
           continue;
@@ -810,7 +924,14 @@
         S.stats.presses++;
         const aware = tgt.state === 'alert';
         const stunned = tgt.stun > 0;
-        if (!aware && td <= 2.2 && roe !== 'assault' || (!aware && stunned && td <= 2.2)) {
+        if (stunned && td <= 3) {
+          // ライトでくらんだ相手は落ち着いて指摘できる
+          const p = clamp(0.75 + (m.press - tgt.ty.deceit) / 200, 0.5, 0.97);
+          bubble(m.x, m.y - 0.6, '落ち着いて聞いてください', 'team');
+          if (R() < p) neutralize(tgt, m, true);
+          continue;
+        }
+        if (!aware && td <= 2.2 && roe !== 'assault') {
           // 指摘票で静かに制圧
           const p = clamp(0.38 + (m.press - tgt.ty.deceit) / 150 + (stunned ? 0.3 : 0) - (tgt.ty.boss ? 0.3 : 0), 0.15, 0.95);
           bubble(m.x, m.y - 0.6, '少しよろしいですか', 'team');
